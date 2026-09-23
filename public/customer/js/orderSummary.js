@@ -603,74 +603,141 @@ window.applyPromo = async function() {
   }
 };
 
+// ==========================================
+// GUEST CHECKOUT — GOOGLE SIGN-IN
+// ==========================================
+// Guests no longer type in a Full Name / Email form. Instead, the Recipient
+// Details modal asks them to sign in with Gmail, and we pull the name/email
+// straight from their Google account.
+let guestGoogleReady = false;
+
+function initGuestGoogleSignIn(retriesLeft = 40) {
+  if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+    google.accounts.id.initialize({
+      client_id: "1077352091553-6d77b0rtu3km8r1har7ra3lsmbf5en35.apps.googleusercontent.com",
+      callback: handleGuestGoogleCredentialResponse,
+      auto_select: false
+    });
+
+    const hiddenDiv = document.getElementById('guestGoogleButtonHidden');
+    if (hiddenDiv) {
+      google.accounts.id.renderButton(hiddenDiv, {
+        type: 'standard',
+        shape: 'rectangular',
+        theme: 'outline',
+        text: 'signin_with',
+        size: 'large'
+      });
+    }
+
+    guestGoogleReady = true;
+    return;
+  }
+
+  if (retriesLeft > 0) {
+    setTimeout(() => initGuestGoogleSignIn(retriesLeft - 1), 250);
+  } else {
+    console.error('Google Identity Services failed to load after waiting.');
+  }
+}
+
+// Clicking the visible, styled "Continue with Google" button triggers the
+// real (hidden) GSI button underneath it, same pattern as the login page.
+window.triggerGuestGoogleLogin = function() {
+  const hiddenDiv = document.getElementById('guestGoogleButtonHidden');
+  const hiddenBtn = hiddenDiv && hiddenDiv.querySelector('div[role="button"]');
+  if (guestGoogleReady && hiddenBtn) {
+    hiddenBtn.click();
+  } else {
+    showSweetAlert({
+      icon: 'info',
+      title: 'Google Sign-In Unavailable',
+      text: 'Google Sign-In is still loading. Please wait a moment and try again.',
+      confirmButtonText: 'OK',
+      showCancelButton: false
+    });
+  }
+};
+
+async function handleGuestGoogleCredentialResponse(response) {
+  if (!response || !response.credential) return;
+
+  const btn = document.getElementById('btnGuestGoogleLogin');
+  const originalBtnHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = 'Signing in...';
+  }
+
+  try {
+    const res = await fetch('/api/auth/google', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential: response.credential })
+    });
+
+    const data = await res.json();
+    if (!res.ok || data.status !== 'success') {
+      throw new Error(data.message || 'Google sign-in failed.');
+    }
+
+    const userRecord = data.user || {};
+    const fullName = userRecord.full_name || userRecord.username || '';
+    const email = userRecord.email || '';
+
+    try {
+      localStorage.setItem('mm_user', JSON.stringify(userRecord));
+    } catch (e) {
+      console.warn('Unable to persist mm_user:', e);
+    }
+
+    if (fullName) currentRecipient.name = String(fullName).trim();
+    if (email) currentRecipient.email = String(email).trim();
+
+    renderRecipientDetails();
+    closeRecipientModal();
+
+    // Refresh the order summary now that the guest is signed in, so loyalty
+    // points and account-based pricing kick in without losing the cart items.
+    if (typeof window.renderOrderSummaryModal === 'function') {
+      await window.renderOrderSummaryModal(currentOrderSummaryItems);
+    }
+  } catch (err) {
+    showSweetAlert({
+      icon: 'error',
+      title: 'Google Sign-In Error',
+      text: err.message,
+      confirmButtonText: 'Try Again',
+      showCancelButton: false
+    });
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalBtnHtml;
+    }
+  }
+}
+
 window.openRecipientModal = function() {
-  const nameInput = document.getElementById('inputRecipientName');
-  const emailInput = document.getElementById('inputRecipientEmail');
-
-  if (nameInput) {
-    nameInput.placeholder = 'Valued Customer';
-    nameInput.value = (currentRecipient.name && currentRecipient.name !== 'Valued Customer') ? currentRecipient.name : '';
-  }
-
-  if (emailInput) {
-    emailInput.placeholder = 'customer@gmail.com';
-    emailInput.value = (currentRecipient.email && currentRecipient.email !== 'customer@gmail.com') ? currentRecipient.email : '';
-  }
-
   const modal = document.getElementById('recipientEditModal');
-  if (modal) modal.classList.add('active');
+  const summaryModal = document.getElementById('orderSummaryModal');
+
+  // Force the recipient modal above the order summary modal regardless of
+  // whatever z-index the stylesheet gives .product-modal-backdrop.
+  if (summaryModal) summaryModal.style.zIndex = '9000';
+  if (modal) {
+    modal.style.zIndex = '10000';
+    modal.classList.add('active');
+  }
+
+  initGuestGoogleSignIn();
 };
 
 window.closeRecipientModal = function(event) {
   if (event && event.target) return;
   const modal = document.getElementById('recipientEditModal');
   if (modal) modal.classList.remove('active');
-};
-
-window.saveRecipientDetails = function(event) {
-  if (event) event.preventDefault();
-  const nameInput = document.getElementById('inputRecipientName');
-  const emailInput = document.getElementById('inputRecipientEmail');
-
-  const nameVal = nameInput ? nameInput.value.trim() : '';
-  const emailVal = emailInput ? emailInput.value.trim() : '';
-
-  if (!nameVal || !emailVal) {
-    showSweetAlert({
-      icon: 'warning',
-      title: 'Incomplete Details',
-      text: 'Please enter both your full name and email address.',
-      confirmButtonText: 'Got It',
-      showCancelButton: false
-    });
-    return;
-  }
-
-  if (!emailVal.includes('@') || !emailVal.includes('.')) {
-    showSweetAlert({
-      icon: 'warning',
-      title: 'Invalid Email',
-      text: 'Please enter a valid email address.',
-      confirmButtonText: 'Got It',
-      showCancelButton: false
-    });
-    return;
-  }
-
-  currentRecipient.name = nameVal;
-  currentRecipient.email = emailVal;
-
-  const localUser = getStoredUser();
-  localUser.full_name = nameVal;
-  localUser.email = emailVal;
-  try {
-    localStorage.setItem('mm_user', JSON.stringify(localUser));
-  } catch (e) {
-    console.warn('Unable to persist mm_user:', e);
-  }
-
-  renderRecipientDetails();
-  closeRecipientModal();
 };
 
 function buildReceiptDOM(order) {
@@ -797,9 +864,9 @@ window.confirmPlaceOrder = async function() {
   if (!cleanName || !cleanEmail || cleanName === 'Valued Customer' || cleanEmail === 'customer@gmail.com') {
     showSweetAlert({
       icon: 'warning',
-      title: 'Missing Recipient Details',
-      text: 'Please provide your Full Name and Email Address so we know who is picking up these sweet sips!',
-      confirmButtonText: 'Add Details',
+      title: 'Sign In Required',
+      text: 'Please sign in with Gmail so we know who is picking up these sweet sips!',
+      confirmButtonText: 'Sign In',
       showCancelButton: false,
       focusConfirm: false
     }).then(() => {
@@ -812,8 +879,8 @@ window.confirmPlaceOrder = async function() {
     showSweetAlert({
       icon: 'warning',
       title: 'Invalid Email',
-      text: 'Please enter a valid email address for your order updates.',
-      confirmButtonText: 'Edit Email',
+      text: 'We could not read a valid email from your Google account. Please try signing in again.',
+      confirmButtonText: 'Sign In Again',
       showCancelButton: false,
       focusConfirm: false
     }).then(() => {
