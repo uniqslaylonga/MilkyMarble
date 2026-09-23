@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Production Planning & Batch Cooking</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/productionplanning.css">
+</head>
+<body>
+
+<div class="app-container">
+    <!-- STICKY SIDEBAR (MATCHING ALL MODULES) -->
+    <aside class="sidebar">
+        <div class="brand-section">
+            <div class="brand-logo-wrap">
+                <img src="/customer/images/logo.png" alt="Milky Marble" class="brand-logo-img">
+            </div>
+            <div class="brand-title">Milky Marble</div>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="dashboard.html" class="nav-link">
+                <i class="fa-solid fa-table-cells-large nav-fa"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="orderList.html" class="nav-link">
+                <i class="fa-solid fa-list-check nav-fa"></i>
+                <span>Order List</span>
+            </a>
+            <a href="orderProduction.html" class="nav-link">
+                <i class="fa-solid fa-industry nav-fa"></i>
+                <span>Order Production</span>
+            </a>
+            <a href="productionPlanning.html" class="nav-link active">
+                <i class="fa-solid fa-calendar-days nav-fa"></i>
+                <span>Production Planning</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <a href="../login.html" class="nav-link logout-btn">
+                <i class="fa-solid fa-arrow-right-from-bracket nav-fa"></i>
+                <span>Log out</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN SCROLLABLE CONTENT -->
+    <main class="main-content">
+        <!-- TOPBAR -->
+        <header class="topbar">
+            <div class="search-box">
+                <input type="text" id="planningSearchInput" placeholder="Search batch runs, pearls, tea base, or gulaman...">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            </div>
+            
+            <div class="topbar-right">
+                <button class="notif-btn" title="Alerts"><i class="fa-regular fa-bell"></i></button>
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <img id="userAvatar" src="/employee//customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                    </div>
+                    <span id="userFullName" class="user-name">Loading...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- PAGE HEADER -->
+        <section class="page-header">
+            <div class="page-eyebrow">Tier 1 • Macro Batch Cooking &amp; Brewing Schedule</div>
+            <div class="header-row">
+                <div>
+                    <h1 class="page-title">Make the next move visible.</h1>
+                    <p class="header-sub">Schedule and track batch cooking runs - pre-boils, tea steeps, and jelly sets.</p>
+                </div>
+                <button type="button" class="btn-primary" onclick="openModal('addPlanModal')">
+                    <i class="fa-solid fa-plus"></i> Schedule Cooking Run
+                </button>
+            </div>
+        </section>
+
+        <!-- 4 BATCH AGGREGATION KPIS -->
+        <section class="section">
+            <div class="overview-grid four-col-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Scheduled Today</span>
+                        <i class="fa-solid fa-calendar-day stat-icon"></i>
+                    </div>
+                    <div class="stat-body"><span id="todayRunsCount" class="stat-value">0 Runs</span></div>
+                    <div class="stat-footer">Batch runs due today</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Scheduled Tomorrow</span>
+                        <i class="fa-solid fa-calendar-plus stat-icon"></i>
+                    </div>
+                    <div class="stat-body"><span id="tomorrowRunsCount" class="stat-value">0 Runs</span></div>
+                    <div class="stat-footer">Batch runs due tomorrow</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">In Progress</span>
+                        <i class="fa-solid fa-fire-burner stat-icon"></i>
+                    </div>
+                    <div class="stat-body"><span id="inProgressCountKpi" class="stat-value">0</span></div>
+                    <div class="stat-footer">Currently boiling / steeping</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Planned Batch Runs</span>
+                        <i class="fa-solid fa-clipboard-list stat-icon"></i>
+                    </div>
+                    <div class="stat-body"><span id="totalRunsCount" class="stat-value">0 Runs</span></div>
+                    <div class="stat-footer">All scheduled runs</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TIMELINE FILTER & VIEW SWITCH BAR -->
+        <div class="timeline-bar">
+            <div class="timeline-left">
+                <div class="custom-select-wrap">
+                    <i class="fa-regular fa-calendar filter-icon"></i>
+                    <select id="timeRangeFilter">
+                        <option value="this_week" selected>All Scheduled Runs</option>
+                        <option value="tue_run">Tuesday Release Run (10 AM – 3 PM)</option>
+                        <option value="thu_run">Thursday Release Run (10 AM – 3 PM)</option>
+                    </select>
+                </div>
+                <span id="dateRangeText" class="date-range-text">Loading...</span>
+            </div>
+
+            <div class="view-switch-group">
+                <button class="view-btn active" id="btnViewBoard" type="button">
+                    <i class="fa-solid fa-table-columns"></i> Kanban Board
+                </button>
+                <button class="view-btn" id="btnViewList" type="button">
+                    <i class="fa-solid fa-list"></i> Table List
+                </button>
+            </div>
+        </div>
+
+        <!-- BOARD VIEW (3 COOKING STAGES) -->
+        <section class="planning-board-grid" id="boardViewArea">
+            <!-- 1. Scheduled Prep Column -->
+            <div class="board-column">
+                <div class="column-header">
+                    <h2>1. Scheduled Prep <small>(7:00 AM – 8:30 AM)</small></h2>
+                    <span id="scheduledCount" class="column-count-badge">0</span>
+                </div>
+                <div id="scheduledPlansList" class="column-cards-list">
+                    <div class="loading-state-text">Loading scheduled batches...</div>
+                </div>
+            </div>
+
+            <!-- 2. Boiling & Steeping (Active) Column -->
+            <div class="board-column">
+                <div class="column-header">
+                    <h2>2. Boiling &amp; Steeping <small>(In Progress)</small></h2>
+                    <span id="inProgressCount" class="column-count-badge">0</span>
+                </div>
+                <div id="inProgressPlansList" class="column-cards-list">
+                    <div class="loading-state-text">Loading active cooking runs...</div>
+                </div>
+            </div>
+
+            <!-- 3. Holding in Warmer (10 AM - 3 PM Window) -->
+            <div class="board-column">
+                <div class="column-header">
+                    <h2>3. Ready in Warmer <small>(10 AM – 3 PM Window)</small></h2>
+                    <span id="readyCount" class="column-count-badge">0</span>
+                </div>
+                <div id="readyPlansList" class="column-cards-list">
+                    <div class="loading-state-text">Loading holding items...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- LIST VIEW (TABLE WITH PERMANENT NUMBERED PAGER) -->
+        <section class="directory-card" id="listViewArea" style="display: none;">
+            <div class="table-container">
+                <table class="cust-table">
+                    <thead>
+                        <tr>
+                            <th>Batch Run Code</th>
+                            <th>Raw Ingredient &amp; Recipe</th>
+                            <th>Target Yield</th>
+                            <th>Scheduled Cooking Time</th>
+                            <th>Status Stage</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allPlansTableBody">
+                        <tr>
+                            <td colspan="6" class="loading-state-text">Loading production plans...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- PERMANENT NUMBERED PAGINATION BAR -->
+            <div class="tx-pagination-bar" id="planPaginationBar">
+                <span class="tx-page-info" id="planPageInfo">Showing 0 of 0 plans</span>
+                <div class="tx-pager-buttons">
+                    <button type="button" class="pager-btn" id="prevPlanBtn" title="Previous Page" disabled>
+                        <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <div class="pager-numbers" id="planPagerNumbers">
+                        <button type="button" class="pager-num-btn active" disabled>1</button>
+                    </div>
+                    <button type="button" class="pager-btn" id="nextPlanBtn" title="Next Page" disabled>
+                        <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- MODAL 1: ADD BATCH COOKING PLAN -->
+<div class="modal-overlay" id="addPlanModal">
+    <div class="profile-modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <h3 class="modal-title">Schedule Batch Cooking Run</h3>
+                <p class="modal-subtitle">Configure morning boiling of tapioca pearls, steeping of tea, or setting of gulaman jellies.</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('addPlanModal')">✕</button>
+        </div>
+
+        <form id="addPlanForm" class="modal-body">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Ingredient / Batch Recipe Preset *</label>
+                    <select id="recipeSelect" required>
+                        <option value="">-- Choose Macro Recipe Preset --</option>
+                        <option value="Tapioca Pearls (Batch 1)">Tapioca Pearls (Batch 1)</option>
+                        <option value="Tapioca Pearls (Batch 2)">Tapioca Pearls (Batch 2)</option>
+                        <option value="Assam Black Tea Base (Urn 1)">Assam Black Tea Base (Urn 1)</option>
+                        <option value="Jasmine Green Tea Base (Urn 2)">Jasmine Green Tea Base (Urn 2)</option>
+                        <option value="Roasted Oolong Tea Base (Urn 3)">Roasted Oolong Tea Base (Urn 3)</option>
+                        <option value="Grass Jelly / Gulaman Tray">Grass Jelly / Gulaman Tray</option>
+                        <option value="Egg Pudding Custard Mold">Egg Pudding Custard Mold</option>
+                        <option value="Brown Sugar Syrup Melting">Brown Sugar Syrup Melting</option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label>Custom Batch Operation Name *</label>
+                    <input type="text" id="addOpInput" placeholder="e.g. Morning Tapioca Pearls Pot 1" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Target Yield / Volume *</label>
+                    <input type="text" id="addYieldInput" placeholder="e.g. 2.5 kg (50 cups)" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Scheduled Date *</label>
+                    <input type="date" id="addDueDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Start Cooking Time *</label>
+                    <input type="time" id="addScheduleTime" value="07:30" required>
+                </div>
+
+                <div class="form-group full">
+                    <label>Initial Status *</label>
+                    <select id="addStatus">
+                        <option value="PLANNED">Scheduled (To Boil/Brew)</option>
+                        <option value="IN PROGRESS">Active Boiling &amp; Steeping</option>
+                        <option value="COMPLETED">Ready in Warmer</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal('addPlanModal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-plus"></i> Save Batch Plan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL 2: EDIT BATCH COOKING PLAN -->
+<div class="modal-overlay" id="editPlanModal">
+    <div class="profile-modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <h3 class="modal-title">Edit Batch Cooking Run</h3>
+                <p class="modal-subtitle">Update cooking time, target volume, or progress stage.</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('editPlanModal')">✕</button>
+        </div>
+
+        <form id="editPlanForm" class="modal-body">
+            <input type="hidden" id="editPlanId">
+
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Operation Name *</label>
+                    <input type="text" id="editProductName" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Target Yield / Volume *</label>
+                    <input type="text" id="editYieldInput" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Stage / Status *</label>
+                    <select id="editStatus">
+                        <option value="PLANNED">Scheduled</option>
+                        <option value="IN PROGRESS">In Boiling &amp; Steeping</option>
+                        <option value="COMPLETED">Ready in Warmer</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Scheduled Date *</label>
+                    <input type="date" id="editDueDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Time *</label>
+                    <input type="time" id="editScheduleTime" required>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal('editPlanModal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Update Run</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="../js/employeeAuth.js"></script>
+<script src="js/productionPlanning.js"></script>
+    <script src="/shared/js/avatarUpload.js"></script>
+</body>
+</html>

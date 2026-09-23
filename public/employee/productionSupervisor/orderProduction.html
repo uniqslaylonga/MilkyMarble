@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Order Details & Cup Assembly</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/orderproduction.css">
+</head>
+<body>
+<div class="app-container">
+    <!-- STICKY SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand-section">
+            <div class="brand-logo-wrap">
+                <img src="/customer/images/logo.png" alt="Milky Marble" class="brand-logo-img">
+            </div>
+            <div class="brand-title">Milky Marble</div>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="dashboard.html" class="nav-link">
+                <i class="fa-solid fa-table-cells-large nav-fa"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="orderList.html" class="nav-link">
+                <i class="fa-solid fa-list-check nav-fa"></i>
+                <span>Order List</span>
+            </a>
+            <a href="orderProduction.html" class="nav-link active">
+                <i class="fa-solid fa-industry nav-fa"></i>
+                <span>Order Production</span>
+            </a>
+            <a href="productionPlanning.html" class="nav-link">
+                <i class="fa-solid fa-calendar-days nav-fa"></i>
+                <span>Production Planning</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <a href="../login.html" class="nav-link logout-btn">
+                <i class="fa-solid fa-arrow-right-from-bracket nav-fa"></i>
+                <span>Log out</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN SCROLLABLE CONTENT -->
+    <main class="main-content">
+        <!-- TOPBAR -->
+        <header class="topbar">
+            <div class="search-box">
+                <input type="text" id="productionSearchInput" placeholder="Search order number or recipe materials...">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            </div>
+
+            <div class="topbar-right">
+                <button class="notif-btn" title="Alerts"><i class="fa-regular fa-bell"></i></button>
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <img id="userAvatar" src="/employee//customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                    </div>
+                    <span id="userFullName" class="user-name">Loading...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- PAGE HEADER & NAVIGATION -->
+        <section class="order-page">
+            <div class="page-header">
+                <div class="page-eyebrow">Workstation &amp; Cup Mixing Desk</div>
+                <h1 class="page-title">Order Details &amp; Recipe Assembly</h1>
+            </div>
+
+            <a href="orderList.html" class="back-link">
+                <i class="fa-solid fa-arrow-left"></i> Back to Order Queue
+            </a>
+
+            <!-- TOP SUMMARY CARDS (SPLIT VIEW) -->
+            <div class="order-summary">
+                <!-- ORDER SPECIFICATION CARD -->
+                <div class="order-card">
+                    <div class="order-meta">
+                        <div class="order-meta-left">
+                            <span id="orderCode" class="order-code">Loading...</span>
+                            <span id="orderTypeBadge" class="type-pill type-preorder"></span>
+                        </div>
+                        <span id="orderClient" class="order-staff"></span>
+                    </div>
+
+                    <h2 id="itemLabel" class="item-title">Loading order...</h2>
+
+                    <!-- DYNAMIC ORDER SPECIFICATION TAGS -->
+                    <div id="tagRow" class="tag-row"></div>
+
+                    <div class="recipe-notes-box">
+                        <span class="notes-label">Instructions:</span>
+                        <p id="recipeInstructions" class="notes-text"></p>
+                    </div>
+                </div>
+
+                <!-- COMPLETE ORDER ACTION CARD -->
+                <div class="close-card">
+                    <div class="close-top-row">
+                        <div class="close-icon">
+                            <i class="fa-solid fa-box-open"></i>
+                        </div>
+                        <span class="shelf-indicator" id="shelfIndicatorTag"></span>
+                    </div>
+
+                    <div class="close-copy">
+                        <h3>Seal &amp; Mark Ready</h3>
+                        <p>Confirm cup assembly is complete and place on counter holding rack for pickup.</p>
+                    </div>
+
+                    <form id="completeOrderForm">
+                        <button class="complete-btn" type="submit">
+                            <i class="fa-solid fa-check"></i> COMPLETE &amp; MARK SHELF-READY
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- INGREDIENTS & RAW MATERIAL DEDUCTION PANEL -->
+            <div class="materials-panel">
+                <div class="panel-title-wrap">
+                    <div class="panel-icon">
+                        <i class="fa-solid fa-scale-balanced"></i>
+                    </div>
+                    <div>
+                        <h3>Ingredients &amp; Material Inventory Check</h3>
+                        <p class="materials-sub">Auto-calculated inventory deductions for this specific cup customization.</p>
+                    </div>
+                </div>
+
+                <form id="materialsForm">
+                    <div class="materials-table">
+                        <div class="materials-head">
+                            <span class="col-name">Raw Ingredient / Consumable</span>
+                            <span class="col-amount">Calculated Quantity</span>
+                            <span class="col-unit">Unit of Measure</span>
+                        </div>
+
+                        <div id="materialsList">
+                            <div class="loading-materials">Loading inventory materials...</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script src="../js/employeeAuth.js"></script>
+<script src="js/orderProduction.js"></script>
+    <script src="/shared/js/avatarUpload.js"></script>
+</body>
+</html>

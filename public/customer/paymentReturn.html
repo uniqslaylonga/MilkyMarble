@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="only light">
+  <title>Milky Marble - Payment Status</title>
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Urbanist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #FFF5F4;
+      font-family: 'Urbanist', Arial, sans-serif;
+      color: #594A42;
+      padding: 20px;
+    }
+    .status-card {
+      max-width: 420px;
+      width: 100%;
+      background: #FFFDFD;
+      border: 1.5px solid #FCE1DD;
+      border-radius: 24px;
+      padding: 36px 30px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(89, 74, 66, 0.08);
+    }
+    .status-icon {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 18px;
+      font-size: 32px;
+      color: #fff;
+    }
+    .status-icon.loading { background: #F8C8CA; }
+    .status-icon.success { background: #4CAF50; }
+    .status-icon.pending { background: #F5A623; }
+    .status-icon.failed { background: #E85D5D; }
+    h1 { font-family: 'Fredoka', sans-serif; font-size: 22px; margin: 0 0 10px; color: #594A42; }
+    p { font-size: 14.5px; line-height: 1.5; color: #7C4F38; margin: 0 0 6px; }
+    .order-no { font-weight: 800; color: #F48A8E; }
+    .btn-back {
+      display: inline-block;
+      margin-top: 22px;
+      padding: 12px 28px;
+      background: #F48A8E;
+      color: #fff;
+      font-weight: 700;
+      border: none;
+      border-radius: 99px;
+      text-decoration: none;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-retry {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 10px 24px;
+      background: #fff;
+      color: #F48A8E;
+      font-weight: 700;
+      border: 1.5px solid #FCE1DD;
+      border-radius: 99px;
+      text-decoration: none;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .fa-spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="status-card" id="statusCard">
+    <div class="status-icon loading"><i class="fa-solid fa-spinner fa-spin"></i></div>
+    <h1>Checking your payment...</h1>
+    <p>Please hold on while we confirm your PayMongo payment with Milky Marble.</p>
+  </div>
+
+  <script>
+    function getParam(name) {
+      return new URLSearchParams(window.location.search).get(name);
+    }
+
+    // If the browser that returns from PayMongo is a separate storage
+    // context from the one the customer logged in on (common with in-app
+    // browsers/webviews inside e-wallet apps), localStorage.mm_user can be
+    // empty here even though the customer is genuinely logged in - making
+    // "Return to Merchant" look like it logged them out. We carry
+    // customer_id/user_id through the PayMongo success/cancel URLs
+    // specifically so we can rebuild that session here.
+    let ordersLinkSuffix = '';
+    async function restoreCustomerSession() {
+      const customerId = getParam('customer_id');
+      const userId = getParam('user_id');
+      if (!customerId && !userId) return;
+
+      // Always keep a URL fallback for orders.html, in case this storage
+      // context still can't hold localStorage (e.g. private browsing).
+      const params = new URLSearchParams();
+      if (customerId) params.set('customer_id', customerId);
+      if (userId) params.set('user_id', userId);
+      ordersLinkSuffix = `?${params.toString()}`;
+
+      try {
+        const existing = JSON.parse(localStorage.getItem('mm_user') || 'null');
+        if (existing && existing.customer_id) return; // already have a session
+      } catch {
+        // fall through and try to rebuild it below
+      }
+
+      try {
+        const lookupId = customerId || userId;
+        const profileRes = await fetch(`/api/customer/profile?customer_id=${encodeURIComponent(lookupId)}`, {
+          credentials: 'include',
+          headers: { Accept: 'application/json', 'x-customer-id': String(lookupId) }
+        });
+        if (!profileRes.ok) return;
+        const profileResult = await profileRes.json();
+        const cust = profileResult && (profileResult.data || profileResult.customer);
+        if (!cust) return;
+
+        localStorage.setItem('mm_user', JSON.stringify({
+          customer_id: cust.id,
+          id: cust.id,
+          user_id: cust.user_id || userId,
+          full_name: cust.full_name || cust.username || '',
+          username: cust.username || '',
+          loyalty_points: cust.loyalty_points || 0
+        }));
+      } catch (err) {
+        console.warn('Could not restore customer session:', err.message);
+      }
+    }
+
+    async function verifyPayment(orderId, attempt = 1) {
+      try {
+        const res = await fetch(`/api/payments/verify/${orderId}`);
+        const data = await res.json();
+
+        if (res.ok && data.status === 'success') {
+          if (data.paid) {
+            return renderResult('success', data.order);
+          }
+          // Payment may still be settling right after redirect - retry briefly.
+          if (attempt < 5) {
+            setTimeout(() => verifyPayment(orderId, attempt + 1), 2000);
+            return;
+          }
+          return renderResult('pending', data.order);
+        }
+        throw new Error(data.message || 'Could not verify payment.');
+      } catch (err) {
+        renderResult('failed', null, err.message);
+      }
+    }
+
+    function renderResult(state, order, errorMessage) {
+      const card = document.getElementById('statusCard');
+      const orderNo = order && order.order_number ? order.order_number : '';
+      const ordersHref = `orders.html${ordersLinkSuffix}`;
+
+      if (state === 'success') {
+        card.innerHTML = `
+          <div class="status-icon success"><i class="fa-solid fa-check"></i></div>
+          <h1>Payment Confirmed!</h1>
+          <p>Your PayMongo e-wallet payment was successful.</p>
+          ${orderNo ? `<p>Order No: <span class="order-no">${orderNo}</span></p>` : ''}
+          <a class="btn-back" href="${ordersHref}">View My Orders</a>
+        `;
+      } else if (state === 'pending') {
+        card.innerHTML = `
+          <div class="status-icon pending"><i class="fa-solid fa-hourglass-half"></i></div>
+          <h1>Payment Still Processing</h1>
+          <p>${errorMessage || "We haven't received confirmation from PayMongo yet. This can take a moment for some e-wallets."}</p>
+          ${orderNo ? `<p>Order No: <span class="order-no">${orderNo}</span></p>` : ''}
+          <a class="btn-back" href="${ordersHref}">View My Orders</a><br>
+          <a class="btn-retry" href="javascript:location.reload()">Check Again</a>
+        `;
+      } else {
+        card.innerHTML = `
+          <div class="status-icon failed"><i class="fa-solid fa-xmark"></i></div>
+          <h1>Payment Not Completed</h1>
+          <p>${errorMessage || 'Your PayMongo payment was cancelled or could not be confirmed.'}</p>
+          <a class="btn-back" href="${ordersHref}">Back to Orders</a>
+        `;
+      }
+    }
+
+    async function cancelOrder(orderId) {
+      try {
+        const res = await fetch(`/api/orders/${orderId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'CANCELLED' })
+        });
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data && data.status === 'success') {
+          return { ok: true, order: data.order };
+        }
+
+        // 409 means the server refused to cancel because the order is
+        // already PAID_VERIFIED / being prepared / etc (e.g. the PayMongo
+        // webhook confirmed payment right around the time the "cancelled"
+        // redirect fired). In that case the order is genuinely paid -
+        // don't lie to the customer and tell them it was cancelled.
+        if (res.status === 409) {
+          return { ok: false, alreadyFinal: true, order: (data && data.order) || null, message: data && data.message };
+        }
+
+        return { ok: false, message: (data && data.message) || 'Could not cancel the order.' };
+      } catch (err) {
+        // Network/fetch failure - we genuinely don't know if the order got
+        // cancelled server-side. Don't claim success.
+        console.error('Failed to mark order cancelled:', err.message);
+        return { ok: false, message: err.message };
+      }
+    }
+
+    async function handleCancelledReturn(orderId, attempt = 1) {
+      const result = await cancelOrder(orderId);
+
+      if (result.ok) {
+        return renderResult('failed', result.order, 'You cancelled the PayMongo checkout before paying. Your order has been cancelled.');
+      }
+
+      if (result.alreadyFinal) {
+        // The order was actually already paid (or already being prepared) -
+        // reflect that instead of showing a false "cancelled" message.
+        if (result.order && result.order.status === 'PAID_VERIFIED') {
+          return renderResult('success', result.order);
+        }
+        return renderResult('pending', result.order, result.message);
+      }
+
+      // Transient failure (network hiccup, brief DB error) - retry a couple
+      // times before giving up, so a flaky request doesn't leave the order
+      // stuck as PENDING_PAYMENT while the customer sees "cancelled".
+      if (attempt < 3) {
+        setTimeout(() => handleCancelledReturn(orderId, attempt + 1), 1500);
+        return;
+      }
+
+      return renderResult(
+        'pending',
+        null,
+        "We couldn't confirm the cancellation with our server. Please check your Orders page or contact us before placing a new order."
+      );
+    }
+
+    (async function init() {
+      const orderId = getParam('order_id');
+      const cancelled = getParam('cancelled');
+
+      await restoreCustomerSession();
+
+      if (!orderId) {
+        return renderResult('failed', null, 'Missing order reference.');
+      }
+      if (cancelled === '1') {
+        return handleCancelledReturn(orderId);
+      }
+      verifyPayment(orderId);
+    })();
+  </script>
+</body>
+</html>

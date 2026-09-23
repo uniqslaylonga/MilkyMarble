@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Order List & Shelf Organization</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/orderlist.css">
+</head>
+<body>
+<div class="app-container">
+    <!-- STICKY SIDEBAR (MATCHING DASHBOARD & SALES OFFICER) -->
+    <aside class="sidebar">
+        <div class="brand-section">
+            <div class="brand-logo-wrap">
+                <img src="/customer/images/logo.png" alt="Milky Marble" class="brand-logo-img">
+            </div>
+            <div class="brand-title">Milky Marble</div>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="dashboard.html" class="nav-link">
+                <i class="fa-solid fa-table-cells-large nav-fa"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="orderList.html" class="nav-link active">
+                <i class="fa-solid fa-list-check nav-fa"></i>
+                <span>Order List</span>
+            </a>
+            <a href="orderProduction.html" class="nav-link">
+                <i class="fa-solid fa-industry nav-fa"></i>
+                <span>Order Production</span>
+            </a>
+            <a href="productionPlanning.html" class="nav-link">
+                <i class="fa-solid fa-calendar-days nav-fa"></i>
+                <span>Production Planning</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <a href="../login.html" class="nav-link logout-btn">
+                <i class="fa-solid fa-arrow-right-from-bracket nav-fa"></i>
+                <span>Log out</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN SCROLLABLE CONTENT -->
+    <main class="main-content">
+        <!-- TOPBAR -->
+        <header class="topbar">
+            <div class="search-box">
+                <input type="text" id="orderSearchInput" placeholder="Search by order #, customer, flavor, or specs...">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            </div>
+
+            <div class="topbar-right">
+                <button class="notif-btn" title="Alerts"><i class="fa-regular fa-bell"></i></button>
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <img id="userAvatar" src="/employee//customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                    </div>
+                    <span id="userFullName" class="user-name">Loading...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- PAGE HEADER -->
+        <section class="page-header">
+            <div class="page-eyebrow">Production Queue &amp; Shelving Desk</div>
+            <div class="header-row">
+                <div>
+                    <h1 class="page-title">Keep the shelves organized</h1>
+                    <p class="header-sub">Manage pre-orders and walk-in preset batches.</p>
+                </div>
+                <a href="productionPlanning.html" class="btn-primary" style="text-decoration: none;">
+                    <i class="fa-solid fa-calendar-plus"></i> Batch Planning
+                </a>
+            </div>
+        </section>
+
+        <!-- 4 OPERATIONAL KPI CARDS -->
+        <section class="section">
+            <div class="overview-grid four-col-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Pending Orders</span>
+                        <i class="fa-solid fa-clipboard-list stat-icon"></i>
+                    </div>
+                    <div class="stat-body"><span id="preordersTargetCount" class="stat-value">0</span></div>
+                    <div class="stat-footer">Awaiting preparation</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">In Progress</span>
+                        <i class="fa-solid fa-store stat-icon"></i>
+                    </div>
+                    <div class="stat-body"><span id="presetsQuotaCount" class="stat-value">0</span></div>
+                    <div class="stat-footer">Currently preparing</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Ready for Pickup</span>
+                        <i class="fa-solid fa-warehouse stat-icon"></i>
+                    </div>
+                    <div class="stat-body"><span id="sealedReadyCount" class="stat-value">0</span></div>
+                    <div class="stat-footer">Ready for customer pickup</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Completed</span>
+                        <i class="fa-solid fa-hourglass-half stat-icon"></i>
+                    </div>
+                    <div class="stat-body"><span id="inQueueCount" class="stat-value">0</span></div>
+                    <div class="stat-footer">Picked up / fulfilled</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ORDERS QUEUE (REPLACING AMOUNT WITH DRINK SPECS) -->
+        <section class="section">
+            <div class="directory-card">
+                <div class="panel-header-bar">
+                    <div>
+                        <h2 class="section-title">Orders Queue</h2>
+                        <p class="section-sub-text">Click any order to open mixing recipe in Order Production workstation.</p>
+                    </div>
+
+                    <!-- Queue Filter Tabs -->
+                    <div class="order-filter-tabs">
+                        <button type="button" class="tab-btn active" data-filter="all">All Orders</button>
+                        <button type="button" class="tab-btn" data-filter="preorder">Pre-Orders (Custom)</button>
+                        <button type="button" class="tab-btn" data-filter="preset">Walk-in Presets</button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="cust-table" id="ordersTable">
+                        <thead>
+                            <tr>
+                                <th>Order # &amp; Customer</th>
+                                <th>Item &amp; Custom Specs (Sugar / Ice / Topping)</th>
+                                <th>Qty</th>
+                                <th>Claim Slot</th>
+                                <th>Shelf Tag</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <tr>
+                                <td colspan="7" class="loading-state-text">Loading orders list...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- PERMANENT NUMBERED PAGINATION BAR -->
+                <div class="tx-pagination-bar" id="orderPaginationBar">
+                    <span class="tx-page-info" id="orderPageInfo">Showing 0 of 0 orders</span>
+                    <div class="tx-pager-buttons">
+                        <button type="button" class="pager-btn" id="prevOrderBtn" title="Previous Page" disabled>
+                            <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        <div class="pager-numbers" id="orderPagerNumbers">
+                            <button type="button" class="pager-num-btn active" disabled>1</button>
+                        </div>
+                        <button type="button" class="pager-btn" id="nextOrderBtn" title="Next Page" disabled>
+                            <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- WALK-IN PRESET BATCH ALLOCATOR (REPLACING GENERIC SAVED PRESETS) -->
+        <section class="section">
+            <div class="directory-card">
+                <div class="saved-header">
+                    <div class="saved-title-group">
+                        <h2 class="section-title">Walk-in Preset Batch Allocator</h2>
+                        <span class="section-badge-pink">Macro Production Status</span>
+                    </div>
+                    <p class="section-sub-text">Standardized recipes prepared in bulk for the counter chiller display.</p>
+                </div>
+
+                <div id="presetGrid" class="preset-grid">
+                    <!-- Preset cards rendered dynamically -->
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script src="../js/employeeAuth.js"></script>
+<script src="js/orderList.js"></script>
+    <script src="/shared/js/avatarUpload.js"></script>
+</body>
+</html>

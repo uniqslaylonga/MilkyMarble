@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Milky Marble — Sales Officer Dashboard</title>
+  <link rel="icon" type="image/png" href="/customer/images/logo.png">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="css/dashboard.css" />
+</head>
+<body>
+  <div class="app-container">
+    <!-- Fixed Sidebar -->
+    <aside class="sidebar">
+      <div class="brand-section">
+        <div class="brand-logo-wrap">
+          <img src="/customer/images/logo.png" alt="Milky Marble Logo" class="brand-logo-img" />
+        </div>
+        <h1 class="brand-title">Milky Marble</h1>
+      </div>
+      <nav class="nav-menu">
+        <a href="dashboard.html" class="nav-link active">
+          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" rx="1.5" />
+            <rect x="14" y="3" width="7" height="7" rx="1.5" />
+            <rect x="14" y="14" width="7" height="7" rx="1.5" />
+            <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          </svg>
+          <span>Dashboard</span>
+        </a>
+        <a href="orderConfirmation.html" class="nav-link">
+          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+          </svg>
+          <span>Order Confirmation</span>
+        </a>
+        <a href="orderMonitoring.html" class="nav-link">
+          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="3" />
+            <path d="M7 15h10M7 9h10" />
+          </svg>
+          <span>Order Monitoring</span>
+        </a>
+        <a href="customerRecords.html" class="nav-link">
+          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 00-3-3.87" />
+            <path d="M16 3.13a4 4 0 010 7.75" />
+          </svg>
+          <span>Customer Records</span>
+        </a>
+        <a href="promotions.html" class="nav-link">
+          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+            <line x1="7" y1="7" x2="7.01" y2="7" />
+          </svg>
+          <span>Promotions</span>
+        </a>
+        <a href="salesTarget.html" class="nav-link">
+          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9" />
+            <circle cx="12" cy="12" r="5" />
+            <circle cx="12" cy="12" r="1" />
+          </svg>
+          <span>Sales Target</span>
+        </a>
+        <a href="salesReports&Records.html" class="nav-link">
+          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3v18h18" />
+            <path d="M7 15l4-6 3 3 5-7" />
+          </svg>
+          <span>Reports &amp; Records</span>
+        </a>
+      </nav>
+      <div class="sidebar-bottom">
+        <a href="../login.html" class="nav-link logout-btn">
+          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+          </svg>
+          <span>Log out</span>
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Topbar: Shift status & Profile (No search bar) -->
+      <header class="topbar">
+        <div id="registerStatusBanner" class="topbar-status-strip open">
+          <span class="status-pulse-dot"></span>
+          <span id="registerStatusText">Register Open • Tuesday &amp; Thursday Release Window (10:00 AM – 3:00 PM)</span>
+        </div>
+        <div class="topbar-right">
+          <div class="user-profile">
+            <div class="user-avatar" id="userAvatarContainer">
+              <svg class="user-avatar-svg" viewBox="0 0 36 36" fill="none">
+                <circle cx="18" cy="18" r="18" fill="#F69299" />
+                <circle cx="18" cy="14" r="5.5" fill="#FFFFFF" />
+                <path d="M8.5 28.5C8.5 23.8 12.8 21.5 18 21.5C23.2 21.5 27.5 23.8 27.5 28.5" fill="#FFFFFF" />
+              </svg>
+            </div>
+            <span class="user-name" id="userName">Employee</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Welcome Banner -->
+      <section class="welcome-banner">
+        <div class="welcome-banner-flex">
+          <div>
+            <h1 class="welcome-title">Glad to have you here, <span id="userFirstName">Employee</span>!</h1>
+            <p class="welcome-sub">Monitor walk-in counter sales, pre-order claims, and generate audit reports.</p>
+          </div>
+          <div class="shift-action-buttons">
+            <button type="button" class="btn-x-reading" onclick="openXReadingModal()" title="View interim shift snapshot without locking register">
+              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <span>X-Reading (Snapshot)</span>
+            </button>
+            <button type="button" id="btnShiftTrigger" class="btn-z-reading" onclick="handleShiftButtonClick()">
+              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              <span id="shiftTriggerText">End Shift &amp; Z-Reading</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Overview Stats (Today) -->
+      <section class="section">
+        <h2 class="section-title">Today's Performance</h2>
+        <div class="overview-grid">
+          <div class="stat-card">
+            <div class="stat-header"><span class="stat-title">Today's Orders</span></div>
+            <div class="stat-body"><span id="todayOrders" class="stat-value">0</span></div>
+            <div class="stat-footer">Total placed today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header"><span class="stat-title">Today's Revenue</span></div>
+            <div class="stat-body"><span id="todaySales" class="stat-value">₱0.00</span></div>
+            <div class="stat-footer">Gross sales collected</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header"><span class="stat-title">Pending Approvals</span></div>
+            <div class="stat-body"><span id="pendingOrders" class="stat-value">0</span></div>
+            <div class="stat-footer">Awaiting confirmation</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Main Layout -->
+      <div class="split-dashboard-layout">
+        <!-- Left: Analytics & DSS -->
+        <div class="analytics-column">
+          <!-- Card 1: Customer Acquisition -->
+          <div class="stat-card compact-panel">
+            <div class="card-head-row">
+              <div class="head-titles">
+                <span class="stat-title" id="acquisitionPeriodTitle">Customer Acquisition</span>
+                <span class="stat-subtitle-text" id="acquisitionPeriodFooter">Registered today</span>
+              </div>
+              <div class="filter-wrapper">
+                <span class="filter-label">Filter Period:</span>
+                <select id="acquisitionFilter" class="custom-select-sm">
+                  <option value="today" selected>Today</option>
+                  <option value="week">Week</option>
+                  <option value="month">Month</option>
+                  <option value="last3Months">90 Days</option>
+                  <option value="last6Months">180 Days</option>
+                </select>
+              </div>
+            </div>
+            <div class="acq-stat-row">
+              <span class="badge-total-num" id="filteredNewAccounts">0</span>
+              <span class="badge-total-desc">Sign-ups</span>
+            </div>
+            <div class="chart-wrapper acquisition-chart-height">
+              <canvas id="acquisitionMiniChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Card 2: Weekly Revenue Inflow & Decision Support System (DSS) -->
+          <div class="stat-card compact-panel">
+            <div class="card-head-row">
+              <div class="head-titles">
+                <span class="stat-title">Weekly Revenue Inflow</span>
+                <span class="stat-subtitle-text">Performance trend &amp; Decision Support</span>
+              </div>
+              <span class="section-badge-pink">DSS ADVISORY</span>
+            </div>
+            <div class="weekly-metrics-row">
+              <div class="inflow-stat">
+                <span class="stat-sub-label">This Week</span>
+                <strong class="inflow-amount" id="thisWeekRevDisplay">₱0.00</strong>
+              </div>
+              <div class="inflow-stat">
+                <span class="stat-sub-label">Previous Week</span>
+                <strong class="inflow-amount-prev" id="lastWeekRevDisplay">₱0.00</strong>
+              </div>
+              <div class="inflow-badge-wrap">
+                <span class="trend-pill trend-neutral" id="weeklyTrendPill">0%</span>
+              </div>
+            </div>
+            <div class="chart-wrapper weekly-chart-height">
+              <canvas id="weeklyInflowChart"></canvas>
+            </div>
+            <div class="dss-alert-box" id="dssAlertBox">
+              <div class="dss-icon-wrap" id="dssIconWrap">
+                <svg class="dss-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+              </div>
+              <div class="dss-content">
+                <p class="dss-text" id="dssMessage">Analyzing weekly inflow trends...</p>
+                <button type="button" class="btn-dss-pitch" id="btnDssPitch" onclick="openPitchPromoModal()" style="display: none;">
+                  <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+                    <line x1="7" y1="7" x2="7.01" y2="7" />
+                  </svg>
+                  <span>Pitch Promotional Campaign</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Transactions -->
+        <div class="transactions-column">
+          <div class="stat-card transactions-card">
+            <div class="card-head-row tx-head-row">
+              <div class="head-titles">
+                <h3 class="section-title tx-title">Recent Transactions</h3>
+                <span class="section-badge-pink">LIVE UPDATES</span>
+              </div>
+              <div class="tx-filter-wrapper">
+                <select id="txDateFilter" class="custom-select-sm">
+                  <option value="today" selected>Today</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="custom">Pick Date...</option>
+                  <option value="all">All Dates</option>
+                </select>
+                <input type="date" id="txCustomDate" class="custom-date-input" style="display: none;" />
+              </div>
+            </div>
+            <div class="orders-container-vertical" id="recentOrdersGrid">
+              <p class="loading-state-text">Loading transactions...</p>
+            </div>
+            <div class="tx-pagination-bar" id="txPaginationBar">
+              <span class="tx-page-info" id="txPageInfo">Showing 0 of 0 orders</span>
+              <div class="tx-pager-buttons">
+                <button type="button" class="pager-btn" id="prevTxBtn" title="Previous Page" disabled>
+                  <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <div class="pager-numbers" id="pagerNumbers">
+                  <button type="button" class="pager-num-btn active" disabled>1</button>
+                </div>
+                <button type="button" class="pager-btn" id="nextTxBtn" title="Next Page" disabled>
+                  <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Pitch Promo Modal (Triggered by DSS recommendation) -->
+  <div class="modal-overlay" id="pitchPromoModal">
+    <div class="audit-modal-card" onclick="event.stopPropagation()">
+      <div class="audit-modal-header">
+        <div>
+          <span class="audit-badge x-badge">DECISION SUPPORT INITIATIVE</span>
+          <h2 class="audit-modal-title">Pitch Promo to CEO</h2>
+          <p class="audit-modal-sub">Recommend a discount incentive to boost low revenue trends</p>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closePitchPromoModal()">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="audit-modal-body">
+        <div class="audit-block">
+          <div class="cash-reconcile-wrap">
+            <div class="cash-input-group">
+              <label for="pitchPromoCode">Promo Code *</label>
+              <input type="text" id="pitchPromoCode" class="custom-cash-input" placeholder="e.g. BOOST10, JELLYWEEK" required />
+            </div>
+            <div class="audit-metrics-grid-4">
+              <div class="cash-input-group">
+                <label for="pitchDiscountType">Discount Type *</label>
+                <select id="pitchDiscountType" class="custom-cash-input" style="padding: 7px 10px; font-size: 12.5px;">
+                  <option value="percent">Percentage (%)</option>
+                  <option value="fixed">Fixed Amount (₱)</option>
+                </select>
+              </div>
+              <div class="cash-input-group">
+                <label for="pitchDiscountValue">Discount Value *</label>
+                <input type="number" step="0.5" id="pitchDiscountValue" class="custom-cash-input" placeholder="e.g. 10 or 2.00" required />
+              </div>
+            </div>
+            <div class="cash-input-group">
+              <label for="pitchNote">Strategy Note for CEO *</label>
+              <textarea id="pitchNote" class="custom-cash-input" rows="3" style="resize: vertical; font-size: 12px; font-weight: 500;" placeholder="Explain why this promo is needed to recover current weekly drop..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="audit-modal-footer">
+        <button type="button" class="btn-secondary-audit" onclick="closePitchPromoModal()">Cancel</button>
+        <button type="button" class="btn-primary-audit" onclick="submitPromoPitch()">
+          <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 2L11 13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+          </svg>
+          <span>Submit Pitch to CEO</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start Shift Modal -->
+  <div class="modal-overlay" id="openShiftModal">
+    <div class="audit-modal-card" onclick="event.stopPropagation()">
+      <div class="audit-modal-header">
+        <div>
+          <span class="audit-badge x-badge">SHIFT INITIATION</span>
+          <h2 class="audit-modal-title">Start Shift — Open Register</h2>
+          <p class="audit-modal-sub" id="openShiftSubDate">Tuesday &amp; Thursday Operational Window (10:00 AM)</p>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeOpenShiftModal()">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="audit-modal-body">
+        <div class="audit-status-notice">
+          <svg class="notice-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <polygon points="10 8 16 12 10 16 10 8" />
+          </svg>
+          <span>Opening the sales desk permits counter transactions and live pre-order claiming.</span>
+        </div>
+        <div class="audit-block">
+          <div class="cash-reconcile-wrap">
+            <div class="cash-input-group">
+              <label for="openingFloatInput">Opening Cash Float for Change (₱) *</label>
+              <input type="number" step="0.5" id="openingFloatInput" class="custom-cash-input" value="1000.00" required />
+            </div>
+            <div class="cash-input-group">
+              <label for="openingShiftNotes">Shift Opening Notes (Optional)</label>
+              <input type="text" id="openingShiftNotes" class="custom-cash-input" placeholder="e.g. Counter 1 cash drawer float verified" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="audit-modal-footer">
+        <button type="button" class="btn-secondary-audit" onclick="closeOpenShiftModal()">Cancel</button>
+        <button type="button" class="btn-primary-audit" onclick="confirmOpenShift()">
+          <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+          </svg>
+          <span>Open Sales Register</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- X-Reading Modal -->
+  <div class="modal-overlay" id="xReadingModal">
+    <div class="audit-modal-card" onclick="event.stopPropagation()">
+      <div class="audit-modal-header">
+        <div>
+          <span class="audit-badge x-badge">INTERIM AUDIT SNAPSHOT</span>
+          <h2 class="audit-modal-title">Shift X-Reading Report</h2>
+          <p class="audit-modal-sub" id="xModalSubDate">Tuesday &amp; Thursday Operational Snapshot</p>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeXReadingModal()">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="audit-modal-body">
+        <div class="audit-status-notice">
+          <svg class="notice-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <span>Interim audit only. Register remains <strong>Open &amp; Active</strong> for transactions.</span>
+        </div>
+        <div class="audit-block">
+          <div class="audit-block-head">
+            <span>Pre-Orders Digital Inflow</span>
+            <span class="audit-block-tag" id="xPreOrdersCount">0 Claims</span>
+          </div>
+          <div class="audit-metrics-row" style="grid-template-columns: 1fr;">
+            <div class="metric-cell">
+              <small>E-Wallet / QR Ph (GCash, Maya &amp; bank apps)</small>
+              <strong id="xEwalletAmount">₱0.00</strong>
+            </div>
+          </div>
+        </div>
+        <div class="audit-block">
+          <div class="audit-block-head">
+            <span>Cash Drawer Inflow &amp; Float</span>
+            <span class="audit-block-tag" id="xPresetsCount">0 Presets Sold</span>
+          </div>
+          <div class="audit-metrics-row">
+            <div class="metric-cell">
+              <small>Walk-in Cash Sales</small>
+              <strong id="xWalkinCash">₱0.00</strong>
+            </div>
+            <div class="metric-cell">
+              <small>Opening Float</small>
+              <strong id="xOpeningFloatDisplay">₱1,000.00</strong>
+            </div>
+            <div class="metric-cell highlight-cell">
+              <small>Expected in Drawer</small>
+              <strong id="xExpectedDrawer">₱1,000.00</strong>
+            </div>
+          </div>
+        </div>
+        <div class="audit-total-bar">
+          <div>
+            <span class="total-bar-label">Total Inflow Collected So Far</span>
+            <small class="total-bar-sub">Digital pre-orders + Walk-in counter cash</small>
+          </div>
+          <strong id="xGrossTotal" class="total-bar-amount">₱0.00</strong>
+        </div>
+      </div>
+      <div class="audit-modal-footer">
+        <button type="button" class="btn-secondary-audit" onclick="closeXReadingModal()">Close</button>
+        <button type="button" class="btn-primary-audit" onclick="window.print()">
+          <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+          </svg>
+          <span>Print Snapshot Slip</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- End Shift & Z-Reading Modal -->
+  <div class="modal-overlay" id="zReadingModal">
+    <div class="audit-modal-card" onclick="event.stopPropagation()">
+      <div class="audit-modal-header">
+        <div>
+          <span class="audit-badge z-badge">OFFICIAL AUDIT REPORT</span>
+          <h2 class="audit-modal-title">End of Shift — Z-Reading Cut-off</h2>
+          <p class="audit-modal-sub" id="zModalSubDate">Tuesday &amp; Thursday Release Window Closing (3:00 PM)</p>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeZReadingModal()">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="audit-modal-body">
+        <div class="audit-block">
+          <div class="audit-block-head">
+            <span>Pre-Orders Settlement &amp; Claims</span>
+            <span class="audit-block-tag" id="zPreOrdersCount">—</span>
+          </div>
+          <div class="audit-metrics-grid-4">
+            <div class="metric-cell">
+              <small>Claimed &amp; Picked Up</small>
+              <strong id="zClaimedAmount">—</strong>
+            </div>
+            <div class="metric-cell">
+              <small>E-Wallet / QR Ph (GCash, Maya &amp; bank apps)</small>
+              <strong id="zEwalletAmount">—</strong>
+            </div>
+            <div class="metric-cell warning-cell" style="grid-column: 1 / -1;">
+              <small>Unclaimed / No-Show</small>
+              <strong id="zUnclaimedAmount">—</strong>
+            </div>
+          </div>
+        </div>
+        <div class="audit-block">
+          <div class="audit-block-head">
+            <span>Counter Cash Drawer &amp; Reconciliation</span>
+            <span class="audit-block-tag" id="zPresetsCount">—</span>
+          </div>
+          <div class="cash-reconcile-wrap">
+            <div class="cash-line-row">
+              <span>Expected System Cash (Presets + Counter COD):</span>
+              <strong id="zExpectedCash" class="cash-num-highlight">—</strong>
+            </div>
+            <div class="cash-input-group">
+              <label for="zActualCashInput">Actual Physical Cash Counted in Drawer (₱) *</label>
+              <input type="number" step="0.5" id="zActualCashInput" class="custom-cash-input" placeholder="Enter total physical bills and coins counted..." required />
+            </div>
+            <div class="variance-display-box" id="zVarianceBox">
+              <span class="var-label">Variance (Over / Short):</span>
+              <strong id="zVarianceValue" class="var-value">₱0.00</strong>
+              <span id="zVarianceStatus" class="var-status-pill neutral">Awaiting Count</span>
+            </div>
+          </div>
+        </div>
+        <div class="audit-warning-box">
+          <div class="audit-warning-icon-wrap">
+            <svg class="warn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </div>
+          <div class="audit-warning-text">
+            <strong>Sales Counter Lockdown Notice:</strong> Submitting this Z-Reading will <strong>permanently lock</strong> the sales counter for this shift. No further orders can be processed, and the final collection packet will be transmitted directly to the <strong>Financial Officer</strong> for reconciliation.
+          </div>
+        </div>
+      </div>
+      <div class="audit-modal-footer">
+        <button type="button" class="btn-secondary-audit" onclick="closeZReadingModal()">Cancel</button>
+        <button type="button" class="btn-danger-lock" onclick="promptZReadingConfirmation()">
+          <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          <span>Lock Register &amp; Transmit Z-Report</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Alert Modal -->
+  <div class="modal-overlay" id="customAlertModal">
+    <div class="dialog-modal-card" onclick="event.stopPropagation()">
+      <div class="dialog-icon-circle" id="alertDialogIconWrap">
+        <svg id="alertDialogIcon" class="dialog-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <h3 class="dialog-title" id="alertModalTitle">Notice</h3>
+      <p class="dialog-message" id="alertModalMessage">Please enter the actual physical cash counted in the drawer before locking.</p>
+      <div class="dialog-actions">
+        <button type="button" class="btn-dialog-primary" onclick="closeCustomAlert()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Confirm Modal -->
+  <div class="modal-overlay" id="customConfirmModal">
+    <div class="dialog-modal-card" onclick="event.stopPropagation()">
+      <div class="dialog-icon-circle warning">
+        <svg class="dialog-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </div>
+      <h3 class="dialog-title">Confirm End-of-Shift Z-Reading?</h3>
+      <div class="dialog-summary-box">
+        <div class="d-row"><span>System Expected Cash:</span> <strong id="confirmExpectedCash">₱0.00</strong></div>
+        <div class="d-row"><span>Actual Drawer Count:</span> <strong id="confirmActualCash">₱0.00</strong></div>
+        <div class="d-row"><span>Computed Variance:</span> <strong id="confirmVariance">₱0.00</strong></div>
+      </div>
+      <p class="dialog-warning-note">
+        <strong>Warning:</strong> The sales register will be locked and cannot accept further orders.
+      </p>
+      <div class="dialog-actions split">
+        <button type="button" class="btn-dialog-secondary" onclick="closeCustomConfirm()">Cancel</button>
+        <button type="button" class="btn-dialog-danger" id="btnExecuteLockAndTransmit">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/salesCommon.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="/shared/js/avatarUpload.js"></script>
+</body>
+</html>

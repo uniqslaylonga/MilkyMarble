@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <title>Customer Records - Milky Marble</title>
+    <link rel="stylesheet" href="css/customerRecord.css">
+
+</head>
+
+
+
+<body>
+
+    <div class="app-container">
+
+
+
+        <aside class="sidebar">
+
+            <div class="brand-section">
+
+                <div class="brand-logo-wrap">
+
+                    <img src="/customer/images/logo.png" alt="Milky Marble Logo" class="brand-logo-img">
+
+                </div>
+
+                <h1 class="brand-title">Milky Marble</h1>
+
+            </div>
+
+
+
+            <nav class="nav-menu">
+
+                <a href="dashboard.html" class="nav-link">
+
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+
+                        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+
+                        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+
+                        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+
+                    </svg>
+
+                    <span>Dashboard</span>
+
+                </a>
+
+
+
+                <a href="customerRecord.html" class="nav-link active">
+
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+
+                        <circle cx="9" cy="7" r="4" />
+
+                        <path d="M23 21v-2a4 4 0 00-3-3.87" />
+
+                        <path d="M16 3.13a4 4 0 010 7.75" />
+
+                    </svg>
+
+                    <span>Customer Records</span>
+
+                </a>
+
+
+
+                <a href="productionPlanning.html" class="nav-link">
+
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                        <path d="M2 20h20M5 20V8l7-5 7 5v12M9 20v-6h6v6" />
+
+                    </svg>
+
+                    <span>Production Planning</span>
+
+                </a>
+
+
+
+                <a href="employeeRecord.html" class="nav-link">
+
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                        <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
+
+                        <circle cx="9" cy="7" r="4" />
+
+                        <path d="M22 21v-2a4 4 0 00-3-3.87" />
+
+                        <path d="M16 3.13a4 4 0 010 7.75" />
+
+                    </svg>
+
+                    <span>Employee Records</span>
+
+                </a>
+
+            </nav>
+
+
+
+            <div class="sidebar-bottom">
+
+                <a href="../managementlogin.html" class="nav-link logout-btn">
+
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+
+                    </svg>
+
+                    <span>Log out</span>
+
+                </a>
+
+            </div>
+
+        </aside>
+
+
+
+        <main class="main-content">
+
+            <header class="topbar">
+
+                <div class="search-box">
+
+                    <input type="text" id="customerSearchInput" placeholder="Search customer ID, name, or email...">
+
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+
+                        <circle cx="11" cy="11" r="7" />
+
+                        <path d="M21 21l-4.35-4.35" />
+
+                    </svg>
+
+                </div>
+
+
+
+                <div class="user-profile">
+
+                    <div class="user-avatar">
+
+                        <img id="userAvatarImg" src="/customer/images/account.png" alt="Admin Avatar" class="user-avatar-img">
+
+                    </div>
+
+                    <span id="userFullName" class="user-name">Loading...</span>
+
+                </div>
+
+            </header>
+
+
+
+            <section class="section">
+
+                <h2 class="section-title">Overview</h2>
+
+                <div class="overview-grid">
+
+
+
+                    <div class="stat-card">
+
+                        <div class="stat-header"><span class="stat-title">Total Accounts</span></div>
+
+                        <div class="stat-body">
+
+                            <span id="totalAccounts" class="stat-value">0</span>
+
+                            <div class="stat-icon-wrap">
+
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+
+                                    <circle cx="9" cy="7" r="4" />
+
+                                    <path d="M23 21v-2a4 4 0 00-3-3.87" />
+
+                                    <path d="M16 3.13a4 4 0 010 7.75" />
+
+                                </svg>
+
+                            </div>
+
+                        </div>
+
+                        <div class="stat-footer">Registered customer profiles</div>
+
+                    </div>
+
+
+
+                    <div class="stat-card">
+
+                        <div class="stat-header"><span class="stat-title">Corporate & Wholesale</span></div>
+
+                        <div class="stat-body">
+
+                            <span id="corporateCount" class="stat-value">0</span>
+
+                            <div class="stat-icon-wrap">
+
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                                    <rect x="2" y="7" width="20" height="14" rx="2" />
+
+                                    <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" />
+
+                                </svg>
+
+                            </div>
+
+                        </div>
+
+                        <div class="stat-footer">High-volume & loyalty accounts</div>
+
+                    </div>
+
+
+
+                    <div class="stat-card">
+
+                        <div class="stat-header"><span class="stat-title">Repeat Customer Rate</span></div>
+
+                        <div class="stat-body">
+
+                            <span id="repeatRate" class="stat-value">0.0%</span>
+
+                            <div class="stat-icon-wrap">
+
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+
+                                    <path d="M17 1l4 4-4 4" />
+
+                                    <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+
+                                    <path d="M7 23l-4-4 4-4" />
+
+                                    <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+
+                                </svg>
+
+                            </div>
+
+                        </div>
+
+                        <div class="stat-footer">Loyal returning buyers</div>
+
+                    </div>
+
+
+
+                </div>
+
+            </section>
+
+
+
+            <section class="section">
+
+                <h2 class="section-title">Customer Directory</h2>
+
+                <div class="directory-card">
+
+                    <table class="cust-table" id="customerTable">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Customer Info</th>
+
+                                <th>Customer Details</th>
+
+                                <th>Transaction Summary</th>
+
+                                <th>Status</th>
+
+                                <th>Action</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="customerTableBody">
+
+                            <tr>
+
+                                <td colspan="5" style="text-align: center; padding: 20px;">Loading customer records...</td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </section>
+
+        </main>
+
+
+
+        <!-- VIEW PROFILE MODAL -->
+
+        <div class="modal-overlay" id="profileModalOverlay">
+
+            <div class="profile-modal">
+
+
+
+                <div class="modal-header">
+
+                    <div class="modal-header-left">
+
+                        <h3 class="modal-title">Customer Account Record</h3>
+
+                        <span class="modal-id-badge" id="mCustId">CUST-ID</span>
+
+                    </div>
+
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+
+                </div>
+
+
+
+                <div class="modal-body">
+
+
+
+                    <div class="modal-user-card">
+
+                        <div class="modal-avatar">
+
+                            <img id="mAvatarImg" src="/customer/images/account.png" alt="Customer Avatar" class="modal-avatar-img">
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div class="modal-section">
+
+                        <div class="modal-label">Customer Details</div>
+
+                        <div class="modal-details-grid">
+
+                            <div class="detail-box">
+
+                                <span class="detail-label">Full Name</span>
+
+                                <strong class="detail-val" id="mModalFullName">Customer Name</strong>
+
+                            </div>
+
+                            <div class="detail-box">
+
+                                <span class="detail-label">Status</span>
+
+                                <strong class="detail-val" id="mStatus">Active</strong>
+
+                            </div>
+
+                            <div class="detail-box">
+
+                                <span class="detail-label">Contact Number</span>
+
+                                <strong class="detail-val" id="mPhone">No Phone Number</strong>
+
+                            </div>
+
+                            <div class="detail-box">
+
+                                <span class="detail-label">Email Address</span>
+
+                                <strong class="detail-val" id="mEmail">email@example.com</strong>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div class="modal-section">
+
+                        <div class="modal-label">Transaction History</div>
+
+                        <div class="modal-details-grid">
+
+                            <div class="detail-box">
+
+                                <span class="detail-label">Total Spend</span>
+
+                                <strong class="detail-val price" id="mTotalSpend">₱0.00</strong>
+
+                            </div>
+
+                            <div class="detail-box">
+
+                                <span class="detail-label">Orders to Date</span>
+
+                                <strong class="detail-val" id="mPastOrders">0 orders</strong>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+    </div>
+
+
+
+    <script src="js/customerRecord.js"></script>
+
+    <script src="/shared/js/avatarUpload.js"></script>
+</body>
+
+
+
+</html>

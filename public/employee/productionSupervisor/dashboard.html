@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Production Dashboard</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+<div class="app-container">
+    <!-- STICKY SIDEBAR (PAREHONG DESIGN SA SALES OFFICER) -->
+    <aside class="sidebar">
+        <div class="brand-section">
+            <div class="brand-logo-wrap">
+                <img src="/customer/images/logo.png" alt="Milky Marble" class="brand-logo-img">
+            </div>
+            <div class="brand-title">Milky Marble</div>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="dashboard.html" class="nav-link active">
+                <i class="fa-solid fa-table-cells-large nav-fa"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="orderList.html" class="nav-link">
+                <i class="fa-solid fa-list-check nav-fa"></i>
+                <span>Order List</span>
+            </a>
+            <a href="orderProduction.html" class="nav-link">
+                <i class="fa-solid fa-industry nav-fa"></i>
+                <span>Order Production</span>
+            </a>
+            <a href="productionPlanning.html" class="nav-link">
+                <i class="fa-solid fa-calendar-days nav-fa"></i>
+                <span>Production Planning</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <a href="../login.html" class="nav-link logout-btn">
+                <i class="fa-solid fa-arrow-right-from-bracket nav-fa"></i>
+                <span>Log out</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN SCROLLABLE CONTENT -->
+    <main class="main-content">
+        <!-- TOPBAR -->
+        <header class="topbar">
+            <div class="search-box">
+                <input type="text" id="kitchenSearchInput" placeholder="Search orders, batches, presets, or ingredients...">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            </div>
+
+            <div class="topbar-right">
+                <button class="notif-btn" title="Alerts"><i class="fa-regular fa-bell"></i></button>
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <img id="userAvatar" src="/employee//customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                    </div>
+                    <span id="userFullName" class="user-name">Loading...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- WELCOME BANNER WITH TUE/THU OPERATIONAL BADGE -->
+        <section class="welcome-banner">
+            <div class="welcome-banner-content">
+                <div class="welcome-text-col">
+                    <h1 class="welcome-title">Glad to have you here, <span id="userFirstName">Supervisor</span>!</h1>
+                    <p class="welcome-sub">Prepare pre-orders and walk-in preset batches, and manage ingredient restock requisitions.</p>
+                </div>
+                <div class="banner-action-col">
+                    <button type="button" class="btn-pitch-restock" onclick="openRestockModal()">
+                        <i class="fa-solid fa-plus"></i> Pitch Restock
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 1: 4 OPERATIONAL KPI CARDS -->
+        <section class="section">
+            <h2 class="section-title">Morning Production &amp; Inventory Pulse</h2>
+            <div class="overview-grid four-col-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Completed Today</span>
+                        <i class="fa-solid fa-clipboard-check stat-icon"></i>
+                    </div>
+                    <div class="stat-body"><span id="completedToday" class="stat-value">—</span></div>
+                    <div class="stat-footer">Orders marked Completed</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">In Production</span>
+                        <i class="fa-solid fa-box-open stat-icon"></i>
+                    </div>
+                    <div class="stat-body"><span id="inProduction" class="stat-value">—</span></div>
+                    <div class="stat-footer">Currently preparing</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Pre-orders Claimed</span>
+                        <i class="fa-solid fa-clipboard-list stat-icon"></i>
+                    </div>
+                    <div class="stat-body"><span id="pendingOrders" class="stat-value">0 / 0</span></div>
+                    <div class="stat-footer">Completed / total, today</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Restock Pitches</span>
+                        <i class="fa-solid fa-warehouse stat-icon"></i>
+                    </div>
+                    <div class="stat-body"><span id="reservedStocks" class="stat-value">—</span></div>
+                    <div class="stat-footer">Awaiting purchase / approval</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: RESTOCK ROUTING -->
+        <div class="split-dashboard-layout">
+            <!-- KANAN: RESTOCK HIERARCHY TRACKER (DOA MATRIX) -->
+            <div class="transactions-column" style="grid-column: 1 / -1;">
+                <div class="stat-card transactions-card">
+                    <div class="card-head-row">
+                        <div class="head-titles">
+                            <h3 class="section-title tx-title">Ingredient Requisitions</h3>
+                            <span class="section-badge-pink">Delegation of Authority Routing</span>
+                        </div>
+                        <button type="button" class="btn-sm-pink" onclick="openRestockModal()">+ New Pitch</button>
+                    </div>
+
+                    <div class="threshold-legend-row">
+                        <span class="badge-route route-procure">≤ ₱300: Procurement</span>
+                        <span class="badge-route route-finance">₱301–₱500: Finance</span>
+                        <span class="badge-route route-ceo">&gt; ₱500: CEO</span>
+                    </div>
+
+                    <div class="orders-container-vertical" id="restockPitchList">
+                        <p class="loading-state-text">Loading requisitions...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: ORDERS QUEUE & SCHEDULE (WITH PERMANENT NUMBERED PAGER) -->
+        <section class="bottom-grid">
+            <article class="directory-card">
+                <div class="panel-header">
+                    <div>
+                        <h2 class="section-title" style="margin-bottom: 2px;">Active Pre-Orders &amp; Walk-in Queue</h2>
+                        <p class="section-sub-text">Live queue scheduled for today's pickup.</p>
+                    </div>
+                    <a href="orderList.html" class="view-link">View all <i class="fa-solid fa-chevron-right"></i></a>
+                </div>
+
+                <div class="table-container">
+                    <table class="cust-table">
+                        <thead>
+                            <tr>
+                                <th>Order # &amp; Type</th>
+                                <th>Drink Details</th>
+                                <th>Schedule</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentOrdersList">
+                            <tr>
+                                <td colspan="5" class="loading-state-text">Loading active production orders...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- PERMANENT NUMBERED PAGINATION BAR -->
+                <div class="tx-pagination-bar" id="queuePaginationBar">
+                    <span class="tx-page-info" id="queuePageInfo">Showing 0 of 0 orders</span>
+                    <div class="tx-pager-buttons">
+                        <button type="button" class="pager-btn" id="prevQueueBtn" title="Previous Page" disabled>
+                            <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        <div class="pager-numbers" id="queuePagerNumbers">
+                            <button type="button" class="pager-num-btn active" disabled>1</button>
+                        </div>
+                        <button type="button" class="pager-btn" id="nextQueueBtn" title="Next Page" disabled>
+                            <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </article>
+
+            <!-- RIGHT: SCHEDULE PREVIEW -->
+            <aside class="schedule-card">
+                <div class="panel-header schedule-header">
+                    <div>
+                        <h2 class="section-title" style="margin-bottom: 2px;">Upcoming Pickups</h2>
+                        <p class="section-sub-text">From scheduled order pickups</p>
+                    </div>
+                    <button class="schedule-toggle" type="button" onclick="window.location.href='productionPlanning.html'"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+
+                <div id="scheduleList" class="schedule-list">
+                    <div class="schedule-item">
+                        <div class="schedule-day">Loading...</div>
+                    </div>
+                </div>
+            </aside>
+        </section>
+    </main>
+</div>
+
+<!-- RESTOCK REQUISITION PITCH MODAL (DOA AUTO-ROUTING) -->
+<div class="modal-overlay" id="restockModalOverlay">
+    <div class="profile-modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <h3 class="modal-title">Pitch Ingredient Restock</h3>
+                <p class="modal-subtitle">Auto-routed to Procurement, Finance, or CEO based on estimated cost.</p>
+            </div>
+            <button type="button" class="modal-close" id="modalCloseBtn" onclick="closeRestockModal()">✕</button>
+        </div>
+
+        <form id="restockPitchForm" class="modal-body">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label for="inputItemName">Raw Ingredient / Item *</label>
+                    <input type="text" id="inputItemName" placeholder="e.g. Tapioca Pearls (1kg), Fresh Milk, Sealing Film" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="inputQuantity">Quantity *</label>
+                    <input type="number" id="inputQuantity" min="1" step="1" placeholder="e.g. 2" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="inputUnitPrice">Est. Unit Price (₱) *</label>
+                    <input type="number" id="inputUnitPrice" min="1" step="0.5" placeholder="e.g. 130" required>
+                </div>
+
+                <div class="form-group full">
+                    <!-- LIVE ROUTING PREVIEW BADGE -->
+                    <div class="routing-preview-box">
+                        <span class="routing-label">Total Estimated Cost:</span>
+                        <strong id="previewTotalCost" class="routing-total-val">₱0.00</strong>
+                        <div id="routingBadge" class="badge-route route-procure">
+                            🟢 Direct Route: Procurement Officer (Direct Purchase Authorized)
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group full">
+                    <label for="inputJustification">Requisition Rationale</label>
+                    <textarea id="inputJustification" rows="2" placeholder="e.g. Running low on tapioca pearls for Thursday morning batch brewing..."></textarea>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeRestockModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Submit Restock Pitch</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="../js/employeeAuth.js"></script>
+<script src="js/dashboard.js"></script>
+    <script src="/shared/js/avatarUpload.js"></script>
+</body>
+</html>

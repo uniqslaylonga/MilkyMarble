@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Order Monitoring</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="css/orderMonitoring.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sticky Sidebar -->
+        <aside class="sidebar">
+            <div class="brand-section">
+                <div class="brand-logo-wrap">
+                    <img src="/customer/images/logo.png" alt="Milky Marble Logo" class="brand-logo-img">
+                </div>
+                <h1 class="brand-title">Milky Marble</h1>
+            </div>
+            <nav class="nav-menu">
+                <a href="dashboard.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="orderConfirmation.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 11l3 3L22 4" />
+                        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+                    </svg>
+                    <span>Order Confirmation</span>
+                </a>
+                <a href="orderMonitoring.html" class="nav-link active">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="4" width="20" height="16" rx="3" />
+                        <path d="M7 15h10M7 9h10" />
+                    </svg>
+                    <span>Order Monitoring</span>
+                </a>
+                <a href="customerRecords.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                        <path d="M16 3.13a4 4 0 010 7.75" />
+                    </svg>
+                    <span>Customer Records</span>
+                </a>
+                <a href="promotions.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+                        <line x1="7" y1="7" x2="7.01" y2="7" />
+                    </svg>
+                    <span>Promotions</span>
+                </a>
+                <a href="salesTarget.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="9" />
+                        <circle cx="12" cy="12" r="5" />
+                        <circle cx="12" cy="12" r="1" />
+                    </svg>
+                    <span>Sales Target</span>
+                </a>
+                <a href="salesReports&Records.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v18h18" />
+                        <path d="M7 15l4-6 3 3 5-7" />
+                    </svg>
+                    <span>Reports &amp; Records</span>
+                </a>
+            </nav>
+            <div class="sidebar-bottom">
+                <a href="../login.html" class="nav-link logout-btn">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+                    </svg>
+                    <span>Log out</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-status-strip">
+                    <span class="status-pulse-dot"></span>
+                    <span>Monitoring Desk • Counter Claim &amp; Walk-in POS</span>
+                </div>
+                <div class="topbar-right">
+                    <div class="user-profile">
+                        <div class="user-avatar">
+                            <img id="userAvatar" src="/customer/images/account.png" alt="User Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                        </div>
+                        <span id="userName" class="user-name">Loading...</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-eyebrow">Order Monitoring Desk</div>
+
+            <!-- Overview Counters -->
+            <section class="section">
+                <h2 class="section-title">Overview</h2>
+                <div class="overview-grid">
+                    <div class="stat-card">
+                        <div class="stat-header"><span class="stat-title">In Kitchen Queue</span></div>
+                        <div class="stat-body"><span id="preparingCount" class="stat-value">0</span></div>
+                        <div class="stat-footer">Being prepared by production</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header"><span class="stat-title">Ready for Pickup</span></div>
+                        <div class="stat-body"><span id="transitCount" class="stat-value">0</span></div>
+                        <div class="stat-footer">Waiting at counter for claim</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header"><span class="stat-title">Claimed Today</span></div>
+                        <div class="stat-body"><span id="cancelledCount" class="stat-value">0</span></div>
+                        <div class="stat-footer">Handed over to customer</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Walk-In Presets Counter POS -->
+            <section class="section">
+                <div class="section-head-bar">
+                    <div class="title-with-subtitle">
+                        <h2 class="section-title">Walk-In Presets (Chiller POS)</h2>
+                        <span class="section-badge-pink">Instant Counter Sale</span>
+                    </div>
+                </div>
+                <div class="preset-pos-grid">
+                    <!-- Preset 1 -->
+                    <div class="preset-pos-card">
+                        <div class="preset-info">
+                            <strong class="preset-title">Chocolatey Coffee Noodly</strong>
+                            <span class="preset-spec">Coffee • Spaghetti • Nuts • Choco Chips</span>
+                        </div>
+                        <div class="preset-actions">
+                            <button type="button" class="btn-pos-punch" onclick="punchWalkinPreset('Chocolatey Coffee Noodly Jelly', '8oz', 15)">
+                                <span>8oz</span> • ₱15
+                            </button>
+                            <button type="button" class="btn-pos-punch" onclick="punchWalkinPreset('Chocolatey Coffee Noodly Jelly', '12oz', 19)">
+                                <span>12oz</span> • ₱19
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Preset 2 -->
+                    <div class="preset-pos-card">
+                        <div class="preset-info">
+                            <strong class="preset-title">Cheesy Pandan Cubes</strong>
+                            <span class="preset-spec">Buko Pandan • Cubes • Cheese • Pearls</span>
+                        </div>
+                        <div class="preset-actions">
+                            <button type="button" class="btn-pos-punch" onclick="punchWalkinPreset('Cheesy Pandan Cubes', '8oz', 15)">
+                                <span>8oz</span> • ₱15
+                            </button>
+                            <button type="button" class="btn-pos-punch" onclick="punchWalkinPreset('Cheesy Pandan Cubes', '12oz', 19)">
+                                <span>12oz</span> • ₱19
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Preset 3 -->
+                    <div class="preset-pos-card">
+                        <div class="preset-info">
+                            <strong class="preset-title">Bubbly Coffee Jelly</strong>
+                            <span class="preset-spec">Coffee • Cubes • Marshmallows • Pearls</span>
+                        </div>
+                        <div class="preset-actions">
+                            <button type="button" class="btn-pos-punch" onclick="punchWalkinPreset('Bubbly Coffee Jelly', '8oz', 15)">
+                                <span>8oz</span> • ₱15
+                            </button>
+                            <button type="button" class="btn-pos-punch" onclick="punchWalkinPreset('Bubbly Coffee Jelly', '12oz', 19)">
+                                <span>12oz</span> • ₱19
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Preset 4 -->
+                    <div class="preset-pos-card">
+                        <div class="preset-info">
+                            <strong class="preset-title">Strawberry String Party</strong>
+                            <span class="preset-spec">Strawberry • Spaghetti • Marshmallows • Sprinkles</span>
+                        </div>
+                        <div class="preset-actions">
+                            <button type="button" class="btn-pos-punch" onclick="punchWalkinPreset('Strawberry String Party', '8oz', 15)">
+                                <span>8oz</span> • ₱15
+                            </button>
+                            <button type="button" class="btn-pos-punch" onclick="punchWalkinPreset('Strawberry String Party', '12oz', 19)">
+                                <span>12oz</span> • ₱19
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Active Orders Monitoring Section -->
+            <section class="section">
+                <div class="section-head-bar">
+                    <div class="title-with-subtitle">
+                        <h2 class="section-title">Active Orders Queue</h2>
+                        <span class="section-badge-pink">Live Production &amp; Pickup Tracking</span>
+                    </div>
+                    <div class="filter-controls-group">
+                        <div class="filter-wrapper">
+                            <span class="filter-label">Status:</span>
+                            <select id="statusFilter" class="custom-select-sm">
+                                <option value="all" selected>All Active</option>
+                                <option value="in_kitchen">In Kitchen</option>
+                                <option value="ready_pickup">Ready for Pickup</option>
+                            </select>
+                        </div>
+                        <div class="filter-wrapper">
+                            <span class="filter-label">Period:</span>
+                            <select id="dateFilter" class="custom-select-sm">
+                                <option value="today" selected>Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="custom">Pick Date...</option>
+                                <option value="all">All Dates</option>
+                            </select>
+                            <input type="date" id="customDateInput" class="custom-date-input" style="display: none;" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="monitoring-panel-card">
+                    <div id="activeOrdersGrid" class="orders-grid">
+                        <p class="loading-state-text">Loading active orders...</p>
+                    </div>
+
+                    <!-- Permanent Pagination Bar -->
+                    <div class="tx-pagination-bar" id="monitoringPaginationBar">
+                        <span class="tx-page-info" id="monitoringPageInfo">Showing 0 of 0 orders</span>
+                        <div class="tx-pager-buttons">
+                            <button type="button" class="pager-btn" id="prevMonitoringBtn" title="Previous Page" disabled>
+                                <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
+                            <div class="pager-numbers" id="monitoringPagerNumbers">
+                                <button type="button" class="pager-num-btn active" disabled>1</button>
+                            </div>
+                            <button type="button" class="pager-btn" id="nextMonitoringBtn" title="Next Page" disabled>
+                                <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/salesCommon.js"></script>
+    <script src="js/orderMonitoring.js"></script>
+    <script src="/shared/js/avatarUpload.js"></script>
+</body>
+</html>

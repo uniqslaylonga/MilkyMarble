@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="only light">
+  <title>Home - Milky Marble</title>
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Sniglet:wght@400;800&family=Urbanist:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/navbar.css">
+  <link rel="stylesheet" href="css/home.css">
+  <link rel="stylesheet" href="css/cart.css">
+  <link rel="stylesheet" href="css/orderSummary.css">
+
+  <!-- External Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+  <!-- NAVBAR COMPONENT -->
+  <header class="navbar-wrapper" data-current-page="home"> 
+    <div class="navbar-container">
+      <a href="home.html#drinks" class="brand-container-nav" id="mainBrandContainer">
+        <img src="images/logo.png" alt="Milky Marble Logo" class="brand-logo-img-nav"> 
+        <span class="brand-name-nav">Milky Marble</span> 
+      </a>
+
+      <!-- Desktop Navigation Menu -->
+      <nav class="nav-pill-menu desktop-nav-menu" id="mainNavPills">
+       <a href="#drinks" class="nav-pill-link" id="nav-drinks" data-nav="drinks">
+          <i class="fa-solid fa-mug-hot"></i> 
+          <span>Drinks</span>
+        </a> 
+        <a href="#customize" class="nav-pill-link" id="nav-customize" data-nav="customize">
+          <i class="fa-solid fa-shapes"></i> 
+          <span>Customize</span>
+        </a> 
+        <a href="home.html#orders-preview" class="nav-pill-link" id="nav-orders" data-nav="orders">
+          <i class="fa-solid fa-tags"></i> 
+          <span>Orders</span>
+        </a> 
+        <a href="#about" class="nav-pill-link" id="nav-about" data-nav="about">
+          <i class="fa-solid fa-circle-info"></i> 
+          <span>About</span>
+        </a> 
+      </nav>
+
+      <div class="nav-actions">
+        <div class="nav-quick-actions" id="globalNavQuickActions">
+          <a href="orders.html" class="nav-quick-action-btn" title="View your order history">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>Order History</span>
+          </a>
+        </div>
+        
+        <button type="button" class="nav-icon-btn" id="navSavedBuildsBtn" title="Your Saved Builds">
+          <i class="fa-solid fa-bookmark"></i>
+          <span class="nav-cart-badge" id="navSavedBuildsCount" style="display: none;">0</span>
+        </button>
+
+        <a href="cart.html" class="nav-icon-btn" title="Shopping Cart">
+          <i class="fa-solid fa-cart-shopping"></i>
+          <span class="nav-cart-badge" id="navCartCount" style="display: none;">0</span>
+        </a> 
+
+        <div class="nav-notif-container" id="navNotifContainer"></div>
+        <div class="nav-user-slot" id="navUserSlot"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Mobile Navigation">
+    <a href="#drinks" class="nav-pill-link active" id="m-nav-drinks" data-nav="drinks">
+      <i class="fa-solid fa-mug-hot"></i> 
+      <span>Drinks</span>
+    </a> 
+    <a href="#customize" class="nav-pill-link" id="m-nav-customize" data-nav="customize">
+      <i class="fa-solid fa-shapes"></i> 
+      <span>Customize</span>
+    </a> 
+    <a href="home.html#orders-preview" class="nav-pill-link" id="m-nav-orders" data-nav="orders">
+      <i class="fa-solid fa-tags"></i> 
+      <span>Orders</span>
+    </a> 
+    <a href="#about" class="nav-pill-link" id="m-nav-about" data-nav="about">
+      <i class="fa-solid fa-circle-info"></i> 
+      <span>About</span>
+    </a> 
+  </nav>
+
+  <main class="content-wrapper">
+    
+    <!-- SECTION 1: DRINKS / SIGNATURES -->
+    <section id="drinks" class="page-section section-drinks">
+      <div class="section-title-box signatures-header-wrapper">
+        <div class="title-text-group">
+          <h1 class="main-heading">Sip the Signatures</h1>
+          <p class="sub-heading">Pop the straw and enjoy our most-loved mixups!</p>
+        </div> 
+
+        <!-- Loyalty Points Badge Box (Pic 1) -->
+        <div class="loyalty-points-badge-box" id="headerLoyaltyBox">
+          <div class="loyalty-badge-icon">
+            <i class="fa-solid fa-coins"></i>
+          </div>
+          <div class="loyalty-badge-info">
+            <span class="loyalty-badge-label">Loyalty Points</span>
+            <div class="loyalty-badge-nums">
+              <span class="loyalty-pts-val" id="displayLoyaltyPoints">0.0 pts</span>
+              <span class="loyalty-peso-val" id="displayLoyaltyPeso">(₱0.00)</span>
+            </div>
+          </div>
+        </div>
+      </div> 
+
+      <div class="products-grid" id="productsGridContainer"></div>
+    </section>
+
+    <!-- SECTION 2: CUSTOMIZE / BUILD YOUR OWN CUP -->
+    <section id="customize" class="page-section section-customize">
+      <div class="section-title-box">
+        <h1 class="main-heading">Can’t Find Your Sweet Match?</h1>
+        <p class="sub-heading">Build your own cup from base to toppings!</p>
+      </div> 
+
+      <div class="customizer-card">
+        <aside class="customizer-sidebar">
+          <div class="sidebar-block" id="customizerSidebarContent"></div>
+
+          <div class="customizer-sidebar-bottom">
+            <div class="customizer-price-row">
+              <span class="custom-total-label">Total Price:</span>
+              <span class="custom-total-val" id="customTotalPrice">₱ 19.00</span> 
+            </div>
+            <div class="customizer-actions-row">
+              <button type="button" class="btn-custom-buy" onclick="proceedCustomOrderSummary()">Buy Now</button> 
+              <button type="button" class="btn-custom-cart" title="Add to Cart" onclick="addCustomCupToCart()"> 
+                <i class="fa-solid fa-cart-plus"></i>
+              </button>
+              <button type="button" class="btn-custom-cart" title="Save this Build" onclick="saveCurrentCustomBuild()"> 
+                <i class="fa-solid fa-bookmark"></i>
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <div class="customizer-canvas">
+          <div class="canvas-header-stack">
+            <h2 class="canvas-item-title" id="canvasTitle">12oz Pandan Jelly Cubes</h2>
+            <div class="canvas-sub-toppings" id="canvasToppingsSubtitle" style="display: none;"></div> 
+            <div class="canvas-sub-addons" id="canvasAddonsSubtitle" style="display: none;"></div> 
+          </div>
+
+          <div class="customizer-stage-display">
+            <button type="button" class="carousel-nav-btn prev-btn desktop-arrow" onclick="prevCustomizerChoice()" title="Previous Choice"> 
+              <i class="fa-solid fa-arrow-left"></i>
+            </button>
+
+            <div class="customizer-items-row" id="stageItemsContainer"></div> 
+
+            <button type="button" class="carousel-nav-btn next-btn desktop-arrow" onclick="nextCustomizerChoice()" title="Next Choice"> 
+              <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
+
+          <div class="mobile-carousel-arrows-row">
+            <button type="button" class="carousel-nav-btn prev-btn" onclick="prevCustomizerChoice()" title="Previous Choice"> 
+              <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <button type="button" class="carousel-nav-btn next-btn" onclick="nextCustomizerChoice()" title="Next Choice"> 
+              <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
+
+          <div class="stage-nav-pills" id="stageNavPills">
+            <button type="button" class="stage-pill active" onclick="switchCustomStage('cup')">Cup</button> 
+            <button type="button" class="stage-pill" onclick="switchCustomStage('flavor')">Flavor</button> 
+            <button type="button" class="stage-pill" onclick="switchCustomStage('jelly')">Jelly</button> 
+            <button type="button" class="stage-pill" onclick="switchCustomStage('toppings')">Toppings</button> 
+            <button type="button" class="stage-pill" onclick="switchCustomStage('addons')">Add ons</button> 
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: RECENT ORDERS -->
+    <section id="orders-preview" class="section-orders-preview page-section">
+      <div class="section-title-box">
+        <h1 class="main-heading">Recent Orders</h1>
+        <p class="sub-heading">Track your freshly layered cups or view their full order status!</p>
+      </div> 
+
+      <div class="home-orders-list-container" id="homeOrdersContainer"></div>
+    </section>
+
+    <!-- SECTION 4: ABOUT -->
+    <section id="about" class="page-section section-about">
+      <div class="section-title-box">
+        <h1 class="main-heading">See the Marble Bar in Action!</h1>
+        <p class="sub-heading">Freshly layered dessert cups & handcrafted bouncy sips.</p>
+      </div> 
+
+      <div class="about-grid-container">
+        <div class="reel-frame-container desktop-reel">
+          <div class="reel-card">
+            <iframe 
+              src="https://www.facebook.com/plugins/video.php?height=590&href=https%3A%2F%2Fwww.facebook.com%2Freel%2F1798203484934463%2F&show_text=false&width=330&t=0" 
+              class="reel-iframe" 
+              scrolling="no" 
+              allowfullscreen="true" 
+              allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+            </iframe> 
+          </div>
+        </div>
+
+        <div class="about-features-container">
+          <div class="features-list">
+            <div class="feature-item">
+              <div class="feature-num-badge">01</div>
+              <div class="feature-text-block">
+                <h3 class="feature-title">Handcrafted Daily at the Marble Bar</h3>
+                <p class="feature-desc">Every cup starts fresh. From our rich, chilled milk blends to our syrups and toppings, we assemble each order layer by layer so you get the perfect creamy balance in every sip.</p>
+              </div>
+            </div>
+
+            <div class="feature-item">
+              <div class="feature-num-badge">02</div>
+              <div class="feature-text-block">
+                <h3 class="feature-title">Signature Bouncy Jelly Cuts</h3>
+                <p class="feature-desc">Texture is everything. We handcraft playful, squiggly jelly cuts daily—designed to give you that satisfying chewy bite alongside our smooth milk base.</p>
+              </div>
+            </div>
+
+            <div class="feature-item">
+              <div class="feature-num-badge">03</div>
+              <div class="feature-text-block">
+                <h3 class="feature-title">Made for Your Feed</h3>
+                <p class="feature-desc">We believe treats should look just as good as they taste. Watch our daily prep ASMR, behind-the-counter slicing, and secret flavor drops on our socials.</p>
+              </div>
+            </div>
+
+            <div class="feature-item">
+              <div class="feature-num-badge">04</div>
+              <div class="feature-text-block">
+                <h3 class="feature-title">Sips Built by You</h3>
+                <p class="feature-desc">Pick your base, choose your favorite jelly cuts, and customize your sweetness. Your sweet fix is always made just the way you like it.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="about-social-callout">
+            <p class="social-tagline">
+              Got your cup? Snap your layers, tag <em>@milkymarble.ph</em>, and use <strong>#MyMarbleSip</strong> to get featured on our page!
+            </p>
+            
+            <div class="social-links-row">
+              <a href="https://www.instagram.com/_milkymarble/" target="_blank" rel="noopener noreferrer" class="social-btn social-ig" title="Instagram">
+                <i class="fa-brands fa-instagram"></i>
+              </a>
+              <a href="https://www.facebook.com/milkymarble" target="_blank" rel="noopener noreferrer" class="social-btn social-fb" title="Facebook">
+                <i class="fa-brands fa-facebook-f"></i>
+              </a>
+              <a href="https://www.tiktok.com/@_milkymarble" target="_blank" rel="noopener noreferrer" class="social-btn social-tt" title="TikTok">
+                <i class="fa-brands fa-tiktok"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Hidden Container para sa html2pdf Receipt Generation -->
+  <div id="printableReceiptContainer"></div>
+
+  <!-- PRODUCT DETAILS MODAL (WITH LIVE REVIEWS SECTION) -->
+  <div class="product-modal-backdrop" id="productModal" onclick="closeProductModal(event)">
+    <div class="product-modal-container" onclick="event.stopPropagation()">
+      <button type="button" class="modal-close-btn" onclick="closeProductModal()" title="Close modal">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="modal-top-row">
+        <div class="modal-drink-box" id="modalDrinkBox">
+          <img id="modalDrinkImg" src="" alt="Drink Preview" class="modal-drink-img">
+        </div>
+
+        <div class="modal-drink-info">
+          <div class="modal-header-meta">
+            <div class="modal-title-rating-group">
+              <h2 class="modal-product-title" id="modalDrinkTitle"></h2>
+              <div class="modal-rating-badge">
+                <i class="fa-regular fa-star"></i>
+                <span id="modalDrinkRating">0.0</span>
+              </div>
+            </div>
+            <div class="modal-price-val" id="modalDrinkPrice">₱ 0.00</div>
+          </div>
+
+          <div class="modal-specs-block">
+            <div class="modal-spec-line">Flavor: <span id="modalDrinkFlavor"></span></div>
+            <div class="modal-spec-line">Variation: <span id="modalDrinkVariation"></span></div>
+            <div class="modal-spec-line">Toppings:</div>
+            <ul class="modal-toppings-list" id="modalDrinkToppings"></ul>
+          </div>
+
+          <div class="modal-config-group">
+            <label class="modal-config-label">Size <span class="modal-config-sub">(Choose 8oz or 12oz)</span></label>
+            <div class="modal-pill-toggle">
+              <button type="button" class="size-pill" onclick="selectModalSize('8oz', this)">8oz</button>
+              <button type="button" class="size-pill" onclick="selectModalSize('12oz', this)">12oz</button>
+            </div>
+            <span id="modalSizeRequiredMsg" class="modal-size-error-msg">Please choose a cup size before proceeding.</span>
+          </div>
+
+          <div class="modal-config-group">
+            <label class="modal-config-label">Quantity</label>
+            <div class="modal-qty-selector">
+              <button type="button" class="qty-btn" onclick="changeModalQty(-1)">-</button>
+              <span class="qty-number" id="modalQtyDisplay">1</span>
+              <button type="button" class="qty-btn" onclick="changeModalQty(1)">+</button>
+            </div>
+          </div>
+
+          <div class="modal-actions-row">
+            <button type="button" class="btn-modal-buy" onclick="proceedToOrderSummary()">Buy Now</button>
+            <button type="button" class="btn-modal-cart" title="Add to Cart" onclick="addModalItemToCart()">
+              <i class="fa-solid fa-cart-plus"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RATINGS & REVIEWS SECTION (EXACT AS SCREENSHOT) -->
+      <div class="modal-ratings-section">
+        <h3 class="modal-ratings-heading">Ratings</h3>
+        
+        <div class="modal-ratings-summary">
+          <div class="modal-score-box">
+            <span class="score-num" id="modalReviewScore">0.0</span>
+            <span class="score-sub">out of 5.0</span>
+          </div>
+          <div class="modal-stars-row" id="modalStarsRow"></div>
+        </div>
+
+        <div class="modal-rating-filters">
+          <button type="button" class="rating-filter-pill active" onclick="filterModalReviews('all', this)">All</button>
+          <button type="button" class="rating-filter-pill" onclick="filterModalReviews(5, this)">5 Star</button>
+          <button type="button" class="rating-filter-pill" onclick="filterModalReviews(4, this)">4 Star</button>
+          <button type="button" class="rating-filter-pill" onclick="filterModalReviews(3, this)">3 Star</button>
+          <button type="button" class="rating-filter-pill" onclick="filterModalReviews(2, this)">2 Star</button>
+          <button type="button" class="rating-filter-pill" onclick="filterModalReviews(1, this)">1 Star</button>
+        </div>
+
+        <div class="modal-reviews-list" id="modalReviewsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDER SUMMARY CHECKOUT MODAL -->
+  <div class="product-modal-backdrop" id="orderSummaryModal" onclick="closeOrderSummaryModal(event)">
+    <div class="product-modal-container order-summary-card" onclick="event.stopPropagation()">
+      <button type="button" class="modal-close-btn" onclick="closeOrderSummaryModal()" title="Close summary">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <h2 class="summary-main-title">Order Summary</h2>
+
+      <!-- Recipient Details Block -->
+      <div class="summary-section-block">
+        <h3 class="summary-section-title">Recipient Details</h3>
+        <div id="recipientDetailsWrapper"></div>
+      </div>
+
+      <!-- Pick-up Date Block -->
+      <div class="summary-section-block">
+        <h3 class="summary-section-title">Pick-up Date <span style="font-size: 11px; font-weight: 500; color: #7C4F38;">(Mon, Tue, & Thu only)</span></h3>
+        <div class="recipient-input-card" style="padding: 10px 16px;">
+          <input type="date" id="pickupDateInput" class="pickup-date-control" onchange="validatePickupDate(this)">
+          <button type="button" class="btn-calendar-trigger" title="Choose pick-up date" onclick="openDatePicker()">
+            <i class="fa-regular fa-calendar"></i>
+          </button>
+        </div>
+        <span id="dateRequiredMsg" style="display: none; color: #d32f2f; font-size: 12px; font-weight: 600; margin-top: 6px;">
+          Please select a valid pick-up date before placing your order.
+        </span>
+        <span id="dateErrorMsg" style="display: none; color: #d32f2f; font-size: 12px; font-weight: 600; margin-top: 6px;">
+          Pick-ups are only available on Monday, Tuesday, and Thursday.
+        </span>
+      </div>
+
+      <!-- Cups Item List -->
+      <div class="summary-section-block">
+        <h3 class="summary-section-title">Cups</h3>
+        <div class="summary-cups-list" id="summaryCupsList"></div>
+      </div>
+
+      <!-- Promotion Code & Payment Method Row -->
+      <div class="summary-split-row">
+        <div class="summary-split-col">
+          <h3 class="summary-section-title">Promotion Code</h3>
+          <div class="promo-input-box">
+            <input type="text" placeholder="Add Promotion Code" id="promoCodeInput">
+            <button type="button" class="btn-apply-promo" id="btnApplyPromo" onclick="applyPromo()">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </div>
+          <span id="promoAppliedMsg" style="display: none; font-size: 12px; font-weight: 600; color: #2e7d32; margin-top: 4px;"></span>
+        </div>
+
+        <div class="summary-split-col">
+          <h3 class="summary-section-title">Payment Method</h3>
+          <div class="payment-pills-row">
+            <button type="button" class="payment-method-pill" onclick="selectPaymentMethod(this)">Cash on Pick-Up</button>
+            <button type="button" class="payment-method-pill" onclick="selectPaymentMethod(this)">E-Wallet</button>
+          </div>
+          <span id="paymentRequiredMsg" style="display: none; color: #d32f2f; font-size: 12px; font-weight: 600; margin-top: 6px;">
+            Please choose a payment method.
+          </span>
+          <span id="ewalletHint" style="display: none; font-size: 11px; font-weight: 600; color: #7C4F38; margin-top: 6px;">
+            <i class="fa-solid fa-lock"></i> You'll be redirected to PayMongo to pay securely via QR Ph.
+          </span>
+        </div>
+      </div>
+
+      <!-- USE LOYALTY POINTS OPTION (Pic 2) -->
+      <div class="summary-section-block loyalty-toggle-section">
+        <div class="loyalty-toggle-card">
+          <div class="loyalty-toggle-left">
+            <div class="loyalty-star-badge">
+              <i class="fa-solid fa-star"></i>
+            </div>
+            <div class="loyalty-toggle-text">
+              <span class="loyalty-toggle-title">Use Loyalty Points</span>
+              <span class="loyalty-toggle-subtitle" id="summaryLoyaltyAvailable">Available: 0.0 pts (₱0.00)</span>
+            </div>
+          </div>
+          <label class="switch-toggle-loyalty">
+            <input type="checkbox" id="toggleUseLoyaltyPoints" onchange="handleToggleLoyaltyPoints(this.checked)">
+            <span class="slider-round-loyalty"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Order Total Breakdown -->
+      <div class="summary-section-block summary-totals-block">
+        <h3 class="summary-section-title">Order Total</h3>
+        <div class="summary-calculation-lines">
+          <div class="calc-row">
+            <span>Subtotal</span>
+            <span id="summarySubtotal">₱ 0.00</span>
+          </div>
+          <!-- Points Discount Row -->
+          <div class="calc-row" id="summaryLoyaltyDiscountRow" style="display: none; color: #E27D80; font-weight: 700;">
+            <span>Points Discount</span>
+            <span id="summaryLoyaltyDiscount">- ₱ 0.00</span>
+          </div>
+          <div class="calc-row">
+            <span>Discount</span>
+            <span id="summaryDiscount" style="color: #2e7d32;">- ₱ 0.00</span>
+          </div>
+        </div>
+
+        <div class="summary-final-total-row">
+          <span>Total</span>
+          <span class="final-total-val" id="summaryFinalTotal">₱ 0.00</span>
+        </div>
+      </div>
+
+      <div class="summary-action-box">
+        <button type="button" class="btn-place-order" id="btnPlaceOrderSubmit" onclick="confirmPlaceOrder()">Place Order</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECIPIENT DETAILS EDIT MODAL -->
+  <div class="product-modal-backdrop" id="recipientEditModal" onclick="closeRecipientModal(event)">
+    <div class="product-modal-container recipient-modal-card" onclick="event.stopPropagation()">
+      <button type="button" class="modal-close-btn" onclick="closeRecipientModal()" title="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="recipient-modal-header">
+        <h2 class="recipient-modal-title">Recipient Details</h2>
+        <p class="recipient-modal-sub">Tell us who's picking up these sweet sips!</p>
+      </div>
+
+<form id="recipientDetailsForm" class="recipient-form" onsubmit="saveRecipientDetails(event)" novalidate>        <div class="recipient-form-group">
+          <label for="inputRecipientName" class="recipient-form-label">Full Name</label>
+          <div class="recipient-input-wrapper">
+            <i class="fa-regular fa-user input-icon"></i>
+            <input type="text" id="inputRecipientName" class="recipient-input-field" placeholder="e.g. Juan Dela Cruz" required maxlength="60" autocomplete="name">
+          </div>
+        </div>
+
+        <div class="recipient-form-group">
+          <label for="inputRecipientEmail" class="recipient-form-label">Email Address</label>
+          <div class="recipient-input-wrapper">
+            <i class="fa-regular fa-envelope input-icon"></i>
+            <input type="email" id="inputRecipientEmail" class="recipient-input-field" placeholder="e.g. juandelacruz@gmail.com" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="recipient-modal-actions">
+          <button type="button" class="btn-recipient-cancel" onclick="closeRecipientModal()">Cancel</button>
+          <button type="submit" class="btn-recipient-save">Save Details</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Application Scripts -->
+  <script src="js/navbar.js"></script>
+  <script src="js/orderSummary.js"></script>
+  <script src="js/home.js"></script>
+</body>
+</html>
