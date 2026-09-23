@@ -610,17 +610,26 @@ window.applyPromo = async function() {
 // Details modal asks them to sign in with Gmail, and we pull the name/email
 // straight from their Google account.
 let guestGoogleReady = false;
+let guestGoogleInitialized = false;
+let guestGoogleButtonRendered = false;
 
 function initGuestGoogleSignIn(retriesLeft = 40) {
   if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-    google.accounts.id.initialize({
-      client_id: "1077352091553-6d77b0rtu3km8r1har7ra3lsmbf5en35.apps.googleusercontent.com",
-      callback: handleGuestGoogleCredentialResponse,
-      auto_select: false
-    });
+    // Only call initialize() once — calling it repeatedly every time the
+    // modal is opened is wasteful and can reset GSI's internal state.
+    if (!guestGoogleInitialized) {
+      google.accounts.id.initialize({
+        client_id: "1077352091553-6d77b0rtu3km8r1har7ra3lsmbf5en35.apps.googleusercontent.com",
+        callback: handleGuestGoogleCredentialResponse,
+        auto_select: false
+      });
+      guestGoogleInitialized = true;
+    }
 
     const hiddenDiv = document.getElementById('guestGoogleButtonHidden');
-    if (hiddenDiv) {
+    let hasBtn = hiddenDiv && hiddenDiv.querySelector('div[role="button"]');
+
+    if (hiddenDiv && !hasBtn && !guestGoogleButtonRendered) {
       google.accounts.id.renderButton(hiddenDiv, {
         type: 'standard',
         shape: 'rectangular',
@@ -628,9 +637,23 @@ function initGuestGoogleSignIn(retriesLeft = 40) {
         text: 'signin_with',
         size: 'large'
       });
+      guestGoogleButtonRendered = true;
+      hasBtn = hiddenDiv.querySelector('div[role="button"]');
     }
 
-    guestGoogleReady = true;
+    // renderButton() can occasionally take an extra tick (or fail silently
+    // if the container had no real dimensions) to actually insert the real
+    // button. Only flip guestGoogleReady once the button truly exists —
+    // this is what previously caused "still loading" to show up forever
+    // even though the library itself had already loaded.
+    if (hasBtn) {
+      guestGoogleReady = true;
+    } else if (retriesLeft > 0) {
+      guestGoogleButtonRendered = false;
+      setTimeout(() => initGuestGoogleSignIn(retriesLeft - 1), 250);
+    } else {
+      console.error('Google Sign-In button failed to render after waiting.');
+    }
     return;
   }
 
