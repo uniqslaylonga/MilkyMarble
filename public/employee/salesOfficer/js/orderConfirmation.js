@@ -76,6 +76,14 @@ async function loadOrderConfirmationData() {
             if (pendingEl) pendingEl.textContent = Number(data.metrics.pendingCount || 0).toLocaleString();
             if (confirmedEl) confirmedEl.textContent = Number(data.metrics.confirmedToday || 0).toLocaleString();
             if (rejectedEl) rejectedEl.textContent = Number(data.metrics.rejectedCount || 0).toLocaleString();
+
+            const cashEl = document.getElementById('cashOnHand');
+            if (cashEl) {
+                cashEl.textContent = '₱' + Number(data.metrics.cashOnHand || 0).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
         }
 
         allPendingOrders = data.pendingOrders || [];
@@ -313,6 +321,7 @@ async function rejectOrder(orderId) {
         if (rejectedEl) rejectedEl.textContent = (parseInt(rejectedEl.textContent || '0', 10) + 1).toString();
 
         applyOrderFilters();
+        loadOrderConfirmationData();
         SalesCommon.alert('Order Rejected', `Order #${orderId} has been cancelled.`, 'info');
     } catch (err) {
         console.error('Error rejecting order:', err);
