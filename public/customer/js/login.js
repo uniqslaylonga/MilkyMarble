@@ -209,25 +209,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Initialize Google OAuth client
-  if (typeof google !== 'undefined') {
-    google.accounts.id.initialize({
-      client_id: "1077352091553-6d77b0rtu3km8r1har7ra3lsmbf5en35.apps.googleusercontent.com",
-      callback: handleGoogleCredentialResponse,
-      auto_select: false
-    });
+  // Initialize Google OAuth client.
+  // The GSI script tag uses async/defer, so it is NOT guaranteed to have
+  // loaded by the time DOMContentLoaded fires (especially on a live network).
+  // Poll until the SDK is actually ready instead of checking once.
+  let googleReady = false;
 
-    const hiddenDiv = document.getElementById('googleButtonHidden');
-    if (hiddenDiv) {
-      google.accounts.id.renderButton(hiddenDiv, {
-        type: 'standard',
-        shape: 'rectangular',
-        theme: 'outline',
-        text: 'signin_with',
-        size: 'large'
+  function initGoogleSignIn(retriesLeft = 40) {
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+      google.accounts.id.initialize({
+        client_id: "1077352091553-6d77b0rtu3km8r1har7ra3lsmbf5en35.apps.googleusercontent.com",
+        callback: handleGoogleCredentialResponse,
+        auto_select: false
       });
+
+      const hiddenDiv = document.getElementById('googleButtonHidden');
+      if (hiddenDiv) {
+        google.accounts.id.renderButton(hiddenDiv, {
+          type: 'standard',
+          shape: 'rectangular',
+          theme: 'outline',
+          text: 'signin_with',
+          size: 'large'
+        });
+      }
+
+      googleReady = true;
+      return;
+    }
+
+    if (retriesLeft > 0) {
+      setTimeout(() => initGoogleSignIn(retriesLeft - 1), 250);
+    } else {
+      console.error('Google Identity Services failed to load after waiting.');
     }
   }
+
+  initGoogleSignIn();
 
   // Make the visible, styled Google button trigger the real (hidden) GSI button
   const btnGoogleLogin = document.getElementById('btnGoogleLogin');
@@ -235,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnGoogleLogin.addEventListener('click', () => {
       const hiddenDiv = document.getElementById('googleButtonHidden');
       const hiddenBtn = hiddenDiv && hiddenDiv.querySelector('div[role="button"]');
-      if (hiddenBtn) {
+      if (googleReady && hiddenBtn) {
         hiddenBtn.click();
       } else {
         showSweetAlert({
