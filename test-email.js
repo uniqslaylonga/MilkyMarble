@@ -13,7 +13,7 @@
 // If something fails, mailServices.js already logs the underlying
 // Nodemailer error to the console (e.g. bad credentials, blocked port,
 // wrong host) — read that line, it tells you exactly what's wrong.
-
+a
 require('dotenv').config();
 const mail = require('./src/services/mailServices.js');
 
