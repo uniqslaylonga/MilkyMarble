@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Settings - Milky Marble</title>
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Urbanist:wght@400;500;600;700;800&display=swap" rel="stylesheet"> 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"> 
+    
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> 
+
+    <!-- Hiwalay na CSS: Navbar at Account Settings -->
+    <link rel="stylesheet" href="css/navbar.css"> 
+    <link rel="stylesheet" href="css/accountSettings.css">
+</head>
+<body>
+
+    <!-- NAVBAR COMPONENT (Kagaya ng sa profile.html) -->
+    <header class="navbar-wrapper" data-current-page="accountSettings">
+      <div class="navbar-container">
+        <a href="home.html#drinks" class="brand-container-nav" id="mainBrandContainer">
+          <img src="images/logo.png" alt="Milky Marble Logo" class="brand-logo-img-nav">
+          <span class="brand-name-nav">Milky Marble</span>
+        </a>
+
+        <nav class="nav-pill-menu desktop-nav-menu" id="mainNavPills">
+          <a href="home.html#drinks" class="nav-pill-link" id="nav-drinks">
+            <i class="fa-solid fa-mug-hot"></i>
+            <span>Drinks</span>
+          </a>
+          <a href="home.html#customize" class="nav-pill-link" id="nav-customize">
+            <i class="fa-solid fa-shapes"></i>
+            <span>Customize</span>
+          </a>
+          <a href="home.html#orders-preview" class="nav-pill-link" id="nav-orders">
+            <i class="fa-solid fa-tags"></i>
+            <span>Orders</span>
+          </a>
+          <a href="home.html#about" class="nav-pill-link" id="nav-about">
+            <i class="fa-solid fa-circle-info"></i>
+            <span>About</span>
+          </a>
+        </nav>
+
+        <div class="nav-actions">
+          <div class="nav-quick-actions" id="globalNavQuickActions">
+            <a href="orders.html" class="nav-quick-action-btn" title="View your order history">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+              <span>Order History</span>
+            </a>
+          </div>
+
+          <button type="button" class="nav-icon-btn" id="navSavedBuildsBtn" title="Your Saved Builds">
+            <i class="fa-solid fa-bookmark"></i>
+            <span class="nav-cart-badge" id="navSavedBuildsCount" style="display: none;">0</span>
+          </button>
+
+          <a href="cart.html" class="nav-icon-btn" title="Shopping Cart">
+            <i class="fa-solid fa-cart-shopping"></i>
+            <span class="nav-cart-badge" id="navCartCount" style="display: none;">0</span>
+          </a>
+
+          <div class="nav-notif-container" id="navNotifContainer"></div>
+          <div class="nav-user-slot" id="navUserSlot"></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="settings-page-wrapper">
+        <main class="settings-container">
+            
+            <div class="settings-header">
+                <h1 class="settings-title">Account Settings</h1>
+                <p class="settings-subtitle">Manage your login credentials, notifications, and security preferences.</p>
+            </div>
+
+            <!-- 1. Account Overview Card -->
+            <div class="account-overview-card">
+                <img id="overviewAvatar" class="overview-avatar" src="images/account.png" alt="Profile Picture">
+                <div class="overview-info">
+                    <div class="overview-name" id="overviewName">Loading Name...</div>
+                    <div class="overview-email" id="overviewEmail">loading.email@milkymarble.com</div>
+                </div>
+                <a href="profile.html" class="btn-edit-profile-link">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Profile
+                </a>
+            </div>
+
+            <!-- 2. Change Password Section Card -->
+            <section class="settings-section-card">
+                <div class="section-card-header">
+                    <div class="section-header-title">
+                        <i class="fa-solid fa-key"></i>
+                        <h2>Change Password</h2>
+                    </div>
+                    <p class="section-header-desc">Ensure your account stays safe by updating your password regularly.</p>
+                </div>
+
+                <form id="changePasswordForm" class="settings-form" onsubmit="interceptPasswordSubmit(event)">
+                    <div class="settings-form-group">
+                        <label class="settings-label" for="current_password">Current Password</label>
+                        <div class="settings-input-wrapper">
+                            <input type="password" id="current_password" class="settings-input" placeholder="Enter current password" autocomplete="current-password" required>
+                            <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('current_password', this)">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="settings-form-group">
+                        <label class="settings-label" for="new_password">New Password</label>
+                        <div class="settings-input-wrapper">
+                            <input type="password" id="new_password" class="settings-input" placeholder="Minimum 6 characters" autocomplete="new-password" required>
+                            <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('new_password', this)">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="settings-form-group">
+                        <label class="settings-label" for="confirm_password">Confirm New Password</label>
+                        <div class="settings-input-wrapper">
+                            <input type="password" id="confirm_password" class="settings-input" placeholder="Re-type new password" autocomplete="new-password" required>
+                            <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('confirm_password', this)">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="settings-actions-box">
+                        <button type="submit" class="btn-save-settings">Update Password</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- 3. Notifications & Sweet Updates Card -->
+            <section class="settings-section-card">
+                <div class="section-card-header">
+                    <div class="section-header-title">
+                        <i class="fa-solid fa-bell"></i>
+                        <h2>Order & Sweet Updates</h2>
+                    </div>
+                    <p class="section-header-desc">Control how and when you receive order alerts and sweet news.</p>
+                </div>
+
+                <div class="toggle-options-list">
+                    <div class="toggle-option-item">
+                        <div class="toggle-text-block">
+                            <span class="toggle-title">Pick-up Readiness Alerts</span>
+                            <span class="toggle-desc">Get notified as soon as your treats are ready at the counter.</span>
+                        </div>
+                        <label class="switch-toggle">
+                            <input type="checkbox" id="toggle_notify_pickup" onchange="updateAccountPreference('notify_pickup', this.checked, 'Pick-up readiness alerts')">
+                            <span class="slider-round"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-option-item">
+                        <div class="toggle-text-block">
+                            <span class="toggle-title">Email Invoices & Receipts</span>
+                            <span class="toggle-desc">Send a digital breakdown to your registered email upon order payment.</span>
+                        </div>
+                        <label class="switch-toggle">
+                            <input type="checkbox" id="toggle_notify_email_receipts" onchange="updateAccountPreference('notify_email_receipts', this.checked, 'Email receipts')">
+                            <span class="slider-round"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-option-item">
+                        <div class="toggle-text-block">
+                            <span class="toggle-title">Promotions & Special Discounts</span>
+                            <span class="toggle-desc">Receive exclusive vouchers, seasonal flavors, and special announcements.</span>
+                        </div>
+                        <label class="switch-toggle">
+                            <input type="checkbox" id="toggle_notify_promos" onchange="updateAccountPreference('notify_promos', this.checked, 'Promotions & perks')">
+                            <span class="slider-round"></span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3.5 Payment Preference Card -->
+            <section class="settings-section-card">
+                <div class="section-card-header">
+                    <div class="section-header-title">
+                        <i class="fa-solid fa-wallet"></i>
+                        <h2>Payment Preference</h2>
+                    </div>
+                    <p class="section-header-desc">Choose the payment method we should pre-select for you at checkout.</p>
+                </div>
+
+                <div class="payment-pref-pills-row">
+                    <button type="button" class="payment-pref-pill" data-method="Cash on Pick-Up" onclick="selectPaymentPreference(this)">
+                        <i class="fa-solid fa-money-bill-wave"></i> Cash on Hand
+                    </button>
+                    <button type="button" class="payment-pref-pill" data-method="E-Wallet" onclick="selectPaymentPreference(this)">
+                        <i class="fa-solid fa-mobile-screen-button"></i> E-Wallet
+                    </button>
+                </div>
+
+                <p class="payment-pref-note" id="paymentPrefNote">
+                    No preference set — we'll auto-select whichever method you used last at checkout.
+                </p>
+
+                <button type="button" class="btn-clear-payment-pref" id="btnClearPaymentPref" onclick="clearPaymentPreference()" style="display: none;">
+                    Clear preference (go back to auto)
+                </button>
+            </section>
+
+            <!-- 5. Danger Zone Card -->
+            <section class="settings-section-card danger-card">
+                <div class="section-card-header">
+                    <div class="section-header-title">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <h2>Deactivate Account</h2>
+                    </div>
+                </div>
+
+                <div class="danger-action-box">
+                    <p>Temporarily deactivate your account. You will be logged out and your profile will be marked inactive.</p>
+                    <button type="button" class="btn-deactivate" onclick="confirmDeactivateAccount()">Deactivate Account</button>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Password OTP Verification Modal -->
+    <div id="passwordOtpModal" class="modal-overlay">
+        <div class="modal-card">
+            <button type="button" class="modal-close-btn" onclick="closePasswordOtpModal()">&times;</button>
+            <h3>Confirm Password Change</h3>
+            <p>For security, please enter the 6-digit confirmation code sent to your registered email: <br><strong id="otpTargetEmail"></strong></p>
+            
+            <input 
+                type="text" 
+                id="passwordOtpCode" 
+                placeholder="------" 
+                maxlength="6"
+                autocomplete="one-time-code"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+            >
+            
+            <button type="button" class="btn-verify" onclick="verifyPasswordOtp()">Verify & Update Password</button>
+        </div>
+    </div>
+
+    <!-- Hiwalay na Scripts: Navbar Script + Account Settings Script -->
+    <script src="js/navbar.js"></script>
+    <script src="js/accountSettings.js"></script>
+</body>
+</html>

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Production Planning &amp; Batch Cooking</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="css/productionplanning.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- Sticky Sidebar (4 Links) -->
+    <aside class="sidebar">
+        <div class="brand-section">
+            <div class="brand-logo-wrap">
+                <img src="/customer/images/logo.png" alt="Milky Marble" class="brand-logo-img">
+            </div>
+            <div class="brand-title">Milky Marble</div>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="dashboard.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                </svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="orderList.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 11l3 3L22 4" />
+                    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+                </svg>
+                <span>Order List</span>
+            </a>
+            <a href="orderProduction.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6zM3 6h18M16 10a4 4 0 01-8 0" />
+                </svg>
+                <span>Order Production</span>
+            </a>
+            <a href="productionPlanning.html" class="nav-link active">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                <span>Production Planning</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <a href="../login.html" class="nav-link logout-btn">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+                </svg>
+                <span>Log out</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Topbar: Status Strip & Profile -->
+        <header class="topbar">
+            <div class="topbar-status-strip">
+                <span class="status-pulse-dot"></span>
+                <span>Batch Cooking &amp; Brewing Operations • Tuesday &amp; Thursday Operational Schedule</span>
+            </div>
+            
+            <div class="topbar-right">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <img id="userAvatar" src="/customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                    </div>
+                    <span id="userFullName" class="user-name">Loading...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Header & Action Controls -->
+        <section class="page-header">
+            <div class="page-eyebrow">Tier 1 • Macro Batch Cooking &amp; Brewing Schedule</div>
+            <div class="header-row">
+                <div>
+                    <h1 class="page-title">Make the next move visible.</h1>
+                    <p class="header-sub">Schedule and track batch cooking runs — pre-boils, tea steeps, and jelly sets.</p>
+                </div>
+                <div class="header-action-group">
+                    <button type="button" class="btn-pdf-export" onclick="exportBatchScheduleToPDF()">
+                        <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        <span>Export to PDF</span>
+                    </button>
+                    <button type="button" class="btn-primary" onclick="openModal('addPlanModal')">
+                        <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>Schedule Cooking Run</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4 Batch Aggregation KPIs -->
+        <section class="section">
+            <div class="overview-grid four-col-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Scheduled Today</span>
+                        <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                            <line x1="16" y1="2" x2="16" y2="6" />
+                            <line x1="8" y1="2" x2="8" y2="6" />
+                            <line x1="3" y1="10" x2="21" y2="10" />
+                        </svg>
+                    </div>
+                    <div class="stat-body"><span id="todayRunsCount" class="stat-value">0 Runs</span></div>
+                    <div class="stat-footer">Batch runs due today</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Scheduled Tomorrow</span>
+                        <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                            <line x1="16" y1="2" x2="16" y2="6" />
+                            <line x1="8" y1="2" x2="8" y2="6" />
+                            <line x1="3" y1="10" x2="21" y2="10" />
+                            <line x1="12" y1="14" x2="12" y2="18" />
+                            <line x1="10" y1="16" x2="14" y2="16" />
+                        </svg>
+                    </div>
+                    <div class="stat-body"><span id="tomorrowRunsCount" class="stat-value">0 Runs</span></div>
+                    <div class="stat-footer">Batch runs due tomorrow</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">In Progress</span>
+                        <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                        </svg>
+                    </div>
+                    <div class="stat-body"><span id="inProgressCountKpi" class="stat-value">0</span></div>
+                    <div class="stat-footer">Currently boiling / steeping</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Planned Batch Runs</span>
+                        <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        </svg>
+                    </div>
+                    <div class="stat-body"><span id="totalRunsCount" class="stat-value">0 Runs</span></div>
+                    <div class="stat-footer">All scheduled runs</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Timeline Filter & View Switch Bar -->
+        <div class="timeline-bar">
+            <div class="timeline-left">
+                <div class="custom-select-wrap">
+                    <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                    <select id="timeRangeFilter">
+                        <option value="this_week" selected>All Scheduled Runs</option>
+                        <option value="tue_run">Tuesday Release Run (10 AM – 3 PM)</option>
+                        <option value="thu_run">Thursday Release Run (10 AM – 3 PM)</option>
+                    </select>
+                </div>
+                <span id="dateRangeText" class="date-range-text">Loading...</span>
+            </div>
+
+            <div class="view-switch-group">
+                <button class="view-btn active" id="btnViewBoard" type="button">
+                    <svg class="view-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="18" rx="1.5" />
+                        <rect x="14" y="3" width="7" height="18" rx="1.5" />
+                    </svg>
+                    <span>Kanban Board</span>
+                </button>
+                <button class="view-btn" id="btnViewList" type="button">
+                    <svg class="view-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                    <span>Table List</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Board View (3 Cooking Stages) -->
+        <section class="planning-board-grid" id="boardViewArea">
+            <!-- 1. Scheduled Prep -->
+            <div class="board-column">
+                <div class="column-header">
+                    <h2>1. Scheduled Prep <small>(7:00 AM – 8:30 AM)</small></h2>
+                    <span id="scheduledCount" class="column-count-badge">0</span>
+                </div>
+                <div id="scheduledPlansList" class="column-cards-list">
+                    <div class="loading-state-text">Loading scheduled batches...</div>
+                </div>
+            </div>
+
+            <!-- 2. Boiling & Steeping (Active) -->
+            <div class="board-column">
+                <div class="column-header">
+                    <h2>2. Boiling &amp; Steeping <small>(In Progress)</small></h2>
+                    <span id="inProgressCount" class="column-count-badge">0</span>
+                </div>
+                <div id="inProgressPlansList" class="column-cards-list">
+                    <div class="loading-state-text">Loading active cooking runs...</div>
+                </div>
+            </div>
+
+            <!-- 3. Ready in Warmer -->
+            <div class="board-column">
+                <div class="column-header">
+                    <h2>3. Ready in Warmer <small>(10 AM – 3 PM Window)</small></h2>
+                    <span id="readyCount" class="column-count-badge">0</span>
+                </div>
+                <div id="readyPlansList" class="column-cards-list">
+                    <div class="loading-state-text">Loading holding items...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- List View -->
+        <section class="directory-card" id="listViewArea" style="display: none;">
+            <div class="table-container">
+                <table class="cust-table">
+                    <thead>
+                        <tr>
+                            <th>Batch Run Code</th>
+                            <th>Raw Ingredient &amp; Recipe</th>
+                            <th>Target Yield</th>
+                            <th>Scheduled Cooking Time</th>
+                            <th>Status Stage</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allPlansTableBody">
+                        <tr>
+                            <td colspan="6" class="loading-state-text">Loading production plans...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="tx-pagination-bar" id="planPaginationBar">
+                <span class="tx-page-info" id="planPageInfo">Showing 0 of 0 plans</span>
+                <div class="tx-pager-buttons">
+                    <button type="button" class="pager-btn" id="prevPlanBtn" title="Previous Page" disabled>
+                        <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <div class="pager-numbers" id="planPagerNumbers">
+                        <button type="button" class="pager-num-btn active" disabled>1</button>
+                    </div>
+                    <button type="button" class="pager-btn" id="nextPlanBtn" title="Next Page" disabled>
+                        <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- Pure Executive Corporate Report Template (PDF Export Engine Only) -->
+<div id="corporatePdfRenderWrapper" class="corporate-pdf-render-area" style="display: none;">
+    <div class="corp-doc-page">
+        <!-- Corporate Letterhead Header -->
+        <div class="corp-header-block">
+            <div class="corp-brand-left">
+                <img src="/customer/images/logo.png" alt="Milky Marble" class="corp-doc-logo" />
+                <div>
+                    <h2 class="corp-company-name">MILKY MARBLE ENTERPRISE</h2>
+                    <span class="corp-company-sub">Kitchen Production, Brewing &amp; Recipe Operations Division</span>
+                </div>
+            </div>
+            <div class="corp-meta-right">
+                <div class="corp-doc-code">DOC: MM-PRD-2026</div>
+                <div class="corp-doc-date" id="pdfMetaDate">Date: ---</div>
+                <div class="corp-doc-period" id="pdfMetaPeriod">Coverage: ---</div>
+            </div>
+        </div>
+
+        <div class="corp-doc-divider"></div>
+        <h1 class="corp-doc-title">OFFICIAL KITCHEN BATCH COOKING &amp; BOM SCHEDULE REPORT</h1>
+
+        <!-- 1. Macro Batch Cooking Runs -->
+        <div class="corp-section-wrap">
+            <h3 class="corp-section-title">1. SCHEDULED BATCH COOKING RUNS &amp; PRODUCTION MANIFEST</h3>
+            <table class="corp-data-table">
+                <thead>
+                    <tr>
+                        <th>Batch Code</th>
+                        <th>Recipe / Flavor Description</th>
+                        <th>Target Yield Volume</th>
+                        <th>Start Time</th>
+                        <th>Scheduled Date</th>
+                        <th>Current Stage</th>
+                    </tr>
+                </thead>
+                <tbody id="pdfBatchTableBody">
+                    <!-- Populated dynamically by JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 2. Stage Breakdown & Aggregation -->
+        <div class="corp-section-wrap">
+            <h3 class="corp-section-title">2. OPERATIONAL BATCH STAGE SUMMARY</h3>
+            <div class="corp-two-col-grid">
+                <table class="corp-data-table">
+                    <thead>
+                        <tr>
+                            <th>Production Stage</th>
+                            <th>Active Batches</th>
+                            <th>Operational Window</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdfStageSummaryBody">
+                        <!-- Populated dynamically by JS -->
+                    </tbody>
+                </table>
+
+                <div class="corp-summary-box">
+                    <div class="corp-box-head">Kitchen Standard Operating Schedule</div>
+                    <div class="corp-box-highlight">TUE &amp; THU BATCH RELEASES</div>
+                    <div class="corp-box-desc">
+                        Pre-boil prep runs strictly between 7:00 AM – 8:30 AM. Prepared warmer holding urns and preset chillers activate from 10:00 AM – 3:00 PM for scheduled customer claim windows.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Standard BOM & Batch Yield Reference -->
+        <div class="corp-section-wrap">
+            <h3 class="corp-section-title">3. STANDARD BILL OF MATERIALS (BOM) CONVERSION REFERENCE</h3>
+            <table class="corp-data-table">
+                <thead>
+                    <tr>
+                        <th>Base Material</th>
+                        <th>Raw Unit Standard</th>
+                        <th>Cooked Yield Output</th>
+                        <th>Chiller Storage Life</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Gulaman Jelly Powder</strong></td>
+                        <td>6 Commercial Packs</td>
+                        <td>6,500g Cooked Gulaman Base</td>
+                        <td>48 Hours (Chilled 4°C)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Raw Boba Tapioca Pearls</strong></td>
+                        <td>0.25 Bag (Raw Tapioca)</td>
+                        <td>1,700g Cooked Boba Pearls</td>
+                        <td>Same-Day Warm Storage</td>
+                    </tr>
+                    <tr>
+                        <td><strong>8oz Portion Allocation</strong></td>
+                        <td>100g Cooked Gulaman + 0.7oz Milk</td>
+                        <td>1 Finished 8oz Cup</td>
+                        <td>Release-ready counter stock</td>
+                    </tr>
+                    <tr>
+                        <td><strong>12oz Portion Allocation</strong></td>
+                        <td>200g Cooked Gulaman + 1.5oz Milk</td>
+                        <td>1 Finished 12oz Cup</td>
+                        <td>Release-ready counter stock</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Signatures / Corporate Sign-off Block -->
+        <div class="corp-signoff-row">
+            <div class="corp-sig-box">
+                <div class="corp-sig-line"></div>
+                <span class="corp-sig-name" id="pdfSignSupervisor">Supervisor</span>
+                <span class="corp-sig-role">Production Supervisor — Reporting Officer</span>
+            </div>
+            <div class="corp-sig-box">
+                <div class="corp-sig-line"></div>
+                <span class="corp-sig-name">Operations Manager / CEO</span>
+                <span class="corp-sig-role">Executive Kitchen Clearance &amp; Quality Audit</span>
+            </div>
+        </div>
+
+        <div class="corp-doc-footer-note">
+            Milky Marble Enterprise ERP System • Confidential Kitchen Operations &amp; Batch Dispatch Schedule • Generated for official operational audit purposes.
+        </div>
+    </div>
+</div>
+
+<!-- Modal 1: Add Batch Cooking Plan -->
+<div class="modal-overlay" id="addPlanModal">
+    <div class="profile-modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <h3 class="modal-title">Schedule Batch Cooking Run</h3>
+                <p class="modal-subtitle">Configure morning boiling of tapioca pearls, steeping of tea, or setting of gulaman jellies.</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('addPlanModal')">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <form id="addPlanForm" class="modal-body">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Ingredient / Batch Recipe Preset *</label>
+                    <select id="recipeSelect" required>
+                        <option value="">-- Choose Macro Recipe Preset --</option>
+                        <option value="Tapioca Pearls (Batch 1)">Tapioca Pearls (Batch 1)</option>
+                        <option value="Tapioca Pearls (Batch 2)">Tapioca Pearls (Batch 2)</option>
+                        <option value="Assam Black Tea Base (Urn 1)">Assam Black Tea Base (Urn 1)</option>
+                        <option value="Jasmine Green Tea Base (Urn 2)">Jasmine Green Tea Base (Urn 2)</option>
+                        <option value="Roasted Oolong Tea Base (Urn 3)">Roasted Oolong Tea Base (Urn 3)</option>
+                        <option value="Grass Jelly / Gulaman Tray">Grass Jelly / Gulaman Tray</option>
+                        <option value="Egg Pudding Custard Mold">Egg Pudding Custard Mold</option>
+                        <option value="Brown Sugar Syrup Melting">Brown Sugar Syrup Melting</option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label>Custom Batch Operation Name *</label>
+                    <input type="text" id="addOpInput" placeholder="e.g. Morning Tapioca Pearls Pot 1" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Target Yield / Volume *</label>
+                    <input type="text" id="addYieldInput" placeholder="e.g. 2.5 kg (50 cups)" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Scheduled Date *</label>
+                    <input type="date" id="addDueDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Start Cooking Time *</label>
+                    <input type="time" id="addScheduleTime" value="07:30" required>
+                </div>
+
+                <div class="form-group full">
+                    <label>Initial Status *</label>
+                    <select id="addStatus">
+                        <option value="PLANNED">Scheduled (To Boil/Brew)</option>
+                        <option value="IN PROGRESS">Active Boiling &amp; Steeping</option>
+                        <option value="COMPLETED">Ready in Warmer</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal('addPlanModal')">Cancel</button>
+                <button type="submit" class="btn-primary">
+                    <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Save Batch Plan</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal 2: Edit Batch Cooking Plan -->
+<div class="modal-overlay" id="editPlanModal">
+    <div class="profile-modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <h3 class="modal-title">Edit Batch Cooking Run</h3>
+                <p class="modal-subtitle">Update cooking time, target volume, or progress stage.</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('editPlanModal')">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <form id="editPlanForm" class="modal-body">
+            <input type="hidden" id="editPlanId">
+
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Operation Name *</label>
+                    <input type="text" id="editProductName" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Target Yield / Volume *</label>
+                    <input type="text" id="editYieldInput" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Stage / Status *</label>
+                    <select id="editStatus">
+                        <option value="PLANNED">Scheduled</option>
+                        <option value="IN PROGRESS">In Boiling &amp; Steeping</option>
+                        <option value="COMPLETED">Ready in Warmer</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Scheduled Date *</label>
+                    <input type="date" id="editDueDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Time *</label>
+                    <input type="time" id="editScheduleTime" required>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal('editPlanModal')">Cancel</button>
+                <button type="submit" class="btn-primary">
+                    <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>Update Run</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="../js/employeeAuth.js"></script>
+<script src="js/productionPlanning.js"></script>
+<script src="/shared/js/avatarUpload.js"></script>
+</body>
+</html>

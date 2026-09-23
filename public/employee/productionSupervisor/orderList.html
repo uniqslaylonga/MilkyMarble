@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Order List &amp; Shelf Organization</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="css/orderlist.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+<div class="app-container">
+    <!-- Sticky Sidebar (4 Links) -->
+    <aside class="sidebar">
+        <div class="brand-section">
+            <div class="brand-logo-wrap">
+                <img src="/customer/images/logo.png" alt="Milky Marble" class="brand-logo-img">
+            </div>
+            <div class="brand-title">Milky Marble</div>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="dashboard.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                </svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="orderList.html" class="nav-link active">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 11l3 3L22 4" />
+                    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+                </svg>
+                <span>Order List</span>
+            </a>
+            <a href="orderProduction.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6zM3 6h18M16 10a4 4 0 01-8 0" />
+                </svg>
+                <span>Order Production</span>
+            </a>
+            <a href="productionPlanning.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                <span>Production Planning</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <a href="../login.html" class="nav-link logout-btn">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+                </svg>
+                <span>Log out</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Topbar: Search Bar & Profile -->
+        <header class="topbar">
+            <div class="search-box">
+                <input type="text" id="orderSearchInput" placeholder="Search by order #, customer, flavor, or specs...">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="M21 21l-4.35-4.35" />
+                </svg>
+            </div>
+
+            <div class="topbar-right">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <img id="userAvatar" src="/customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                    </div>
+                    <span id="userFullName" class="user-name">Loading...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Header -->
+        <section class="page-header">
+            <div class="page-eyebrow">Production Queue &amp; Shelving Desk</div>
+            <div class="header-row">
+                <div>
+                    <h1 class="page-title">Keep the shelves organized</h1>
+                    <p class="header-sub">Manage pre-orders and walk-in preset batches.</p>
+                </div>
+                <a href="productionPlanning.html" class="btn-primary" style="text-decoration: none;">
+                    <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                        <line x1="12" y1="14" x2="12" y2="18" />
+                        <line x1="10" y1="16" x2="14" y2="16" />
+                    </svg>
+                    <span>Batch Planning</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- 4 Operational KPI Cards -->
+        <section class="section">
+            <div class="overview-grid four-col-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Pending Orders</span>
+                        <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        </svg>
+                    </div>
+                    <div class="stat-body"><span id="preordersTargetCount" class="stat-value">0</span></div>
+                    <div class="stat-footer">Awaiting preparation</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">In Progress</span>
+                        <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6zM3 6h18M16 10a4 4 0 01-8 0" />
+                        </svg>
+                    </div>
+                    <div class="stat-body"><span id="presetsQuotaCount" class="stat-value">0</span></div>
+                    <div class="stat-footer">Currently preparing</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Ready for Pickup</span>
+                        <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                    </div>
+                    <div class="stat-body"><span id="sealedReadyCount" class="stat-value">0</span></div>
+                    <div class="stat-footer">Ready for customer pickup</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Completed</span>
+                        <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 14 14"></polyline>
+                        </svg>
+                    </div>
+                    <div class="stat-body"><span id="inQueueCount" class="stat-value">0</span></div>
+                    <div class="stat-footer">Picked up / fulfilled</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Orders Queue -->
+        <section class="section">
+            <div class="directory-card">
+                <div class="panel-header-bar">
+                    <div>
+                        <h2 class="section-title">Orders Queue</h2>
+                        <p class="section-sub-text">Click any order to open mixing recipe in Order Production workstation.</p>
+                    </div>
+
+                    <!-- Filter Tabs -->
+                    <div class="order-filter-tabs">
+                        <button type="button" class="tab-btn active" data-filter="all">All Orders</button>
+                        <button type="button" class="tab-btn" data-filter="preorder">Pre-Orders (Custom)</button>
+                        <button type="button" class="tab-btn" data-filter="preset">Walk-in Presets</button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="cust-table" id="ordersTable">
+                        <thead>
+                            <tr>
+                                <th>Order # &amp; Customer</th>
+                                <th>Item &amp; Custom Specs (Sugar / Ice / Topping)</th>
+                                <th>Qty</th>
+                                <th>Claim Slot</th>
+                                <th>Shelf Tag</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <tr>
+                                <td colspan="7" class="loading-state-text">Loading orders list...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Permanent Numbered Pagination Bar -->
+                <div class="tx-pagination-bar" id="orderPaginationBar">
+                    <span class="tx-page-info" id="orderPageInfo">Showing 0 of 0 orders</span>
+                    <div class="tx-pager-buttons">
+                        <button type="button" class="pager-btn" id="prevOrderBtn" title="Previous Page" disabled>
+                            <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        <div class="pager-numbers" id="orderPagerNumbers">
+                            <button type="button" class="pager-num-btn active" disabled>1</button>
+                        </div>
+                        <button type="button" class="pager-btn" id="nextOrderBtn" title="Next Page" disabled>
+                            <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Walk-in Preset Batch Allocator -->
+        <section class="section">
+            <div class="directory-card">
+                <div class="saved-header">
+                    <div class="saved-title-group">
+                        <h2 class="section-title">Walk-in Preset Batch Allocator</h2>
+                        <span class="section-badge-pink">Macro Production Status</span>
+                    </div>
+                    <p class="section-sub-text">Standardized recipes prepared in bulk for the counter chiller display.</p>
+                </div>
+
+                <div id="presetGrid" class="preset-grid">
+                    <!-- Preset cards rendered dynamically -->
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script src="../js/employeeAuth.js"></script>
+<script src="js/orderList.js"></script>
+<script src="/shared/js/avatarUpload.js"></script>
+</body>
+</html>

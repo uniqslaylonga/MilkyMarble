@@ -1,0 +1,193 @@
+@font-face {
+    font-family: 'Bootzy TM';
+    src: local('Bootzy TM'), local('BootzyTM'), local('Plus Jakarta Sans ExtraBold'), local('Urbanist');
+    font-weight: 800;
+    font-style: normal;
+}
+
+:root {
+    color-scheme: light only;
+    --bg-main: #FDEFEE;
+    --bg-modal: #FFF5F4;
+    --primary-pink: #F69299;
+    --btn-buy-pink: #F48A8E;
+    --star-gold: #e2a03f;
+    --text-dark: #594A42;
+    --text-muted: #7C4F38;
+    --radius-modal: 28px;
+    --font-header: 'Bootzy TM', 'Urbanist', sans-serif;
+    --font-body: 'Urbanist', sans-serif;
+}
+
+/* Modal Card */
+.rate-modal-card-v2 {
+    max-width: 500px;
+    padding: 34px 30px 28px;
+    gap: 16px;
+}
+
+/* Drink Review Header Card */
+.rate-cup-header {
+    background: #FFFFFF;
+    border-radius: 18px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.rate-cup-thumb {
+    position: relative;
+    width: 46px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.rate-cup-thumb::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 22px;
+    background: var(--thumb-accent, #F48A8E);
+    border-radius: 8px;
+    z-index: 1;
+    opacity: 0.9;
+}
+
+.rate-thumb-img {
+    position: relative;
+    max-height: 54px;
+    max-width: 100%;
+    object-fit: contain;
+    z-index: 2;
+}
+
+.rate-cup-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.rate-cup-name {
+    font-family: var(--font-header) !important;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-dark);
+    letter-spacing: 0.8px !important;
+    margin: 0;
+}
+
+.rate-cup-sub {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* Stars Container & Score Label */
+.rate-stars-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0 2px;
+}
+
+.rate-stars-container {
+    display: flex;
+    gap: 12px;
+    font-size: 32px;
+    color: #E2C9C7;
+    cursor: pointer;
+}
+
+.rate-stars-container .star-icon {
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.rate-stars-container .star-icon:hover {
+    transform: scale(1.2);
+}
+
+.rate-stars-container .star-icon.active {
+    color: var(--star-gold, #e2a03f);
+}
+
+.rate-score-label {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+/* Quick Experience Taste Tags */
+.rate-quick-tags {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+.rate-tag-pill {
+    border: none;
+    background: #FFFFFF;
+    color: var(--text-dark);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    transition: all 0.2s ease;
+}
+
+.rate-tag-pill.active {
+    background: var(--primary-pink);
+    color: #ffffff;
+}
+
+.rate-tag-pill:hover:not(.active) {
+    background: #FFF0EE;
+}
+
+/* Review Textarea with Character Counter */
+.rate-textarea-box {
+    position: relative;
+    width: 100%;
+}
+
+.rate-textarea-box textarea {
+    width: 100%;
+    background: #FFFFFF;
+    border: 1.5px solid rgba(89, 74, 66, 0.12);
+    border-radius: 16px;
+    padding: 12px 16px 26px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--text-dark);
+    outline: none;
+    resize: none;
+    transition: border-color 0.2s ease;
+}
+
+.rate-textarea-box textarea:focus {
+    border-color: var(--primary-pink);
+}
+
+.rate-textarea-box textarea::placeholder {
+    color: #C5A8A4;
+}
+
+.rate-char-counter {
+    position: absolute;
+    bottom: 8px;
+    right: 14px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+}

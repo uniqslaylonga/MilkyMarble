@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Order Details &amp; Cup Assembly</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="css/orderproduction.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+<div class="app-container">
+    <!-- Sticky Sidebar (4 Links) -->
+    <aside class="sidebar">
+        <div class="brand-section">
+            <div class="brand-logo-wrap">
+                <img src="/customer/images/logo.png" alt="Milky Marble" class="brand-logo-img">
+            </div>
+            <div class="brand-title">Milky Marble</div>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="dashboard.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                </svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="orderList.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 11l3 3L22 4" />
+                    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+                </svg>
+                <span>Order List</span>
+            </a>
+            <a href="orderProduction.html" class="nav-link active">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6zM3 6h18M16 10a4 4 0 01-8 0" />
+                </svg>
+                <span>Order Production</span>
+            </a>
+            <a href="productionPlanning.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                <span>Production Planning</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <a href="../login.html" class="nav-link logout-btn">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+                </svg>
+                <span>Log out</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Topbar: Status Strip & Profile -->
+        <header class="topbar">
+            <div class="topbar-status-strip">
+                <span class="status-pulse-dot"></span>
+                <span>Workstation Desk • Cup Assembly &amp; Material Deduction</span>
+            </div>
+
+            <div class="topbar-right">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <img id="userAvatar" src="/customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                    </div>
+                    <span id="userFullName" class="user-name">Loading...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Header & Navigation -->
+        <section class="order-page">
+            <div class="page-header">
+                <div class="page-eyebrow">Workstation &amp; Cup Mixing Desk</div>
+                <h1 class="page-title">Order Details &amp; Recipe Assembly</h1>
+            </div>
+
+            <a href="orderList.html" class="back-link">
+                <svg class="back-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                <span>Back to Order Queue</span>
+            </a>
+
+            <!-- Top Summary Cards (Split View) -->
+            <div class="order-summary">
+                <!-- Order Specification Card -->
+                <div class="order-card">
+                    <div class="order-meta">
+                        <div class="order-meta-left">
+                            <span id="orderCode" class="order-code">Loading...</span>
+                            <span id="orderTypeBadge" class="type-pill type-preorder"></span>
+                        </div>
+                        <span id="orderClient" class="order-staff"></span>
+                    </div>
+
+                    <h2 id="itemLabel" class="item-title">Loading order...</h2>
+
+                    <!-- Dynamic Specification Tags -->
+                    <div id="tagRow" class="tag-row"></div>
+
+                    <div class="recipe-notes-box">
+                        <span class="notes-label">Standard Operating Procedure:</span>
+                        <p id="recipeInstructions" class="notes-text"></p>
+                    </div>
+                </div>
+
+                <!-- Complete Order Action Card -->
+                <div class="close-card">
+                    <div class="close-top-row">
+                        <div class="close-icon">
+                            <svg class="close-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                            </svg>
+                        </div>
+                        <span class="shelf-indicator" id="shelfIndicatorTag"></span>
+                    </div>
+
+                    <div class="close-copy">
+                        <h3>Seal &amp; Mark Ready</h3>
+                        <p>Confirm cup assembly is complete and place on counter holding rack for pickup.</p>
+                    </div>
+
+                    <form id="completeOrderForm">
+                        <button class="complete-btn" type="submit" id="completeOrderBtn">
+                            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            <span>COMPLETE &amp; MARK SHELF-READY</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Ingredients & Raw Material Inventory Check -->
+            <div class="materials-panel">
+                <div class="panel-title-wrap">
+                    <div class="panel-icon">
+                        <svg class="panel-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 3v18M6 8l-4 8h8l-4-8zM18 8l-4 8h8l-4-8z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>Ingredients &amp; Material Inventory Check</h3>
+                        <p class="materials-sub">Auto-calculated inventory deductions for this specific cup customization.</p>
+                    </div>
+                </div>
+
+                <form id="materialsForm">
+                    <div class="materials-table">
+                        <div class="materials-head">
+                            <span class="col-name">Raw Ingredient / Consumable</span>
+                            <span class="col-amount">Calculated Quantity</span>
+                            <span class="col-unit">Unit of Measure</span>
+                        </div>
+
+                        <div id="materialsList">
+                            <div class="loading-materials">Loading inventory materials...</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script src="../js/employeeAuth.js"></script>
+<script src="js/orderProduction.js"></script>
+<script src="/shared/js/avatarUpload.js"></script>
+</body>
+</html>

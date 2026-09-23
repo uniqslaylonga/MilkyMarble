@@ -1,0 +1,172 @@
+@font-face {
+    font-family: 'Bootzy TM';
+    src: local('Bootzy TM'), local('BootzyTM'), local('Plus Jakarta Sans ExtraBold'), local('Urbanist');
+    font-weight: 800;
+    font-style: normal;
+}
+
+:root {
+    color-scheme: light only;
+    --bg-modal: #FFF5F4;
+    --primary-pink: #F69299;
+    --btn-save-pink: #F48A8E;
+    --btn-cancel: #FDE9E6;
+    --text-dark: #594A42;
+    --text-muted: #7C4F38;
+    --radius-modal: 26px;
+    --font-header: 'Bootzy TM', 'Urbanist', sans-serif;
+    --font-body: 'Urbanist', sans-serif;
+}
+
+/* Modal Card Dimensions & Stacking */
+.recipient-modal-card {
+    max-width: 440px;
+    padding: 36px 32px 30px;
+    gap: 18px;
+    z-index: 2600; /* Stacks cleanly over Order Summary modal */
+}
+
+/* Header */
+.recipient-modal-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.recipient-modal-title {
+    font-family: var(--font-header) !important;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-dark);
+    letter-spacing: 1.2px !important;
+    margin: 0;
+}
+
+.recipient-modal-sub {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* Form Fields */
+.recipient-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+}
+
+.recipient-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.recipient-form-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.recipient-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.input-icon {
+    position: absolute;
+    left: 16px;
+    color: #C5A8A4;
+    font-size: 14px;
+    pointer-events: none;
+    transition: color 0.2s ease;
+}
+
+.recipient-input-field {
+    width: 100%;
+    background: #FFFFFF;
+    border: 1.5px solid rgba(89, 74, 66, 0.12);
+    border-radius: 16px;
+    padding: 12px 16px 12px 42px;
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-dark);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+}
+
+.recipient-input-field::placeholder {
+    color: #C5A8A4;
+    font-weight: 500;
+}
+
+.recipient-input-field:focus {
+    border-color: var(--primary-pink);
+    box-shadow: 0 0 0 3px rgba(246, 146, 153, 0.2);
+}
+
+.recipient-input-field:focus + .input-icon,
+.recipient-input-wrapper:focus-within .input-icon {
+    color: var(--btn-save-pink);
+}
+
+/* Action Buttons */
+.recipient-modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.btn-recipient-cancel {
+    background: var(--btn-cancel);
+    color: var(--text-dark);
+    border: none;
+    border-radius: 20px;
+    padding: 10px 22px;
+    font-family: var(--font-body) !important;
+    font-weight: 700;
+    font-size: 13.5px;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.btn-recipient-save {
+    background: var(--btn-save-pink);
+    color: #ffffff;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 26px;
+    font-family: var(--font-body) !important;
+    font-weight: 800;
+    font-size: 13.5px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(244, 138, 142, 0.25);
+    transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.btn-recipient-cancel:hover,
+.btn-recipient-save:hover {
+    opacity: 0.92;
+    transform: scale(1.02);
+}
+
+@media (max-width: 500px) {
+    .recipient-modal-card {
+        padding: 26px 20px 22px;
+    }
+    .recipient-modal-actions {
+        flex-direction: column-reverse;
+        width: 100%;
+    }
+    .btn-recipient-cancel,
+    .btn-recipient-save {
+        width: 100%;
+    }
+}

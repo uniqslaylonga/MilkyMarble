@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Promotions &amp; Campaigns</title>
+    <link rel="stylesheet" href="css/promotions.css">
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sticky Sidebar (6 Links) -->
+        <aside class="sidebar">
+            <div class="brand-section">
+                <div class="brand-logo-wrap">
+                    <img src="/customer/images/logo.png" alt="Milky Marble Logo" class="brand-logo-img">
+                </div>
+                <h1 class="brand-title">Milky Marble</h1>
+            </div>
+            <nav class="nav-menu">
+                <a href="dashboard.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="orderConfirmation.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 11l3 3L22 4" />
+                        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+                    </svg>
+                    <span>Order Confirmation</span>
+                </a>
+                <a href="orderMonitoring.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="4" width="20" height="16" rx="3" />
+                        <path d="M7 15h10M7 9h10" />
+                    </svg>
+                    <span>Order Monitoring</span>
+                </a>
+                <a href="customerRecords.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                        <path d="M16 3.13a4 4 0 010 7.75" />
+                    </svg>
+                    <span>Customer Records</span>
+                </a>
+                <a href="promotions.html" class="nav-link active">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+                        <line x1="7" y1="7" x2="7.01" y2="7" />
+                    </svg>
+                    <span>Promotions</span>
+                </a>
+                <a href="salesReports&Records.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v18h18" />
+                        <path d="M7 15l4-6 3 3 5-7" />
+                    </svg>
+                    <span>Reports &amp; Records</span>
+                </a>
+            </nav>
+            <div class="sidebar-bottom">
+                <a href="../login.html" class="nav-link logout-btn">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+                    </svg>
+                    <span>Log out</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-status-strip">
+                    <span class="status-pulse-dot"></span>
+                    <span>Campaign Management • CEO Pitch &amp; Proposal Desk</span>
+                </div>
+                <div class="topbar-right">
+                    <div class="user-profile">
+                        <div class="user-avatar">
+                            <img id="userAvatar" src="/customer/images/account.png" alt="User Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                        </div>
+                        <span id="userName" class="user-name">Loading...</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Overview & Action Cards -->
+            <section class="section">
+                <div class="section-head-bar">
+                    <h2 class="section-title">Campaign Performance &amp; Proposals</h2>
+                </div>
+                <div class="overview-grid">
+                    <div class="stat-card">
+                        <div class="stat-header"><span class="stat-title">Total Pitched Campaigns</span></div>
+                        <div class="stat-body"><span id="totalPromosCount" class="stat-value">0</span></div>
+                        <div class="stat-footer">Proposed discount schemes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header"><span class="stat-title">Active &amp; Approved</span></div>
+                        <div class="stat-body"><span id="activePromosCount" class="stat-value">0</span></div>
+                        <div class="stat-footer">Live at store checkout</div>
+                    </div>
+                    <div class="stat-card action-card" onclick="openPromoModal()">
+                        <div class="stat-header"><span class="stat-title">New Proposal</span></div>
+                        <div class="stat-body action-body">
+                            <div class="add-promo-icon-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                            </div>
+                            <span class="add-card-label">Pitch Promo</span>
+                        </div>
+                        <div class="stat-footer">Submit proposal to CEO</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Campaign Queue Section -->
+            <section class="section">
+                <div class="section-head-bar">
+                    <div class="title-with-tabs">
+                        <h2 class="section-title">Campaign Queue &amp; History</h2>
+                        <div class="promo-status-tabs">
+                            <button type="button" class="tab-btn active" data-status="all">All <span id="countAllBadge" class="tab-badge">0</span></button>
+                            <button type="button" class="tab-btn" data-status="pending">Pending Approval <span id="countPendingBadge" class="tab-badge">0</span></button>
+                            <button type="button" class="tab-btn" data-status="active">Active <span id="countActiveBadge" class="tab-badge">0</span></button>
+                            <button type="button" class="tab-btn" data-status="archived">Archived / Rejected <span id="countArchivedBadge" class="tab-badge">0</span></button>
+                        </div>
+                    </div>
+                    <div class="filter-wrapper">
+                        <span class="filter-label">Validity Period:</span>
+                        <select id="promoDateFilter" class="custom-select-sm">
+                            <option value="all" selected>All Dates</option>
+                            <option value="current">Currently Active</option>
+                            <option value="month">This Month</option>
+                            <option value="custom">Pick Date...</option>
+                        </select>
+                        <input type="date" id="promoCustomDate" class="custom-date-input" style="display: none;" />
+                    </div>
+                </div>
+
+                <div class="promo-panel-container">
+                    <div id="campaignGrid" class="campaign-grid">
+                        <p class="loading-state-text">Loading campaigns...</p>
+                    </div>
+
+                    <!-- Permanent Pagination Bar -->
+                    <div class="tx-pagination-bar" id="promoPaginationBar">
+                        <span class="tx-page-info" id="promoPageInfo">Showing 0 of 0 campaigns</span>
+                        <div class="tx-pager-buttons">
+                            <button type="button" class="pager-btn" id="prevPromoBtn" title="Previous Page" disabled>
+                                <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
+                            <div class="pager-numbers" id="promoPagerNumbers">
+                                <button type="button" class="pager-num-btn active" disabled>1</button>
+                            </div>
+                            <button type="button" class="pager-btn" id="nextPromoBtn" title="Next Page" disabled>
+                                <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Pitch Promotion Modal -->
+        <div class="modal-overlay" id="promoModalOverlay">
+            <div class="profile-modal pitch-modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <div class="modal-header-left">
+                        <h3 class="modal-title">Pitch Promo Campaign</h3>
+                        <p class="modal-subtitle">Proposals will be forwarded to the CEO for strategic review and activation.</p>
+                    </div>
+                    <button type="button" class="modal-close" id="modalCloseBtn">
+                        <svg class="close-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <form id="createPromoForm" class="modal-body">
+                    <div class="modal-section">
+                        <div class="modal-label">Campaign Setup</div>
+                        <div class="form-grid">
+                            <div class="form-group full">
+                                <label for="inputPromoCode">Promo Code *</label>
+                                <input type="text" name="code" id="inputPromoCode" placeholder="e.g. SUMMER25, MARBLE10" style="text-transform: uppercase;" required>
+                            </div>
+                            <div class="form-group full">
+                                <label for="inputTargetSegment">Target Customer Segment *</label>
+                                <select name="target_segment" id="inputTargetSegment" required>
+                                    <option value="all" selected>All Customers (General Public)</option>
+                                    <option value="member">Registered Members Only (Loyalty Retention)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="inputDiscountType">Discount Type *</label>
+                                <select name="discount_type" id="inputDiscountType">
+                                    <option value="percent">Percentage (%)</option>
+                                    <option value="fixed">Fixed Amount (₱)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="inputDiscountVal" id="discountValueLabel">Discount Value * (%)</label>
+                                <input type="number" step="0.01" min="0.01" name="discount_value" id="inputDiscountVal" placeholder="e.g. 10" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="inputMinSpend">Minimum Spend (Optional, ₱)</label>
+                                <input type="number" step="1" min="0" name="min_spend" id="inputMinSpend" placeholder="e.g. 200 (Leave blank if none)">
+                            </div>
+                            <div class="form-group">
+                                <label for="inputUsageCap">Usage Cap / Redemptions (Optional)</label>
+                                <input type="number" step="1" min="1" name="usage_cap" id="inputUsageCap" placeholder="e.g. 100 (Leave blank for unlimited)">
+                            </div>
+                            <div class="form-group full">
+                                <label for="inputPitchNote">Pitch Rationale / Note to CEO</label>
+                                <textarea name="pitch_note" id="inputPitchNote" rows="2" placeholder="Explain the commercial goal (e.g., Recovers low revenue week, boosts pre-orders)..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn-secondary" id="modalCancelBtn">Cancel</button>
+                        <button type="submit" class="btn-primary">Submit Pitch to CEO</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/salesCommon.js"></script>
+    <script src="js/promotions.js"></script>
+    <script src="/shared/js/avatarUpload.js"></script>
+</body>
+</html>

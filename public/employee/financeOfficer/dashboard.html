@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Financial Officer Dashboard</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- STICKY SIDEBAR (PAREHONG DESIGN SA SALES, PRODUCTION, AT PROCUREMENT) -->
+        <aside class="sidebar">
+            <div class="brand-section">
+                <div class="brand-logo-wrap">
+                    <img src="/customer/images/logo.png" alt="Milky Marble" class="brand-logo-img">
+                </div>
+                <div class="brand-title">Milky Marble</div>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="dashboard.html" class="nav-link active">
+                    <i class="fa-solid fa-border-all nav-fa"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="revenue.html" class="nav-link">
+                    <i class="fa-solid fa-chart-line nav-fa"></i>
+                    <span>Revenue</span>
+                </a>
+                <a href="budget.html" class="nav-link">
+                    <i class="fa-solid fa-wallet nav-fa"></i>
+                    <span>Budget</span>
+                </a>
+                <a href="expenses.html" class="nav-link">
+                    <i class="fa-solid fa-pen-to-square nav-fa"></i>
+                    <span>Expenses</span>
+                </a>
+                <a href="payments.html" class="nav-link">
+                    <i class="fa-solid fa-money-bill-transfer nav-fa"></i>
+                    <span>Payments</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <a href="../login.html" class="nav-link logout-btn">
+                    <i class="fa-solid fa-arrow-right-from-bracket nav-fa"></i>
+                    <span>Log out</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- MAIN SCROLLABLE CONTENT -->
+        <main class="main-content">
+            <!-- TOPBAR -->
+            <header class="topbar">
+                <div class="search-box">
+                    <input type="text" id="financeSearchInput" placeholder="Search requisitions, liquidations, vouchers, or OR numbers...">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                </div>
+
+                <div class="topbar-right">
+                    <button class="notif-btn" title="Alerts"><i class="fa-regular fa-bell"></i></button>
+                    <div class="user-profile">
+                        <div class="user-avatar">
+                            <img id="userAvatar" src="/customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                        </div>
+                        <span id="userName" class="user-name">Financial Officer</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- WELCOME BANNER WITH DOA GOVERNANCE BADGE -->
+            <section class="welcome-banner">
+                <div class="welcome-banner-content">
+                    <div class="welcome-text-col">
+                        <div class="banner-badge-row">
+                            <span class="release-window-pill">Financial Governance • DOA Middle-Tier</span>
+                            <span class="shift-subtag">₱301–₱500 Endorsements &amp; ≤₱300 Liquidation Audit</span>
+                        </div>
+                        <h1 class="welcome-title">Glad to have you here, <span id="userFirstName">Finance Officer</span>!</h1>
+                        <p class="welcome-sub">Verify procurement disbursements, liquidate direct buys, and audit Tuesday/Thursday release revenues.</p>
+                    </div>
+                    <div class="banner-action-col">
+                        <button type="button" class="btn-primary" onclick="openDisbursementModal()">
+                            <i class="fa-solid fa-receipt"></i> Record Expense
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4 OPERATIONAL KPI CARDS -->
+            <section class="section">
+                <div class="overview-grid four-col-grid">
+                    <!-- 1. Pending Approvals (₱301 - ₱500) -->
+                    <div class="stat-card" onclick="switchFinanceTab('preapproval')" style="cursor: pointer;">
+                        <div class="stat-header">
+                            <span class="stat-title">Pending Approvals (₱301–₱500)</span>
+                            <i class="fa-solid fa-file-signature stat-icon" style="color: #EAA342;"></i>
+                        </div>
+                        <div class="stat-body"><span id="pendingApprovalCount" class="stat-value">02</span></div>
+                        <div class="stat-footer">Requires Fund Release Clearance</div>
+                    </div>
+
+                    <!-- 2. Direct Buy Liquidation Queue (≤ ₱300) -->
+                    <div class="stat-card" onclick="switchFinanceTab('liquidation')" style="cursor: pointer;">
+                        <div class="stat-header">
+                            <span class="stat-title">Direct Buy Audit (≤ ₱300)</span>
+                            <i class="fa-solid fa-receipt stat-icon" style="color: #2E7D32;"></i>
+                        </div>
+                        <div class="stat-body"><span id="pendingLiquidationCount" class="stat-value">03</span></div>
+                        <div class="stat-footer">Verify OR &amp; Replenish Petty Cash</div>
+                    </div>
+
+                    <!-- 3. Gross Release Revenue (Tue + Thu) -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Gross Revenue (Tue &amp; Thu)</span>
+                            <i class="fa-solid fa-chart-line stat-icon"></i>
+                        </div>
+                        <div class="stat-body"><span id="totalRevenue" class="stat-value">₱0.00</span></div>
+                        <div class="stat-footer">Combined Pre-orders &amp; Presets</div>
+                    </div>
+
+                    <!-- 4. Operating Margin / Cash Buffer -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Net Margin &amp; Buffer</span>
+                            <i class="fa-solid fa-wallet stat-icon"></i>
+                        </div>
+                        <div class="stat-body"><span id="netMarginVal" class="stat-value">—</span></div>
+                        <div class="stat-footer">Liquidity Reserve Healthy</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SPLIT SECTION: DOA REQUISITION & LIQUIDATION DESK (LEFT) + CHARTS (RIGHT) -->
+            <div class="split-dashboard-layout">
+                <!-- LEFT COLUMN: DOA DESK TABLE -->
+                <div class="table-column">
+                    <div class="directory-card">
+                        <div class="panel-header-bar">
+                            <div>
+                                <h2 class="section-title">DOA Governance &amp; Liquidation Desk</h2>
+                                <p class="section-sub-text">Pre-approval authorization and post-purchase petty cash audits.</p>
+                            </div>
+
+                            <!-- Tabs: ₱301-₱500 Pre-Approval vs ≤₱300 Liquidation -->
+                            <div class="order-filter-tabs">
+                                <button type="button" class="tab-btn active" id="tabPreApproval" onclick="switchFinanceTab('preapproval')">
+                                    ₱301–₱500 Pre-Approval <span id="badgePreApp" class="counter-badge">0</span>
+                                </button>
+                                <button type="button" class="tab-btn" id="tabLiquidation" onclick="switchFinanceTab('liquidation')">
+                                    ≤ ₱300 Liquidation Audit <span id="badgeLiq" class="counter-badge">0</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- THRESHOLD LEGEND ROW -->
+                        <div class="threshold-legend-row" id="financeThresholdRow">
+                            <span class="badge-route route-finance">🟠 ₱301–₱500: Finance Fund Clearance (Pre-Purchase)</span>
+                            <span class="badge-route route-procure">🟢 ≤ ₱300: Post-Audit &amp; Replenish Petty Cash</span>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="cust-table" id="financeTable">
+                                <thead>
+                                    <tr id="tableHeaderRow">
+                                        <th>PR Code &amp; Item</th>
+                                        <th>Department</th>
+                                        <th>Cost</th>
+                                        <th>Routing Stream</th>
+                                        <th style="text-align: right;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="financeTableBody">
+                                    <tr>
+                                        <td colspan="5" class="loading-state-text">Loading financial queue...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- PERMANENT NUMBERED PAGINATION BAR -->
+                        <div class="tx-pagination-bar" id="financePaginationBar">
+                            <span class="tx-page-info" id="financePageInfo">Showing 0 of 0 items</span>
+                            <div class="tx-pager-buttons">
+                                <button type="button" class="pager-btn" id="prevFinBtn" title="Previous Page" disabled>
+                                    <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                                </button>
+                                <div class="pager-numbers" id="finPagerNumbers">
+                                    <button type="button" class="pager-num-btn active" disabled>1</button>
+                                </div>
+                                <button type="button" class="pager-btn" id="nextFinBtn" title="Next Page" disabled>
+                                    <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: REVENUE & OPERATIONAL CHARTS (TUE/THU FOCUS) -->
+                <div class="charts-column">
+                    <!-- Chart 1: Tuesday vs. Thursday Revenue & Outflow -->
+                    <div class="chart-card">
+                        <div class="card-head-row">
+                            <div>
+                                <span class="stat-title">Release Days Cash Flow (Tue vs. Thu)</span>
+                                <p class="section-sub-text">Gross collections vs. Procurement outflow</p>
+                            </div>
+                            <span class="section-badge-pink">10 AM – 3 PM Window</span>
+                        </div>
+                        <div class="chart-wrapper-box" style="height: 180px;">
+                            <canvas id="releaseDayBarChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart 2: COGS & Raw Materials Cost Breakdown -->
+                    <div class="chart-card">
+                        <div class="card-head-row">
+                            <div>
+                                <span class="stat-title">COGS &amp; Expense Allocation</span>
+                                <p class="section-sub-text">Dairy, tea leaves, boba, and packaging share</p>
+                            </div>
+                            <span class="section-badge-pink">Macro Cost Distribution</span>
+                        </div>
+                        <div class="donut-flex-container">
+                            <div class="donut-wrapper" style="width: 110px; height: 110px;">
+                                <canvas id="cogsDonutChart"></canvas>
+                            </div>
+                            <div class="donut-legend-col">
+                                <div class="legend-row">
+                                    <span class="legend-box" style="background:#f28b95;"></span>
+                                    <span>Boba &amp; Raw Tea: <strong>42%</strong></span>
+                                </div>
+                                <div class="legend-row">
+                                    <span class="legend-box" style="background:#68B0AB;"></span>
+                                    <span>Fresh Milk: <strong>33%</strong></span>
+                                </div>
+                                <div class="legend-row">
+                                    <span class="legend-box" style="background:#EAA342;"></span>
+                                    <span>Cups &amp; Film: <strong>25%</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: MANUAL EXPENSE / LIQUIDATION DISBURSEMENT -->
+    <div class="modal-overlay" id="disbursementModal">
+        <div class="profile-modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <h3 class="modal-title">Record Disbursement Voucher</h3>
+                    <p class="modal-subtitle">Log petty cash release, supplier payment, or ingredient liquidation.</p>
+                </div>
+                <button type="button" class="modal-close" onclick="closeDisbursementModal()">✕</button>
+            </div>
+
+            <form id="disbursementForm" class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label for="disburseDesc">Particulars / Description *</label>
+                        <input type="text" id="disburseDesc" placeholder="e.g. Petty Cash Replenishment for Brown Sugar Syrup" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="disburseCategory">Category *</label>
+                        <select id="disburseCategory" required>
+                            <option value="Supplies Expense" selected>Supplies Expense (COGS)</option>
+                            <option value="Petty Cash Liquidation">Petty Cash Liquidation (≤ ₱300)</option>
+                            <option value="Operational Logistics">Operational Logistics</option>
+                            <option value="Packaging & Film">Packaging &amp; Film</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="disburseAmount">Amount (₱) *</label>
+                        <input type="number" step="0.5" id="disburseAmount" placeholder="e.g. 290.00" min="1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="disburseOrNum">Official Receipt (OR) / Voucher #</label>
+                        <input type="text" id="disburseOrNum" placeholder="e.g. OR-99824" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="disbursePayee">Payee / Vendor</label>
+                        <input type="text" id="disbursePayee" placeholder="e.g. Caloocan Boba Hub" required>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeDisbursementModal()">Cancel</button>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Post to Ledger</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../js/employeeAuth.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="/shared/js/avatarUpload.js"></script>
+</body>
+</html>

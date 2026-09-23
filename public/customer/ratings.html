@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Your Sips - Milky Marble</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/rating.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+<body>
+
+    <button type="button" class="btn-place-order" style="max-width: 200px; margin: 40px auto; display: block;" onclick="testOpenModal()">
+        Rate Completed Order
+    </button>
+
+    <div class="product-modal-backdrop" id="rateModal" onclick="closeRateModal(event)">
+        <div class="product-modal-container rate-modal-card-v2" onclick="event.stopPropagation()">
+
+            <button type="button" class="modal-close-btn" onclick="closeRateModal()" title="Close rating">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <h2 class="summary-main-title">Rate your Sips</h2>
+
+            <div class="rate-cup-header" id="rateCupHeader">
+                <div class="rate-cup-thumb" id="rateCupThumb" style="--thumb-accent: #664638;">
+                    <img id="rateCupImg" src="images/Bubbly Coffee Jelly.png" alt="Cup Preview" class="rate-thumb-img">
+                </div>
+                <div class="rate-cup-meta">
+                    <h4 class="rate-cup-name" id="rateCupTitle">12oz Bubbly Coffee Jelly</h4>
+                    <p class="rate-cup-sub">How was your jelly cut & sweetness level?</p>
+                </div>
+            </div>
+
+            <div class="rate-stars-block">
+                <div class="rate-stars-container" onmouseleave="resetHoverStars()">
+                    <i class="fa-solid fa-star star-icon active" data-rating="1" onmouseover="hoverStarRating(1)" onclick="setStarRating(1)"></i>
+                    <i class="fa-solid fa-star star-icon active" data-rating="2" onmouseover="hoverStarRating(2)" onclick="setStarRating(2)"></i>
+                    <i class="fa-solid fa-star star-icon active" data-rating="3" onmouseover="hoverStarRating(3)" onclick="setStarRating(3)"></i>
+                    <i class="fa-solid fa-star star-icon active" data-rating="4" onmouseover="hoverStarRating(4)" onclick="setStarRating(4)"></i>
+                    <i class="fa-solid fa-star star-icon active" data-rating="5" onmouseover="hoverStarRating(5)" onclick="setStarRating(5)"></i>
+                </div>
+                <span class="rate-score-label" id="rateScoreLabel">5.0 - Super Creamy & Bouncy!</span>
+            </div>
+
+            <div class="rate-quick-tags" id="rateTagsContainer">
+                <button type="button" class="rate-tag-pill active" onclick="toggleRateTag(this)">Extra Chewy Jelly</button>
+                <button type="button" class="rate-tag-pill active" onclick="toggleRateTag(this)">Perfect Sweetness</button>
+                <button type="button" class="rate-tag-pill" onclick="toggleRateTag(this)">Creamy Layers</button>
+                <button type="button" class="rate-tag-pill" onclick="toggleRateTag(this)">Great Portion</button>
+            </div>
+
+            <div class="rate-textarea-box">
+                <textarea id="rateReviewText" placeholder="Share your sweet experience... How were the layers and toppings?" rows="3" maxlength="150" oninput="updateCharCount(this)"></textarea>
+                <div class="rate-char-counter"><span id="charCount">0</span>/150</div>
+            </div>
+
+            <div class="summary-action-box">
+                <button type="button" class="btn-place-order" id="btnSubmitRating" onclick="submitRating()">Submit Review</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="js/ratings.js"></script>
+</body>
+</html>

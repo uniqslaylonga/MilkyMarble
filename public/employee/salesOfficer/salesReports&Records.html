@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Sales Reports &amp; Target Analytics</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="css/salesReports&Records.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sticky Sidebar (6 Links) -->
+        <aside class="sidebar">
+            <div class="brand-section">
+                <div class="brand-logo-wrap">
+                    <img src="/customer/images/logo.png" alt="Milky Marble Logo" class="brand-logo-img">
+                </div>
+                <h1 class="brand-title">Milky Marble</h1>
+            </div>
+            <nav class="nav-menu">
+                <a href="dashboard.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="orderConfirmation.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 11l3 3L22 4" />
+                        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+                    </svg>
+                    <span>Order Confirmation</span>
+                </a>
+                <a href="orderMonitoring.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="4" width="20" height="16" rx="3" />
+                        <path d="M7 15h10M7 9h10" />
+                    </svg>
+                    <span>Order Monitoring</span>
+                </a>
+                <a href="customerRecords.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                        <path d="M16 3.13a4 4 0 010 7.75" />
+                    </svg>
+                    <span>Customer Records</span>
+                </a>
+                <a href="promotions.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+                        <line x1="7" y1="7" x2="7.01" y2="7" />
+                    </svg>
+                    <span>Promotions</span>
+                </a>
+                <a href="salesReports&Records.html" class="nav-link active">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v18h18" />
+                        <path d="M7 15l4-6 3 3 5-7" />
+                    </svg>
+                    <span>Reports &amp; Records</span>
+                </a>
+            </nav>
+            <div class="sidebar-bottom">
+                <a href="../login.html" class="nav-link logout-btn">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+                    </svg>
+                    <span>Log out</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Screen Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-status-strip">
+                    <span class="status-pulse-dot"></span>
+                    <span>Executive Analytics • Target Attainment, DSO &amp; Audit Records</span>
+                </div>
+                <div class="topbar-right">
+                    <div class="user-profile">
+                        <div class="user-avatar">
+                            <img id="userAvatar" src="/customer/images/account.png" alt="User Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                        </div>
+                        <span id="userName" class="user-name">Loading...</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="report-action-header">
+                <div>
+                    <h1 class="report-main-heading">Sales Performance &amp; Quota Attainment Report</h1>
+                    <p class="report-sub-heading" id="reportGeneratedDate">Official Commercial Statement • Production &amp; Settlement Tracking</p>
+                </div>
+                <div class="report-header-controls">
+                    <div class="filter-wrapper">
+                        <span class="filter-label">Period:</span>
+                        <select id="reportDateFilter" class="custom-select-sm">
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month" selected>This Month</option>
+                            <option value="custom">Pick Date...</option>
+                            <option value="all">All Dates</option>
+                        </select>
+                        <input type="date" id="reportCustomDate" class="custom-date-input" style="display: none;" />
+                    </div>
+                    <button type="button" class="btn-pdf-export" onclick="exportReportToPDF()">
+                        <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        <span>Export to PDF</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Screen View: Target Gauges & DSO 45 Days -->
+            <section class="section">
+                <h2 class="section-title">Revenue Quotas &amp; Collection Efficiency</h2>
+                <div class="overview-grid four-col-grid">
+                    <div class="target-card">
+                        <div class="target-card-top">
+                            <span class="period-pill">Daily Target</span>
+                            <span id="dailyPct" class="pct-badge">0%</span>
+                        </div>
+                        <div class="target-revenue-row">
+                            <div>
+                                <div id="todaySales" class="current-rev">₱0.00</div>
+                                <div id="dailyTarget" class="quota-sub">Daily Target: ₱0.00</div>
+                            </div>
+                        </div>
+                        <div class="gauge-bar-track">
+                            <div id="dailyGaugeFill" class="gauge-bar-fill" style="width: 0%;"></div>
+                        </div>
+                        <div class="target-sub-split">
+                            <span>Pre: <strong id="dailyPreorderRev">₱0.00</strong></span>
+                            <span>Walk: <strong id="dailyWalkinRev">₱0.00</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="target-card">
+                        <div class="target-card-top">
+                            <span class="period-pill">Monthly Target</span>
+                            <span id="monthlyPct" class="pct-badge">0%</span>
+                        </div>
+                        <div class="target-revenue-row">
+                            <div>
+                                <div id="monthSales" class="current-rev">₱0.00</div>
+                                <div id="monthlyTarget" class="quota-sub">Monthly Target: ₱0.00</div>
+                            </div>
+                        </div>
+                        <div class="gauge-bar-track">
+                            <div id="monthlyGaugeFill" class="gauge-bar-fill" style="width: 0%;"></div>
+                        </div>
+                        <div class="target-sub-split">
+                            <span>Pre: <strong id="monthPreorderRev">₱0.00</strong></span>
+                            <span>Walk: <strong id="monthWalkinRev">₱0.00</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="target-card">
+                        <div class="target-card-top">
+                            <span class="period-pill">Pre-order Fulfillment</span>
+                            <span id="fulfillmentPct" class="pct-badge">0%</span>
+                        </div>
+                        <div class="target-revenue-row">
+                            <div>
+                                <div id="fulfilledCountDisplay" class="current-rev">0 / 0</div>
+                                <div class="quota-sub">Pre-orders Claimed Today</div>
+                            </div>
+                        </div>
+                        <div class="gauge-bar-track">
+                            <div id="fulfillmentGaugeFill" class="gauge-bar-fill" style="width: 0%;"></div>
+                        </div>
+                        <div class="target-footer">Counter bulk pickups completed</div>
+                    </div>
+
+                    <div class="target-card dso-card">
+                        <div class="target-card-top">
+                            <span class="period-pill">Receivables Cycle</span>
+                            <span class="pct-badge dso-status-badge">Target Met</span>
+                        </div>
+                        <div class="target-revenue-row">
+                            <div>
+                                <div class="current-rev" id="dsoValueDisplay">45 Days</div>
+                                <div class="quota-sub">Days Sales Outstanding (DSO)</div>
+                            </div>
+                        </div>
+                        <div class="gauge-bar-track">
+                            <div class="gauge-bar-fill dso-gauge-fill" style="width: 100%;"></div>
+                        </div>
+                        <div class="target-footer">Standard 45-day commercial collection window</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Screen View: Financial Highlights -->
+            <section class="section">
+                <h2 class="section-title">Financial Highlights</h2>
+                <div class="overview-grid three-col-grid">
+                    <div class="stat-card">
+                        <div class="stat-header"><span class="stat-title">Gross Sales</span></div>
+                        <div class="stat-body"><span id="grossSales" class="stat-value">₱0.00</span></div>
+                        <div class="stat-footer">Total Billed Revenue</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header"><span class="stat-title">Net Sales</span></div>
+                        <div class="stat-body"><span id="netSales" class="stat-value">₱0.00</span></div>
+                        <div class="stat-footer">Post-discount revenue</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header"><span class="stat-title">Average Order Value</span></div>
+                        <div class="stat-body"><span id="aov" class="stat-value">₱0.00</span></div>
+                        <div class="stat-footer">Average ticket per order</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Screen View: Walk-in Preset Targets -->
+            <section class="section">
+                <div class="section-head-bar">
+                    <div class="title-with-subtitle">
+                        <h2 class="section-title">Walk-in Preset Sell-Out Targets</h2>
+                        <span class="section-badge-pink">Daily Prepared Chiller Quotas</span>
+                    </div>
+                </div>
+                <div class="directory-card">
+                    <div class="table-container">
+                        <table class="cust-table">
+                            <thead>
+                                <tr>
+                                    <th>Preset Item Name</th>
+                                    <th>Cup Size</th>
+                                    <th>Prepared Batch</th>
+                                    <th>Cups Sold</th>
+                                    <th>Sell-Out Progress</th>
+                                    <th>Revenue Contribution</th>
+                                </tr>
+                            </thead>
+                            <tbody id="presetsTableBody">
+                                <tr>
+                                    <td colspan="6" class="loading-state-text">Loading preset target quotas...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="tx-pagination-bar" id="presetPaginationBar">
+                        <span class="tx-page-info" id="presetPageInfo">Showing 0 of 0 presets</span>
+                        <div class="tx-pager-buttons">
+                            <button type="button" class="pager-btn" id="prevPresetBtn" title="Previous Page" disabled>
+                                <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
+                            <div class="pager-numbers" id="presetPagerNumbers">
+                                <button type="button" class="pager-num-btn active" disabled>1</button>
+                            </div>
+                            <button type="button" class="pager-btn" id="nextPresetBtn" title="Next Page" disabled>
+                                <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Screen View: Product Performance -->
+            <section class="section">
+                <div class="section-head-bar">
+                    <div class="title-with-subtitle">
+                        <h2 class="section-title">Product Performance (SKU Rankings)</h2>
+                        <span class="section-badge-pink">Best Selling Catalog Items</span>
+                    </div>
+                </div>
+                <div class="directory-card">
+                    <div class="table-container">
+                        <table class="cust-table">
+                            <thead>
+                                <tr>
+                                    <th>Product SKU &amp; Name</th>
+                                    <th>Units Sold</th>
+                                    <th>Revenue Generated</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productsTableBody">
+                                <tr>
+                                    <td colspan="3" class="loading-state-text">Loading product rankings...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="tx-pagination-bar" id="reportPaginationBar">
+                        <span class="tx-page-info" id="reportPageInfo">Showing 0 of 0 products</span>
+                        <div class="tx-pager-buttons">
+                            <button type="button" class="pager-btn" id="prevReportBtn" title="Previous Page" disabled>
+                                <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
+                            <div class="pager-numbers" id="reportPagerNumbers">
+                                <button type="button" class="pager-num-btn active" disabled>1</button>
+                            </div>
+                            <button type="button" class="pager-btn" id="nextReportBtn" title="Next Page" disabled>
+                                <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- PURE EXECUTIVE CORPORATE REPORT TEMPLATE (PDF EXPORT ENGINE ONLY) -->
+    <div id="corporatePdfRenderWrapper" class="corporate-pdf-render-area" style="display: none;">
+        <div class="corp-doc-page">
+            <!-- Corporate Header -->
+            <div class="corp-header-block">
+                <div class="corp-brand-left">
+                    <img src="/customer/images/logo.png" alt="Milky Marble" class="corp-doc-logo" />
+                    <div>
+                        <h2 class="corp-company-name">MILKY MARBLE ENTERPRISE</h2>
+                        <span class="corp-company-sub">Commercial Sales &amp; Revenue Operations Division</span>
+                    </div>
+                </div>
+                <div class="corp-meta-right">
+                    <div class="corp-doc-code">DOC: MM-SLS-2026</div>
+                    <div class="corp-doc-date" id="pdfMetaDate">Date: ---</div>
+                    <div class="corp-doc-period" id="pdfMetaPeriod">Period: ---</div>
+                </div>
+            </div>
+
+            <div class="corp-doc-divider"></div>
+            <h1 class="corp-doc-title">EXECUTIVE SALES PERFORMANCE &amp; AUDIT REPORT</h1>
+
+            <!-- 1. Executive Performance & Quota Summary -->
+            <div class="corp-section-wrap">
+                <h3 class="corp-section-title">1. FINANCIAL HIGHLIGHTS &amp; TARGET ATTAINMENT</h3>
+                <table class="corp-data-table">
+                    <thead>
+                        <tr>
+                            <th>Commercial Metric</th>
+                            <th>Target Baseline</th>
+                            <th>Actual Revenue Collected</th>
+                            <th>Attainment Rate</th>
+                            <th>Operational Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdfKpiTableBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 2. Revenue Inflow by Channel & DSO Compliance -->
+            <div class="corp-section-wrap">
+                <h3 class="corp-section-title">2. CHANNEL ALLOCATION &amp; RECEIVABLES CYCLE (DSO)</h3>
+                <div class="corp-two-col-grid">
+                    <table class="corp-data-table">
+                        <thead>
+                            <tr>
+                                <th>Sales Channel</th>
+                                <th>Inflow Amount</th>
+                                <th>Share of Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pdfChannelTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+
+                    <div class="corp-dso-summary-box">
+                        <div class="corp-dso-head">Days Sales Outstanding (DSO) Efficiency</div>
+                        <div class="corp-dso-number">45 DAYS</div>
+                        <div class="corp-dso-desc">
+                            <strong>Compliance Status: TARGET MET.</strong> Inflow cycle adheres to the standardized 45-day commercial collection window for accounts receivable and counter settlements.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Walk-in Preset Batch Attainment -->
+            <div class="corp-section-wrap">
+                <h3 class="corp-section-title">3. CHILLER PRESET PRODUCTION &amp; SELL-OUT AUDIT</h3>
+                <table class="corp-data-table">
+                    <thead>
+                        <tr>
+                            <th>Preset Item Description</th>
+                            <th>Size</th>
+                            <th>Prepared Batch</th>
+                            <th>Cups Sold</th>
+                            <th>Sell-Out %</th>
+                            <th>Revenue (PHP)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdfPresetTableBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 4. Best Selling Catalog Ranking -->
+            <div class="corp-section-wrap">
+                <h3 class="corp-section-title">4. PRODUCT CATALOG SALES RANKING</h3>
+                <table class="corp-data-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Product Description</th>
+                            <th>SKU Identifier</th>
+                            <th>Units Sold</th>
+                            <th>Total Revenue Contribution</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdfRankingTableBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Signatures / Corporate Sign-off Block -->
+            <div class="corp-signoff-row">
+                <div class="corp-sig-box">
+                    <div class="corp-sig-line"></div>
+                    <span class="corp-sig-name" id="pdfSignOfficer">Employee</span>
+                    <span class="corp-sig-role">Sales Officer — Reporting Agent</span>
+                </div>
+                <div class="corp-sig-box">
+                    <div class="corp-sig-line"></div>
+                    <span class="corp-sig-name">Financial Officer / CEO</span>
+                    <span class="corp-sig-role">Executive Review &amp; Settlement Acceptance</span>
+                </div>
+            </div>
+
+            <div class="corp-doc-footer-note">
+                Milky Marble Enterprise ERP System • Confidential Commercial Report • Generated for official operational audit purposes.
+            </div>
+        </div>
+    </div>
+
+    <script src="js/salesCommon.js"></script>
+    <script src="js/salesReports&Records.js"></script>
+    <script src="/shared/js/avatarUpload.js"></script>
+</body>
+</html>
