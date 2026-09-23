@@ -624,74 +624,84 @@ window.applyPromo = async function() {
 let guestGoogleReady = false;
 let guestGoogleInitialized = false;
 let guestGoogleButtonRendered = false;
+let guestGoogleRetryTimer = null;
 
-function initGuestGoogleSignIn(retriesLeft = 40) {
-  if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-    // Only call initialize() once — calling it repeatedly every time the
-    // modal is opened is wasteful and can reset GSI's internal state.
-    if (!guestGoogleInitialized) {
-      google.accounts.id.initialize({
-        client_id: "1077352091553-6d77b0rtu3km8r1har7ra3lsmbf5en35.apps.googleusercontent.com",
-        callback: handleGuestGoogleCredentialResponse,
-        auto_select: false
-      });
-      guestGoogleInitialized = true;
-    }
-
-    const hiddenDiv = document.getElementById('guestGoogleButtonHidden');
-    let hasBtn = hiddenDiv && hiddenDiv.querySelector('div[role="button"]');
-
-    if (hiddenDiv && !hasBtn && !guestGoogleButtonRendered) {
-      google.accounts.id.renderButton(hiddenDiv, {
-        type: 'standard',
-        shape: 'rectangular',
-        theme: 'outline',
-        text: 'signin_with',
-        size: 'large'
-      });
-      guestGoogleButtonRendered = true;
-      hasBtn = hiddenDiv.querySelector('div[role="button"]');
-    }
-
-    // renderButton() can occasionally take an extra tick (or fail silently
-    // if the container had no real dimensions) to actually insert the real
-    // button. Only flip guestGoogleReady once the button truly exists —
-    // this is what previously caused "still loading" to show up forever
-    // even though the library itself had already loaded.
-    if (hasBtn) {
-      guestGoogleReady = true;
-    } else if (retriesLeft > 0) {
-      guestGoogleButtonRendered = false;
-      setTimeout(() => initGuestGoogleSignIn(retriesLeft - 1), 250);
-    } else {
-      console.error('Google Sign-In button failed to render after waiting.');
-    }
-    return;
-  }
-
-  if (retriesLeft > 0) {
-    setTimeout(() => initGuestGoogleSignIn(retriesLeft - 1), 250);
-  } else {
-    console.error('Google Identity Services failed to load after waiting.');
-  }
+function setGuestGoogleLoadingMessage(message, visible = true) {
+  const loadingMsg = document.getElementById('guestGoogleLoadingMsg');
+  if (!loadingMsg) return;
+  loadingMsg.textContent = message;
+  loadingMsg.style.display = visible ? 'block' : 'none';
 }
 
-// Clicking the visible, styled "Continue with Google" button triggers the
-// real (hidden) GSI button underneath it, same pattern as the login page.
-window.triggerGuestGoogleLogin = function() {
-  const hiddenDiv = document.getElementById('guestGoogleButtonHidden');
-  const hiddenBtn = hiddenDiv && hiddenDiv.querySelector('div[role="button"]');
-  if (guestGoogleReady && hiddenBtn) {
-    hiddenBtn.click();
-  } else {
-    showSweetAlert({
-      icon: 'info',
-      title: 'Google Sign-In Unavailable',
-      text: 'Google Sign-In is still loading. Please wait a moment and try again.',
-      confirmButtonText: 'OK',
-      showCancelButton: false
-    });
+// Render Google's real button in a visible container. The old implementation
+// rendered it off-screen and forwarded clicks from a custom button, which made
+// readiness depend on a hidden element being created at exactly the right time.
+window.initGuestGoogleSignIn = function initGuestGoogleSignIn(retriesLeft = 40) {
+  const container = document.getElementById('guestGoogleButton');
+  if (!container) return false;
+
+  const existingButton = container.querySelector('div[role="button"]');
+  if (existingButton) {
+    guestGoogleReady = true;
+    setGuestGoogleLoadingMessage('', false);
+    return true;
   }
+
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+    setGuestGoogleLoadingMessage('Loading Google Sign-In...');
+    if (retriesLeft > 0 && !guestGoogleRetryTimer) {
+      guestGoogleRetryTimer = setTimeout(() => {
+        guestGoogleRetryTimer = null;
+        window.initGuestGoogleSignIn(retriesLeft - 1);
+      }, 250);
+    } else if (retriesLeft <= 0) {
+      setGuestGoogleLoadingMessage('Google Sign-In could not load. Please refresh and try again.');
+      console.error('Google Identity Services failed to load after waiting.');
+    }
+    return false;
+  }
+
+  // Only initialize once. Calling initialize() again can reset GSI's internal
+  // state and make the rendered button disappear while the modal is open.
+  if (!guestGoogleInitialized) {
+    google.accounts.id.initialize({
+      client_id: "1077352091553-6d77b0rtu3km8r1har7ra3lsmbf5en35.apps.googleusercontent.com",
+      callback: handleGuestGoogleCredentialResponse,
+      auto_select: false
+    });
+    guestGoogleInitialized = true;
+  }
+
+  if (!guestGoogleButtonRendered) {
+    setGuestGoogleLoadingMessage('Loading Google Sign-In...');
+    google.accounts.id.renderButton(container, {
+      type: 'standard',
+      shape: 'rectangular',
+      theme: 'outline',
+      text: 'continue_with',
+      size: 'large',
+      width: Math.min(container.clientWidth || 320, 400)
+    });
+    guestGoogleButtonRendered = true;
+  }
+
+  const renderedButton = container.querySelector('div[role="button"]');
+  if (renderedButton) {
+    guestGoogleReady = true;
+    setGuestGoogleLoadingMessage('', false);
+    return true;
+  }
+
+  if (retriesLeft > 0 && !guestGoogleRetryTimer) {
+    guestGoogleRetryTimer = setTimeout(() => {
+      guestGoogleRetryTimer = null;
+      window.initGuestGoogleSignIn(retriesLeft - 1);
+    }, 250);
+  } else if (retriesLeft <= 0) {
+    setGuestGoogleLoadingMessage('Google Sign-In could not load. Please refresh and try again.');
+    console.error('Google Sign-In button failed to render after waiting.');
+  }
+  return false;
 };
 
 async function handleGuestGoogleCredentialResponse(response) {
@@ -766,7 +776,7 @@ window.openRecipientModal = function() {
     modal.classList.add('active');
   }
 
-  initGuestGoogleSignIn();
+  window.initGuestGoogleSignIn();
 };
 
 window.closeRecipientModal = function(event) {
@@ -1187,3 +1197,10 @@ window.confirmPlaceOrder = async function() {
     }
   }
 };
+
+// Start loading before the recipient modal is opened. The SDK is async, so
+// this keeps retrying until either the script's onload handler or the retry
+// loop can initialize the visible button.
+document.addEventListener('DOMContentLoaded', () => {
+  window.initGuestGoogleSignIn();
+});
