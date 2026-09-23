@@ -153,6 +153,8 @@ function resolveOrderSummaryAssets(title, flavor, variation, size, toppingsList)
 function showSweetAlert(options) {
   if (typeof Swal === 'undefined') return Promise.resolve({ isConfirmed: false });
 
+  const userDidOpen = options && options.didOpen;
+
   return Swal.fire({
     target: document.body,
     customClass: {
@@ -169,7 +171,17 @@ function showSweetAlert(options) {
     // never by clicking the backdrop or pressing ESC.
     allowOutsideClick: false,
     allowEscapeKey: false,
-    ...options
+    ...options,
+    didOpen: (popup) => {
+      // Force this alert above every modal in the app (Order Summary is
+      // z-index 9000, Recipient Details is 10000) regardless of whatever
+      // z-index .mm-swal-container-top ends up with in the stylesheet.
+      // SweetAlert2's own default z-index (1060) is otherwise far lower
+      // than both, so the alert renders — but stays hidden underneath them.
+      const container = popup.closest('.swal2-container');
+      if (container) container.style.zIndex = '20000';
+      if (typeof userDidOpen === 'function') userDidOpen(popup);
+    }
   });
 }
 
