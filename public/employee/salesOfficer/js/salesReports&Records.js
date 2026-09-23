@@ -105,7 +105,7 @@ async function fetchAllReportData() {
             if (userAvatarEl && user.avatarSrc) userAvatarEl.src = user.avatarSrc;
         }
 
-        // Section 1: Target Gauges & DSO 45 Days
+        // Section 1: Target Gauges & DSO
         if (targetData.metrics) {
             currentTargetMetrics = targetData.metrics;
             populateTargetGauges(targetData.metrics);
@@ -131,7 +131,7 @@ async function fetchAllReportData() {
 
         const dateSub = document.getElementById('reportGeneratedDate');
         if (dateSub) {
-            dateSub.textContent = `Generated on ${new Date().toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' })} • Standard 45-Day DSO Window`;
+            dateSub.textContent = `Generated on ${new Date().toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' })}`;
         }
 
     } catch (error) {
@@ -163,8 +163,13 @@ function populateTargetGauges(metrics) {
     document.getElementById('fulfilledCountDisplay').textContent = `${metrics.preordersClaimed || 0} / ${metrics.preordersTotal || 0}`;
     document.getElementById('fulfillmentGaugeFill').style.width = `${Math.min(fulfillmentPct, 100)}%`;
 
+    const dsoDays = Number(metrics.dso || 0);
     const dsoEl = document.getElementById('dsoValueDisplay');
-    if (dsoEl) dsoEl.textContent = '45 Days';
+    const dsoBadge = document.querySelector('.dso-status-badge');
+    const dsoGauge = document.querySelector('.dso-gauge-fill');
+    if (dsoEl) dsoEl.textContent = `${dsoDays} Days`;
+    if (dsoBadge) dsoBadge.textContent = dsoDays > 0 ? 'Configured' : 'Not configured';
+    if (dsoGauge) dsoGauge.style.width = dsoDays > 0 ? '100%' : '0%';
 }
 
 function applyPresetFilters() {
@@ -233,7 +238,7 @@ function renderPresetsTable() {
         return `
             <tr>
                 <td><div class="preset-name-bold">${escapeHtml(p.name)}</div></td>
-                <td><div class="preset-spec-sub">${escapeHtml(p.cup_size || '8oz / 12oz')}</div></td>
+                <td><div class="preset-spec-sub">${escapeHtml(p.cup_size || '')}</div></td>
                 <td><strong>${p.prepared_batch != null ? p.prepared_batch + ' cups' : '—'}</strong></td>
                 <td><strong style="color: var(--brown-soft);">${p.cups_sold} sold</strong></td>
                 <td>
@@ -340,7 +345,7 @@ function renderPaginatedProductRankings() {
                         <span class="rank-badge top">#${absoluteIndex}</span>
                         <div>
                             <div class="prod-title">${escapeHtml(prod.name)}</div>
-                            <div class="prod-sku">SKU: ${escapeHtml(prod.sku || 'N/A')}</div>
+                            <div class="prod-sku">SKU: ${escapeHtml(prod.sku || '')}</div>
                         </div>
                     </div>
                 </td>
@@ -400,7 +405,7 @@ async function exportReportToPDF() {
     const renderWrapper = document.getElementById('corporatePdfRenderWrapper');
     if (!renderWrapper) return;
 
-    SalesCommon.alert('Compiling Executive Audit Report', 'Formatting official commercial tables, DSO 45 metrics, and sign-off sheets into formal corporate PDF...', 'info');
+    SalesCommon.alert('Compiling Executive Audit Report', 'Formatting official commercial tables, DSO metrics, and sign-off sheets into formal corporate PDF...', 'info');
 
     const periodFilter = document.getElementById('reportDateFilter');
     const selectedPeriodText = periodFilter ? periodFilter.options[periodFilter.selectedIndex].text : 'Current Month';
@@ -455,12 +460,22 @@ async function exportReportToPDF() {
         </tr>
         <tr>
             <td><strong>Average Order Value (AOV)</strong></td>
-            <td>₱25.00 Baseline</td>
+            <td>—</td>
             <td>₱${Number(aov).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
             <td>—</td>
             <td>Standard Basket Size</td>
         </tr>
     `;
+
+    const dsoDays = Number(currentTargetMetrics?.dso || currentReportMetrics?.dso || 0);
+    const pdfDsoNumber = document.getElementById('pdfDsoNumber');
+    const pdfDsoDescription = document.getElementById('pdfDsoDescription');
+    if (pdfDsoNumber) pdfDsoNumber.textContent = `${dsoDays} DAYS`;
+    if (pdfDsoDescription) {
+        pdfDsoDescription.textContent = dsoDays > 0
+            ? 'Configured DSO target for receivables and counter settlements.'
+            : 'No DSO target configured.';
+    }
 
     // 3. Section 2 Table: Channel Breakdown
     const preorderRev = currentTargetMetrics?.dailyPreorderRev || 0;
@@ -490,7 +505,7 @@ async function exportReportToPDF() {
             return `
                 <tr>
                     <td><strong>${escapeHtml(p.name)}</strong></td>
-                    <td>${escapeHtml(p.cup_size || '8oz / 12oz')}</td>
+                    <td>${escapeHtml(p.cup_size || '')}</td>
                     <td>${p.prepared_batch != null ? p.prepared_batch : '—'}</td>
                     <td>${p.cups_sold}</td>
                     <td>${pct}%</td>
@@ -508,7 +523,7 @@ async function exportReportToPDF() {
             <tr>
                 <td>#${idx + 1}</td>
                 <td><strong>${escapeHtml(prod.name)}</strong></td>
-                <td>${escapeHtml(prod.sku || 'N/A')}</td>
+                <td>${escapeHtml(prod.sku || '')}</td>
                 <td>${Number(prod.units_sold || 0).toLocaleString()}</td>
                 <td>₱${Number(prod.revenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
             </tr>

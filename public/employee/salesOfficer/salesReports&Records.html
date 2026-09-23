@@ -122,7 +122,7 @@
                 </div>
             </div>
 
-            <!-- Screen View: Target Gauges & DSO 45 Days -->
+            <!-- Screen View: Target Gauges & DSO -->
             <section class="section">
                 <h2 class="section-title">Revenue Quotas &amp; Collection Efficiency</h2>
                 <div class="overview-grid four-col-grid">
@@ -186,18 +186,18 @@
                     <div class="target-card dso-card">
                         <div class="target-card-top">
                             <span class="period-pill">Receivables Cycle</span>
-                            <span class="pct-badge dso-status-badge">Target Met</span>
+                    <span class="pct-badge dso-status-badge">Not configured</span>
                         </div>
                         <div class="target-revenue-row">
                             <div>
-                                <div class="current-rev" id="dsoValueDisplay">45 Days</div>
+                                <div class="current-rev" id="dsoValueDisplay">0 Days</div>
                                 <div class="quota-sub">Days Sales Outstanding (DSO)</div>
                             </div>
                         </div>
                         <div class="gauge-bar-track">
-                            <div class="gauge-bar-fill dso-gauge-fill" style="width: 100%;"></div>
+                            <div class="gauge-bar-fill dso-gauge-fill" style="width: 0%;"></div>
                         </div>
-                        <div class="target-footer">Standard 45-day commercial collection window</div>
+                        <div class="target-footer">No DSO target configured</div>
                     </div>
                 </div>
             </section>
@@ -373,9 +373,9 @@
 
                     <div class="corp-dso-summary-box">
                         <div class="corp-dso-head">Days Sales Outstanding (DSO) Efficiency</div>
-                        <div class="corp-dso-number">45 DAYS</div>
-                        <div class="corp-dso-desc">
-                            <strong>Compliance Status: TARGET MET.</strong> Inflow cycle adheres to the standardized 45-day commercial collection window for accounts receivable and counter settlements.
+                        <div class="corp-dso-number" id="pdfDsoNumber">0 DAYS</div>
+                        <div class="corp-dso-desc" id="pdfDsoDescription">
+                            No DSO target configured.
                         </div>
                     </div>
                 </div>

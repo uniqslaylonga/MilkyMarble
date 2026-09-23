@@ -182,10 +182,10 @@ function renderPaginatedOrders() {
                     </div>
                 </td>
                 <td>
-                    <div class="items-summary-text">${escapeHtml(ord.items_summary || 'Custom drink order')}</div>
+                    <div class="items-summary-text">${escapeHtml(ord.items_summary || '')}</div>
                 </td>
                 <td>
-                    <span class="payment-method-pill">${escapeHtml(ord.payment_method || 'Cash on Pick-Up')}</span>
+                    <span class="payment-method-pill">${escapeHtml(ord.payment_method || '')}</span>
                 </td>
                 <td>
                     <span class="order-total-val">₱${amount}</span>

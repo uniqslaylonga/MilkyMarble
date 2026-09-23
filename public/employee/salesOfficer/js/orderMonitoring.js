@@ -195,7 +195,7 @@ function renderPaginatedMonitoringCards() {
                 </div>
 
                 <div class="card-details-box">
-                    ${escapeHtml(ord.items_summary || 'Custom drink order')}
+                    ${escapeHtml(ord.items_summary || '')}
                 </div>
 
                 <div class="card-bottom">

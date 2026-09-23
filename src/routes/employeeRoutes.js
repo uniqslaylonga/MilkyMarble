@@ -187,6 +187,41 @@ function noDb(res) {
   return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
 }
 
+async function getNumericSystemSetting(settingKey, fallback = 0) {
+  if (!supabase) return fallback;
+
+  try {
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', settingKey)
+      .maybeSingle();
+
+    if (error) return fallback;
+    const value = Number.parseFloat(data?.setting_value);
+    return Number.isFinite(value) ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+async function getConfiguredDsoDays() {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('sales_targets')
+        .select('target_amount')
+        .eq('period', 'dso')
+        .maybeSingle();
+
+      const configured = Number.parseFloat(data?.target_amount);
+      if (!error && Number.isFinite(configured)) return configured;
+    } catch {}
+  }
+
+  return getNumericSystemSetting('dso_days', 0);
+}
+
 function cleanItemLabel(rawLabel, fallback) {
   let cleanTitle = String(rawLabel || '')
     .replace(/\s*\((8oz|12oz)\)/gi, '')
@@ -198,7 +233,7 @@ function cleanItemLabel(rawLabel, fallback) {
 }
 
 // Sales Officer Helpers & Timezone formatting
-const ORDER_REVIEW_STATUSES = ['PENDING', 'PAID_VERIFIED', 'CONFIRMED'];
+const ORDER_REVIEW_STATUSES = ['PENDING', 'PAID_VERIFIED'];
 
 function startOfDaysAgo(days) {
   const d = new Date();
@@ -302,11 +337,11 @@ async function buildSalesDashboard(req, res) {
       id: o.id,
       order_number: o.order_number,
       status: o.status,
-      payment_method: o.payment_method || 'N/A',
+      payment_method: o.payment_method || '',
       total_amount: parseFloat(o.total_amount || 0),
       placed_at: o.placed_at,
       customer_id: o.customer_id,
-      customer_name: (o.customers && o.customers.users && o.customers.users.full_name) || o.guest_name || 'Walk-in Counter'
+        customer_name: (o.customers && o.customers.users && o.customers.users.full_name) || o.guest_name || 'Walk-in Counter'
     }));
 
     const customersForAcq = await fetchAllRows(() =>
@@ -325,11 +360,28 @@ async function buildSalesDashboard(req, res) {
     };
 
     const salesOrders = await fetchAllRows(() =>
-      supabase.from('orders').select('id, total_amount, customer_id').not('status', 'in', NOT_SALES).order('id', { ascending: true }));
+      supabase.from('orders').select('id, total_amount, customer_id, placed_at').not('status', 'in', NOT_SALES).order('id', { ascending: true }));
     let registeredRevenue = 0, guestRevenue = 0;
+    const weeklyRevenue = {
+      threeWeeksAgo: 0,
+      twoWeeksAgo: 0,
+      lastWeek: 0,
+      thisWeek: 0
+    };
+    const nowMs = now.getTime();
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+
     salesOrders.forEach(o => {
       const amt = parseFloat(o.total_amount) || 0;
       if (o.customer_id) registeredRevenue += amt; else guestRevenue += amt;
+
+      const placedMs = new Date(o.placed_at).getTime();
+      if (!Number.isFinite(placedMs)) return;
+      const ageMs = nowMs - placedMs;
+      if (ageMs >= 0 && ageMs < weekMs) weeklyRevenue.thisWeek += amt;
+      else if (ageMs < weekMs * 2) weeklyRevenue.lastWeek += amt;
+      else if (ageMs < weekMs * 3) weeklyRevenue.twoWeeksAgo += amt;
+      else if (ageMs < weekMs * 4) weeklyRevenue.threeWeeksAgo += amt;
     });
     const totalRev = registeredRevenue + guestRevenue;
     const revenueSplit = {
@@ -353,6 +405,7 @@ async function buildSalesDashboard(req, res) {
       recentOrders: formattedRecent,
       newAccounts,
       revenueSplit,
+      weeklyRevenue,
       registerStatus
     });
   } catch (error) {
@@ -362,6 +415,46 @@ async function buildSalesDashboard(req, res) {
 }
 
 router.get('/sales-officer/dashboard', buildSalesDashboard);
+
+// Persist the opening float used by the sales counter's X/Z readings.
+router.post('/sales-officer/open-shift', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+
+    const openingFloat = Number.parseFloat(req.body?.opening_float);
+    if (!Number.isFinite(openingFloat) || openingFloat < 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'opening_float must be a valid non-negative number.'
+      });
+    }
+
+    const { error: floatError } = await supabase
+      .from('system_settings')
+      .upsert({
+        setting_key: 'opening_float',
+        setting_value: String(openingFloat),
+        description: 'Sales counter opening cash float for the current shift'
+      }, { onConflict: 'setting_key' });
+
+    if (floatError) throw floatError;
+
+    const { error: registerError } = await supabase
+      .from('system_settings')
+      .upsert({
+        setting_key: 'register_status',
+        setting_value: 'UNLOCKED',
+        description: 'Sales counter register lock state'
+      }, { onConflict: 'setting_key' });
+
+    if (registerError) throw registerError;
+
+    return res.json({ status: 'success', openingFloat });
+  } catch (error) {
+    console.error('[sales-officer/open-shift] error:', error.message);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
 
 // X-Reading interim endpoint
 router.get('/sales-officer/x-reading', async (req, res) => {
@@ -411,7 +504,7 @@ router.get('/sales-officer/x-reading', async (req, res) => {
       }
     });
 
-    const openingFloat = 1000.00;
+    const openingFloat = await getNumericSystemSetting('opening_float', 0);
     const expectedDrawer = openingFloat + walkinCashTotal;
     const grossTotal = eWalletTotal + walkinCashTotal;
 
@@ -537,8 +630,8 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
         customer_id: o.customer_id,
         guest_name: o.guest_name,
         customer_name: (o.customers && o.customers.users && o.customers.users.full_name) || o.guest_name || 'Walk-in Counter',
-        items_summary: itemLines.length ? itemLines.join(', ') : 'Custom drink order',
-        payment_method: o.payment_method || 'N/A',
+        items_summary: itemLines.length ? itemLines.join(', ') : '',
+        payment_method: o.payment_method || '',
         total_amount: parseFloat(o.total_amount || 0),
         placed_at: o.placed_at
       };
@@ -631,7 +724,7 @@ router.get('/sales-officer/order-monitoring', async (req, res) => {
         guest_name: o.guest_name,
         customer_name: (o.customers && o.customers.users && o.customers.users.full_name) || o.guest_name || 'Walk-in Counter',
         item_count: (o.order_items || []).length || 1,
-        items_summary: lines.length ? lines.join(', ') : 'Custom drink order'
+        items_summary: lines.length ? lines.join(', ') : ''
       };
     });
 
@@ -736,7 +829,7 @@ router.get('/sales-officer/customer-records', async (req, res) => {
       valid.sort((a, b) => new Date(b.placed_at) - new Date(a.placed_at));
       const payCounts = {};
       valid.forEach(o => { if (o.payment_method) payCounts[o.payment_method] = (payCounts[o.payment_method] || 0) + 1; });
-      const preferred = Object.keys(payCounts).sort((a, b) => payCounts[b] - payCounts[a])[0] || 'N/A';
+      const preferred = Object.keys(payCounts).sort((a, b) => payCounts[b] - payCounts[a])[0] || '';
       return {
         preferred_payment: preferred,
         total_orders: valid.length,
@@ -757,9 +850,9 @@ router.get('/sales-officer/customer-records', async (req, res) => {
       return {
         id: c.id,
         type: 'registered',
-        full_name: (userObj && userObj.full_name) || 'Customer',
+        full_name: (userObj && userObj.full_name) || '',
         email: (userObj && userObj.email) || '',
-        phone: c.phone || 'N/A',
+        phone: c.phone || '',
         avatar: resolveAvatar(userObj && userObj.avatar),
         address: null,
         created_at: c.created_at,
@@ -932,7 +1025,7 @@ router.post('/sales-officer/promotions/toggle', async (req, res) => {
   }
 });
 
-// Sales reports & records audit endpoint (Includes 45-day DSO metric)
+// Sales reports & records audit endpoint
 router.get('/sales-officer/sales-reports', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -980,7 +1073,7 @@ router.get('/sales-officer/sales-reports', async (req, res) => {
         grossSales,
         netSales,
         aov,
-        dso: 45
+        dso: await getConfiguredDsoDays()
       },
       productsRank
     });
@@ -990,7 +1083,7 @@ router.get('/sales-officer/sales-reports', async (req, res) => {
   }
 });
 
-// Sales targets & quota metrics endpoint (Includes 45-day DSO metric)
+// Sales targets & quota metrics endpoint
 router.get('/sales-officer/sales-target', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1003,12 +1096,14 @@ router.get('/sales-officer/sales-target', async (req, res) => {
     const historyStart = phDayStartISO(historyStartDate);
     const sinceISO = new Date(Math.min(new Date(monthStart), new Date(historyStart))).toISOString();
 
-    let dailyTarget = 15000, monthlyTarget = 320000;
+    let dailyTarget = 0, monthlyTarget = 0, dso = await getConfiguredDsoDays();
     try {
       const { data: targets } = await supabase.from('sales_targets').select('period, target_amount');
       (targets || []).forEach(t => {
-        if (t.period === 'daily') dailyTarget = parseFloat(t.target_amount) || dailyTarget;
-        if (t.period === 'monthly') monthlyTarget = parseFloat(t.target_amount) || monthlyTarget;
+        const targetAmount = parseFloat(t.target_amount);
+        if (t.period === 'daily' && Number.isFinite(targetAmount)) dailyTarget = targetAmount;
+        if (t.period === 'monthly' && Number.isFinite(targetAmount)) monthlyTarget = targetAmount;
+        if (t.period === 'dso' && Number.isFinite(targetAmount)) dso = targetAmount;
       });
     } catch (e) {}
 
@@ -1094,7 +1189,7 @@ router.get('/sales-officer/sales-target', async (req, res) => {
         monthSales, monthlyTarget, monthlyPct: pct(monthSales, monthlyTarget),
         monthPreorderRev: monthPre, monthWalkinRev: monthWalk,
         preordersClaimed, preordersTotal, fulfillmentPct: pct(preordersClaimed, preordersTotal),
-        dso: 45
+        dso
       },
       presets
     });
@@ -1444,7 +1539,7 @@ async function computeDrawerBreakdown(periodStart, periodEnd) {
     else { eWalletTotal += amt; preordersCount++; }
   });
 
-  const openingFloat = 1000.00;
+  const openingFloat = await getNumericSystemSetting('opening_float', 0);
   const expectedDrawer = openingFloat + walkinCashTotal;
   const grossTotal = eWalletTotal + walkinCashTotal;
 
