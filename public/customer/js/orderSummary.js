@@ -617,9 +617,114 @@ window.openRecipientModal = function() {
     emailInput.value = (currentRecipient.email && currentRecipient.email !== 'customer@gmail.com') ? currentRecipient.email : '';
   }
 
+  // Already signed in? No need to offer Google sign-in again here?
+  // just let them edit the manual fields.
+  const googleRow = document.getElementById('recipientGoogleRow');
+  if (googleRow) {
+    const stored = getStoredUser();
+    const alreadySignedIn = !!(stored && (stored.customer_id || stored.user_id));
+    googleRow.style.display = alreadySignedIn ? 'none' : 'block';
+  }
+
   const modal = document.getElementById('recipientEditModal');
   if (modal) modal.classList.add('active');
 };
+
+// ==========================================
+// GOOGLE SIGN-IN FOR GUEST CHECKOUT
+// Mirrors the Google Identity Services flow used on the login page: a
+// hidden real GSI button is rendered off-screen, and our styled button
+// forwards its click to it. On success we hit the same /api/auth/google
+// endpoint, save mm_user, and refresh the checkout as a signed-in customer.
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) return;
+
+  google.accounts.id.initialize({
+    client_id: "1077352091553-6d77b0rtu3km8r1har7ra3lsmbf5en35.apps.googleusercontent.com",
+    callback: handleGuestGoogleCredentialResponse,
+    auto_select: false
+  });
+
+  const hiddenDiv = document.getElementById('googleGuestButtonHidden');
+  if (hiddenDiv) {
+    google.accounts.id.renderButton(hiddenDiv, {
+      type: 'standard',
+      shape: 'rectangular',
+      theme: 'outline',
+      text: 'signin_with',
+      size: 'large'
+    });
+  }
+
+  const btnGoogleGuestLogin = document.getElementById('btnGoogleGuestLogin');
+  if (btnGoogleGuestLogin) {
+    btnGoogleGuestLogin.addEventListener('click', () => {
+      const hidden = document.getElementById('googleGuestButtonHidden');
+      const hiddenBtn = hidden && hidden.querySelector('div[role="button"]');
+      if (hiddenBtn) {
+        hiddenBtn.click();
+      } else {
+        showSweetAlert({
+          title: 'Google Sign-In Unavailable',
+          text: 'Google Sign-In is still loading. Please wait a moment and try again.',
+          icon: 'info',
+          confirmButtonText: 'OK',
+          showCancelButton: false
+        });
+      }
+    });
+  }
+});
+
+async function handleGuestGoogleCredentialResponse(response) {
+  if (!response || !response.credential) return;
+
+  try {
+    const res = await fetch('/api/auth/google', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential: response.credential })
+    });
+
+    const data = await res.json();
+    if (!res.ok || data.status !== 'success') {
+      throw new Error(data.message || 'Google sign-in failed.');
+    }
+
+    localStorage.setItem('mm_user', JSON.stringify(data.user));
+
+    currentRecipient.name = data.user.full_name || data.user.username || '';
+    currentRecipient.email = data.user.email || '';
+
+    closeRecipientModal();
+
+    // Refresh the whole checkout so it now reflects a signed-in customer
+    // (loyalty points section, saved payment method, etc.) instead of guest.
+    if (typeof window.renderOrderSummaryModal === 'function') {
+      await window.renderOrderSummaryModal(currentOrderSummaryItems);
+    } else {
+      renderRecipientDetails();
+    }
+
+    showSweetAlert({
+      title: 'Signed In!',
+      text: `Welcome, ${currentRecipient.name || 'friend'}! Your details have been filled in automatically.`,
+      icon: 'success',
+      confirmButtonText: 'Sweet',
+      showCancelButton: false
+    });
+  } catch (err) {
+    showSweetAlert({
+      title: 'Google Sign-In Error',
+      text: err.message,
+      icon: 'error',
+      confirmButtonText: 'OK',
+      showCancelButton: false
+    });
+  }
+}
 
 window.closeRecipientModal = function(event) {
   if (event && event.target) return;
