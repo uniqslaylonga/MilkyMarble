@@ -507,6 +507,25 @@ router.post('/sales-officer/z-reading', async (req, res) => {
   }
 });
 
+// Expected cash in drawer = opening float + today's cash sales (same logic as x-reading)
+async function getExpectedDrawer() {
+  const todayStart = phDayStartISO(phDate(new Date()));
+
+  const { data: todayOrders, error } = await supabase
+    .from('orders')
+    .select('total_amount, payment_method')
+    .gte('placed_at', todayStart)
+    .not('status', 'in', NOT_SALES);
+  if (error) throw error;
+
+  const walkinCashTotal = (todayOrders || [])
+    .filter(o => String(o.payment_method || '').toLowerCase().includes('cash'))
+    .reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
+
+  const openingFloat = 1000.00; // same fixed float x-reading uses
+  return openingFloat + walkinCashTotal;
+}
+
 // Order confirmation desk
 router.get('/sales-officer/order-confirmation', async (req, res) => {
   try {
@@ -556,13 +575,16 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
       .eq('status', 'CANCELLED')
       .gte('placed_at', todayStart);
 
+    const cashOnHand = await getExpectedDrawer();
+
     return res.json({
       status: 'success',
       user: userProfile,
       metrics: {
         pendingCount: pendingOrders.length,
         confirmedToday: confirmedToday || 0,
-        rejectedCount: rejectedCount || 0
+        rejectedCount: rejectedCount || 0,
+        cashOnHand
       },
       pendingOrders
     });

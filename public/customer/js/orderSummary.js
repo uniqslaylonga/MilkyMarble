@@ -153,8 +153,6 @@ function resolveOrderSummaryAssets(title, flavor, variation, size, toppingsList)
 function showSweetAlert(options) {
   if (typeof Swal === 'undefined') return Promise.resolve({ isConfirmed: false });
 
-  const userDidOpen = options && options.didOpen;
-
   return Swal.fire({
     target: document.body,
     customClass: {
@@ -171,17 +169,7 @@ function showSweetAlert(options) {
     // never by clicking the backdrop or pressing ESC.
     allowOutsideClick: false,
     allowEscapeKey: false,
-    ...options,
-    didOpen: (popup) => {
-      // Force this alert above every modal in the app (Order Summary is
-      // z-index 9000, Recipient Details is 10000) regardless of whatever
-      // z-index .mm-swal-container-top ends up with in the stylesheet.
-      // SweetAlert2's own default z-index (1060) is otherwise far lower
-      // than both, so the alert renders — but stays hidden underneath them.
-      const container = popup.closest('.swal2-container');
-      if (container) container.style.zIndex = '20000';
-      if (typeof userDidOpen === 'function') userDidOpen(popup);
-    }
+    ...options
   });
 }
 
@@ -615,175 +603,74 @@ window.applyPromo = async function() {
   }
 };
 
-// ==========================================
-// GUEST CHECKOUT — GOOGLE SIGN-IN
-// ==========================================
-// Guests no longer type in a Full Name / Email form. Instead, the Recipient
-// Details modal asks them to sign in with Gmail, and we pull the name/email
-// straight from their Google account.
-let guestGoogleReady = false;
-let guestGoogleInitialized = false;
-let guestGoogleButtonRendered = false;
-let guestGoogleRetryTimer = null;
-
-function setGuestGoogleLoadingMessage(message, visible = true) {
-  const loadingMsg = document.getElementById('guestGoogleLoadingMsg');
-  if (!loadingMsg) return;
-  loadingMsg.textContent = message;
-  loadingMsg.style.display = visible ? 'block' : 'none';
-}
-
-// Render Google's real button in a visible container. The old implementation
-// rendered it off-screen and forwarded clicks from a custom button, which made
-// readiness depend on a hidden element being created at exactly the right time.
-window.initGuestGoogleSignIn = function initGuestGoogleSignIn(retriesLeft = 40) {
-  const container = document.getElementById('guestGoogleButton');
-  if (!container) return false;
-
-  const existingButton = container.querySelector('div[role="button"]');
-  if (existingButton) {
-    guestGoogleReady = true;
-    setGuestGoogleLoadingMessage('', false);
-    return true;
-  }
-
-  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
-    setGuestGoogleLoadingMessage('Loading Google Sign-In...');
-    if (retriesLeft > 0 && !guestGoogleRetryTimer) {
-      guestGoogleRetryTimer = setTimeout(() => {
-        guestGoogleRetryTimer = null;
-        window.initGuestGoogleSignIn(retriesLeft - 1);
-      }, 250);
-    } else if (retriesLeft <= 0) {
-      setGuestGoogleLoadingMessage('Google Sign-In could not load. Please refresh and try again.');
-      console.error('Google Identity Services failed to load after waiting.');
-    }
-    return false;
-  }
-
-  // Only initialize once. Calling initialize() again can reset GSI's internal
-  // state and make the rendered button disappear while the modal is open.
-  if (!guestGoogleInitialized) {
-    google.accounts.id.initialize({
-      client_id: "1077352091553-6d77b0rtu3km8r1har7ra3lsmbf5en35.apps.googleusercontent.com",
-      callback: handleGuestGoogleCredentialResponse,
-      auto_select: false
-    });
-    guestGoogleInitialized = true;
-  }
-
-  if (!guestGoogleButtonRendered) {
-    setGuestGoogleLoadingMessage('Loading Google Sign-In...');
-    google.accounts.id.renderButton(container, {
-      type: 'standard',
-      shape: 'rectangular',
-      theme: 'outline',
-      text: 'continue_with',
-      size: 'large',
-      width: Math.min(container.clientWidth || 320, 400)
-    });
-    guestGoogleButtonRendered = true;
-  }
-
-  const renderedButton = container.querySelector('div[role="button"]');
-  if (renderedButton) {
-    guestGoogleReady = true;
-    setGuestGoogleLoadingMessage('', false);
-    return true;
-  }
-
-  if (retriesLeft > 0 && !guestGoogleRetryTimer) {
-    guestGoogleRetryTimer = setTimeout(() => {
-      guestGoogleRetryTimer = null;
-      window.initGuestGoogleSignIn(retriesLeft - 1);
-    }, 250);
-  } else if (retriesLeft <= 0) {
-    setGuestGoogleLoadingMessage('Google Sign-In could not load. Please refresh and try again.');
-    console.error('Google Sign-In button failed to render after waiting.');
-  }
-  return false;
-};
-
-async function handleGuestGoogleCredentialResponse(response) {
-  if (!response || !response.credential) return;
-
-  const btn = document.getElementById('btnGuestGoogleLogin');
-  const originalBtnHtml = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerText = 'Signing in...';
-  }
-
-  try {
-    const res = await fetch('/api/auth/google', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ credential: response.credential })
-    });
-
-    const data = await res.json();
-    if (!res.ok || data.status !== 'success') {
-      throw new Error(data.message || 'Google sign-in failed.');
-    }
-
-    const userRecord = data.user || {};
-    const fullName = userRecord.full_name || userRecord.username || '';
-    const email = userRecord.email || '';
-
-    try {
-      localStorage.setItem('mm_user', JSON.stringify(userRecord));
-    } catch (e) {
-      console.warn('Unable to persist mm_user:', e);
-    }
-
-    if (fullName) currentRecipient.name = String(fullName).trim();
-    if (email) currentRecipient.email = String(email).trim();
-
-    renderRecipientDetails();
-    closeRecipientModal();
-
-    // Refresh the order summary now that the guest is signed in, so loyalty
-    // points and account-based pricing kick in without losing the cart items.
-    if (typeof window.renderOrderSummaryModal === 'function') {
-      await window.renderOrderSummaryModal(currentOrderSummaryItems);
-    }
-  } catch (err) {
-    showSweetAlert({
-      icon: 'error',
-      title: 'Google Sign-In Error',
-      text: err.message,
-      confirmButtonText: 'Try Again',
-      showCancelButton: false
-    });
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = originalBtnHtml;
-    }
-  }
-}
-
 window.openRecipientModal = function() {
-  const modal = document.getElementById('recipientEditModal');
-  const summaryModal = document.getElementById('orderSummaryModal');
+  const nameInput = document.getElementById('inputRecipientName');
+  const emailInput = document.getElementById('inputRecipientEmail');
 
-  // Keep the recipient modal above the order summary and the mobile bottom
-  // navigation. The CSS rule uses !important because the summary itself has
-  // a !important z-index for mobile stacking.
-  if (summaryModal) summaryModal.style.setProperty('z-index', '1000001', 'important');
-  if (modal) {
-    modal.style.setProperty('z-index', '1000002', 'important');
-    modal.classList.add('active');
+  if (nameInput) {
+    nameInput.placeholder = 'Valued Customer';
+    nameInput.value = (currentRecipient.name && currentRecipient.name !== 'Valued Customer') ? currentRecipient.name : '';
   }
 
-  window.initGuestGoogleSignIn();
+  if (emailInput) {
+    emailInput.placeholder = 'customer@gmail.com';
+    emailInput.value = (currentRecipient.email && currentRecipient.email !== 'customer@gmail.com') ? currentRecipient.email : '';
+  }
+
+  const modal = document.getElementById('recipientEditModal');
+  if (modal) modal.classList.add('active');
 };
 
 window.closeRecipientModal = function(event) {
   if (event && event.target) return;
   const modal = document.getElementById('recipientEditModal');
   if (modal) modal.classList.remove('active');
+};
+
+window.saveRecipientDetails = function(event) {
+  if (event) event.preventDefault();
+  const nameInput = document.getElementById('inputRecipientName');
+  const emailInput = document.getElementById('inputRecipientEmail');
+
+  const nameVal = nameInput ? nameInput.value.trim() : '';
+  const emailVal = emailInput ? emailInput.value.trim() : '';
+
+  if (!nameVal || !emailVal) {
+    showSweetAlert({
+      icon: 'warning',
+      title: 'Incomplete Details',
+      text: 'Please enter both your full name and email address.',
+      confirmButtonText: 'Got It',
+      showCancelButton: false
+    });
+    return;
+  }
+
+  if (!emailVal.includes('@') || !emailVal.includes('.')) {
+    showSweetAlert({
+      icon: 'warning',
+      title: 'Invalid Email',
+      text: 'Please enter a valid email address.',
+      confirmButtonText: 'Got It',
+      showCancelButton: false
+    });
+    return;
+  }
+
+  currentRecipient.name = nameVal;
+  currentRecipient.email = emailVal;
+
+  const localUser = getStoredUser();
+  localUser.full_name = nameVal;
+  localUser.email = emailVal;
+  try {
+    localStorage.setItem('mm_user', JSON.stringify(localUser));
+  } catch (e) {
+    console.warn('Unable to persist mm_user:', e);
+  }
+
+  renderRecipientDetails();
+  closeRecipientModal();
 };
 
 function buildReceiptDOM(order) {
@@ -910,9 +797,9 @@ window.confirmPlaceOrder = async function() {
   if (!cleanName || !cleanEmail || cleanName === 'Valued Customer' || cleanEmail === 'customer@gmail.com') {
     showSweetAlert({
       icon: 'warning',
-      title: 'Sign In Required',
-      text: 'Please sign in with Gmail so we know who is picking up these sweet sips!',
-      confirmButtonText: 'Sign In',
+      title: 'Missing Recipient Details',
+      text: 'Please provide your Full Name and Email Address so we know who is picking up these sweet sips!',
+      confirmButtonText: 'Add Details',
       showCancelButton: false,
       focusConfirm: false
     }).then(() => {
@@ -925,8 +812,8 @@ window.confirmPlaceOrder = async function() {
     showSweetAlert({
       icon: 'warning',
       title: 'Invalid Email',
-      text: 'We could not read a valid email from your Google account. Please try signing in again.',
-      confirmButtonText: 'Sign In Again',
+      text: 'Please enter a valid email address for your order updates.',
+      confirmButtonText: 'Edit Email',
       showCancelButton: false,
       focusConfirm: false
     }).then(() => {
@@ -1198,10 +1085,3 @@ window.confirmPlaceOrder = async function() {
     }
   }
 };
-
-// Start loading before the recipient modal is opened. The SDK is async, so
-// this keeps retrying until either the script's onload handler or the retry
-// loop can initialize the visible button.
-document.addEventListener('DOMContentLoaded', () => {
-  window.initGuestGoogleSignIn();
-});

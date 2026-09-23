@@ -203,7 +203,7 @@ async function loadPageData() {
 
         // Transactions and Weekly Inflow DSS
         allFetchedOrders = data.recentOrders || [];
-        updateWeeklyInflowAndDSS(data.weeklyRevenue);
+        updateWeeklyInflowAndDSS();
         applyTransactionFilters();
 
     } catch (error) {
@@ -214,7 +214,7 @@ async function loadPageData() {
 }
 
 // Compute Weekly Revenue Inflow and Trigger DSS Alert
-function updateWeeklyInflowAndDSS(serverWeeklyRevenue) {
+function updateWeeklyInflowAndDSS() {
     const now = new Date();
     const dayMs = 24 * 60 * 60 * 1000;
     const week1Start = new Date(now.getTime() - 7 * dayMs);
@@ -227,21 +227,14 @@ function updateWeeklyInflowAndDSS(serverWeeklyRevenue) {
     let twoWeeksAgo = 0;
     let threeWeeksAgo = 0;
 
-    if (serverWeeklyRevenue) {
-        threeWeeksAgo = Number(serverWeeklyRevenue.threeWeeksAgo || 0);
-        twoWeeksAgo = Number(serverWeeklyRevenue.twoWeeksAgo || 0);
-        lastWeek = Number(serverWeeklyRevenue.lastWeek || 0);
-        thisWeek = Number(serverWeeklyRevenue.thisWeek || 0);
-    } else {
-        allFetchedOrders.forEach(ord => {
-            const placed = new Date(ord.placed_at);
-            const amt = Number(ord.total_amount || 0);
-            if (placed >= week1Start) thisWeek += amt;
-            else if (placed >= week2Start) lastWeek += amt;
-            else if (placed >= week3Start) twoWeeksAgo += amt;
-            else if (placed >= week4Start) threeWeeksAgo += amt;
-        });
-    }
+    allFetchedOrders.forEach(ord => {
+        const placed = new Date(ord.placed_at);
+        const amt = Number(ord.total_amount || 0);
+        if (placed >= week1Start) thisWeek += amt;
+        else if (placed >= week2Start) lastWeek += amt;
+        else if (placed >= week3Start) twoWeeksAgo += amt;
+        else if (placed >= week4Start) threeWeeksAgo += amt;
+    });
 
     const thisWeekEl = document.getElementById('thisWeekRevDisplay');
     const lastWeekEl = document.getElementById('lastWeekRevDisplay');
@@ -609,35 +602,16 @@ function closeOpenShiftModal() {
 }
 
 async function confirmOpenShift() {
-    const floatAmount = parseFloat(document.getElementById('openingFloatInput')?.value || 0);
+    const floatAmount = parseFloat(document.getElementById('openingFloatInput')?.value || 1000);
     if (isNaN(floatAmount) || floatAmount < 0) {
         SalesCommon.alert("Invalid Float Amount", "Please enter a valid cash float amount.", "warning");
         return;
     }
-    try {
-        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-        const headers = { 'Content-Type': 'application/json' };
-        if (userId) headers['x-user-id'] = userId;
-
-        const response = await fetch('/api/sales-officer/open-shift', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ opening_float: floatAmount })
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || result.status !== 'success') {
-            throw new Error(result.message || 'Could not open the sales register.');
-        }
-
-        localStorage.setItem('isRegisterLocked', 'false');
-        isRegisterLocked = false;
-        closeOpenShiftModal();
-        checkRegisterLockState();
-        SalesCommon.alert("Shift Started Successfully", `Register is now OPEN with float ₱${floatAmount.toFixed(2)}.`, "success");
-    } catch (error) {
-        console.error('Could not persist opening shift:', error);
-        SalesCommon.alert('Shift Not Opened', error.message || 'Could not open the sales register.', 'warning');
-    }
+    localStorage.setItem('isRegisterLocked', 'false');
+    isRegisterLocked = false;
+    closeOpenShiftModal();
+    checkRegisterLockState();
+    SalesCommon.alert("Shift Started Successfully", `Register is now OPEN with float ₱${floatAmount.toFixed(2)}.`, "success");
 }
 
 async function openXReadingModal() {
@@ -662,11 +636,10 @@ async function openXReadingModal() {
         latestXReading = data;
 
         document.getElementById('xPreOrdersCount').textContent = `${data.preordersCount} Claims`;
-        document.getElementById('xEwalletAmount').textContent = '₱' + Number(data.eWalletTotal || 0).toFixed(2);
+        document.getElementById('xEwalletAmount').textContent = '₱' + (data.digitalSubtotal || 0).toFixed(2);
         document.getElementById('xPresetsCount').textContent = `${data.presetsCount} Presets Sold`;
         document.getElementById('xWalkinCash').textContent = '₱' + (data.walkinCashTotal || 0).toFixed(2);
-        document.getElementById('xOpeningFloatDisplay').textContent = '₱' + Number(data.openingFloat || 0).toFixed(2);
-        document.getElementById('xExpectedDrawer').textContent = '₱' + Number(data.expectedDrawer || 0).toFixed(2);
+        document.getElementById('xExpectedDrawer').textContent = '₱' + (data.expectedDrawer || 0).toFixed(2);
         document.getElementById('xGrossTotal').textContent = '₱' + (data.grossTotal || 0).toFixed(2);
     } catch (error) {
         console.error('Could not load X-Reading data:', error);
@@ -707,9 +680,9 @@ async function openZReadingModal() {
         latestXReading = data;
 
         document.getElementById('zPreOrdersCount').textContent = `${data.preordersCount} Orders`;
-        document.getElementById('zClaimedAmount').textContent = '₱' + Number(data.claimedAmount || 0).toFixed(2);
-        document.getElementById('zEwalletAmount').textContent = '₱' + Number(data.eWalletTotal || 0).toFixed(2);
-        document.getElementById('zUnclaimedAmount').textContent = '₱' + Number(data.unclaimedAmount || 0).toFixed(2);
+        document.getElementById('zClaimedAmount').textContent = '₱' + (data.digitalSubtotal || 0).toFixed(2);
+        document.getElementById('zEwalletAmount').textContent = '₱' + (data.digitalSubtotal || 0).toFixed(2);
+        document.getElementById('zUnclaimedAmount').textContent = '₱0.00';
         document.getElementById('zPresetsCount').textContent = `${data.presetsCount} Cups Sold`;
         document.getElementById('zExpectedCash').textContent = '₱' + (data.expectedDrawer || 0).toFixed(2);
     } catch (error) {
@@ -794,7 +767,7 @@ async function executeLockdown() {
             actual_cash: actualCash,
             expected_cash: expectedCounterCash,
             variance: variance,
-            notes: `Z-Reading | Digital: ₱${Number(latestXReading?.eWalletTotal ?? 0).toFixed(2)} | Cash: ₱${Number(latestXReading?.walkinCashTotal ?? 0).toFixed(2)}`
+            notes: `Z-Reading | Digital: ₱${(latestXReading?.digitalSubtotal ?? 0).toFixed(2)} | Cash: ₱${(latestXReading?.walkinCashTotal ?? 0).toFixed(2)}`
         };
 
         const response = await fetch('/api/sales-officer/z-reading', {

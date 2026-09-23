@@ -20,12 +20,6 @@
 
   <!-- External Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script
-    src="https://accounts.google.com/gsi/client"
-    async
-    defer
-    onload="window.mmGoogleGsiLoaded = true; if (typeof window.initGuestGoogleSignIn === 'function') window.initGuestGoogleSignIn();"
-  ></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -373,7 +367,7 @@
   </div>
 
   <!-- ORDER SUMMARY CHECKOUT MODAL -->
-  <div class="product-modal-backdrop" id="orderSummaryModal" style="z-index: 1000001;" onclick="closeOrderSummaryModal(event)">
+  <div class="product-modal-backdrop" id="orderSummaryModal" onclick="closeOrderSummaryModal(event)">
     <div class="product-modal-container order-summary-card" onclick="event.stopPropagation()">
       <button type="button" class="modal-close-btn" onclick="closeOrderSummaryModal()" title="Close summary">
         <i class="fa-solid fa-xmark"></i>
@@ -489,7 +483,7 @@
   </div>
 
   <!-- RECIPIENT DETAILS EDIT MODAL -->
-  <div class="product-modal-backdrop" id="recipientEditModal" style="z-index: 1000002;" onclick="closeRecipientModal(event)">
+  <div class="product-modal-backdrop" id="recipientEditModal" onclick="closeRecipientModal(event)">
     <div class="product-modal-container recipient-modal-card" onclick="event.stopPropagation()">
       <button type="button" class="modal-close-btn" onclick="closeRecipientModal()" title="Close">
         <i class="fa-solid fa-xmark"></i>
@@ -497,28 +491,36 @@
 
       <div class="recipient-modal-header">
         <h2 class="recipient-modal-title">Recipient Details</h2>
-        <p class="recipient-modal-sub">Sign in with Gmail so we know who's picking up these sweet sips!</p>
+        <p class="recipient-modal-sub">Tell us who's picking up these sweet sips!</p>
       </div>
 
-      <div class="recipient-google-section" style="display:flex; flex-direction:column; align-items:center; gap:14px; padding: 10px 4px 4px;">
-        <div
-          id="guestGoogleButton"
-          aria-label="Continue with Google"
-          style="width:100%; min-height:44px; display:flex; justify-content:center; align-items:center;"
-        ></div>
-        <span id="guestGoogleLoadingMsg" style="font-size:11.5px; color:#a8948d; text-align:center;">Loading Google Sign-In...</span>
-        <span style="font-size:11.5px; color:#a8948d; text-align:center;">We'll only use your Gmail name and email address for this order.</span>
-      </div>
+<form id="recipientDetailsForm" class="recipient-form" onsubmit="saveRecipientDetails(event)" novalidate>        <div class="recipient-form-group">
+          <label for="inputRecipientName" class="recipient-form-label">Full Name</label>
+          <div class="recipient-input-wrapper">
+            <i class="fa-regular fa-user input-icon"></i>
+            <input type="text" id="inputRecipientName" class="recipient-input-field" placeholder="e.g. Juan Dela Cruz" required maxlength="60" autocomplete="name">
+          </div>
+        </div>
 
-      <div class="recipient-modal-actions" style="margin-top: 12px;">
-        <button type="button" class="btn-recipient-cancel" onclick="closeRecipientModal()">Cancel</button>
-      </div>
+        <div class="recipient-form-group">
+          <label for="inputRecipientEmail" class="recipient-form-label">Email Address</label>
+          <div class="recipient-input-wrapper">
+            <i class="fa-regular fa-envelope input-icon"></i>
+            <input type="email" id="inputRecipientEmail" class="recipient-input-field" placeholder="e.g. juandelacruz@gmail.com" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="recipient-modal-actions">
+          <button type="button" class="btn-recipient-cancel" onclick="closeRecipientModal()">Cancel</button>
+          <button type="submit" class="btn-recipient-save">Save Details</button>
+        </div>
+      </form>
     </div>
   </div>
 
   <!-- Application Scripts -->
   <script src="js/navbar.js"></script>
-  <script src="js/orderSummary.js?v=google-signin-fix"></script>
+  <script src="js/orderSummary.js"></script>
   <script src="js/home.js"></script>
 </body>
 </html>

@@ -4,14 +4,6 @@ let filteredPendingOrders = [];
 let currentOrderPage = 1;
 const ORDERS_PAGE_SIZE = 5;
 let isRegisterLocked = localStorage.getItem('isRegisterLocked') === 'true';
-let cashLoadedFromMetrics = false;
-
-function formatPeso(value) {
-    return '₱' + Number(value || 0).toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-}
 
 document.addEventListener('DOMContentLoaded', async () => {
     const filterSelect = document.getElementById('orderDateFilter');
@@ -56,7 +48,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     await loadOrderConfirmationData();
-    if (!cashLoadedFromMetrics) await loadCashOnHand();
 });
 
 // Load pending queue from API
@@ -85,12 +76,6 @@ async function loadOrderConfirmationData() {
             if (pendingEl) pendingEl.textContent = Number(data.metrics.pendingCount || 0).toLocaleString();
             if (confirmedEl) confirmedEl.textContent = Number(data.metrics.confirmedToday || 0).toLocaleString();
             if (rejectedEl) rejectedEl.textContent = Number(data.metrics.rejectedCount || 0).toLocaleString();
-
-            if (data.metrics.cashOnHand !== undefined && data.metrics.cashOnHand !== null) {
-                const cashEl = document.getElementById('cashOnHand');
-                if (cashEl) cashEl.textContent = formatPeso(data.metrics.cashOnHand);
-                cashLoadedFromMetrics = true;
-            }
         }
 
         allPendingOrders = data.pendingOrders || [];
@@ -100,25 +85,6 @@ async function loadOrderConfirmationData() {
         console.error('Could not load live data from server:', error);
         SalesCommon.showError(error);
         SalesCommon.failTables();
-    }
-}
-
-// Cash on hand: reuses the same endpoint as the dashboard X-Reading
-async function loadCashOnHand() {
-    const cashEl = document.getElementById('cashOnHand');
-    if (!cashEl) return;
-    try {
-        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-        const headers = userId ? { 'x-user-id': userId } : {};
-
-        const response = await fetch('/api/sales-officer/x-reading', { headers });
-        if (!response.ok) throw new Error(await SalesCommon.errorMessage(response));
-
-        const data = await response.json();
-        cashEl.textContent = formatPeso(data.expectedDrawer);
-    } catch (err) {
-        console.error('Could not load cash on hand:', err);
-        cashEl.textContent = '—';
     }
 }
 
@@ -216,10 +182,10 @@ function renderPaginatedOrders() {
                     </div>
                 </td>
                 <td>
-                    <div class="items-summary-text">${escapeHtml(ord.items_summary || '')}</div>
+                    <div class="items-summary-text">${escapeHtml(ord.items_summary || 'Custom drink order')}</div>
                 </td>
                 <td>
-                    <span class="payment-method-pill">${escapeHtml(ord.payment_method || '')}</span>
+                    <span class="payment-method-pill">${escapeHtml(ord.payment_method || 'Cash on Pick-Up')}</span>
                 </td>
                 <td>
                     <span class="order-total-val">₱${amount}</span>
@@ -347,7 +313,6 @@ async function rejectOrder(orderId) {
         if (rejectedEl) rejectedEl.textContent = (parseInt(rejectedEl.textContent || '0', 10) + 1).toString();
 
         applyOrderFilters();
-        loadCashOnHand();
         SalesCommon.alert('Order Rejected', `Order #${orderId} has been cancelled.`, 'info');
     } catch (err) {
         console.error('Error rejecting order:', err);

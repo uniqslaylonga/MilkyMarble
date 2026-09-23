@@ -253,12 +253,12 @@ function renderCustomerTable() {
                     </div>
                 </td>
                 <td>
-                    <div class="contact-text">${escapeHtml(cust.phone || '')}</div>
-                    <div class="email-sub">${escapeHtml(cust.email || '')}</div>
+                    <div class="contact-text">${escapeHtml(cust.phone || 'N/A')}</div>
+                    <div class="email-sub">${escapeHtml(cust.email || 'No email provided')}</div>
                 </td>
                 <td><strong class="order-count">${orderCount} order(s)</strong></td>
                 <td><span class="spent-val">₱${totalSpent}</span></td>
-                <td><span class="method-pill">${escapeHtml(cust.preferred_payment || '')}</span></td>
+                <td><span class="method-pill">${escapeHtml(cust.preferred_payment || 'GCash')}</span></td>
                 <td style="text-align: center;">
                     <button type="button" class="view-profile-btn" onclick="openProfileModal('${cust.id}')">View Summary</button>
                 </td>
@@ -341,10 +341,10 @@ function openProfileModal(customerId) {
         };
     }
 
-    document.getElementById('modalAddress').textContent = cust.address || '';
+    document.getElementById('modalAddress').textContent = cust.address || 'Counter Pick-Up Customer';
 
     const paymentBox = document.getElementById('modalPaymentBox');
-    paymentBox.innerHTML = `<span class="method-pill">${escapeHtml(cust.preferred_payment || '')}</span>`;
+    paymentBox.innerHTML = `<span class="method-pill">${escapeHtml(cust.preferred_payment || 'GCash')}</span>`;
 
     const historyList = document.getElementById('modalHistoryList');
     if (cust.recent_orders && cust.recent_orders.length > 0) {

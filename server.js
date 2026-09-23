@@ -1,5 +1,5 @@
 // server.js - Milky Marble Express Backend
-require('dotenv').config({ path: ['.env.local', '.env'] });
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
