@@ -607,11 +607,28 @@ async function confirmOpenShift() {
         SalesCommon.alert("Invalid Float Amount", "Please enter a valid cash float amount.", "warning");
         return;
     }
-    localStorage.setItem('isRegisterLocked', 'false');
-    isRegisterLocked = false;
-    closeOpenShiftModal();
-    checkRegisterLockState();
-    SalesCommon.alert("Shift Started Successfully", `Register is now OPEN with float ₱${floatAmount.toFixed(2)}.`, "success");
+
+    try {
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const headers = { 'Content-Type': 'application/json' };
+        if (userId) headers['x-user-id'] = userId;
+
+        const response = await fetch('/api/sales-officer/open-shift', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ opening_float: floatAmount })
+        });
+        if (!response.ok) throw new Error(await SalesCommon.errorMessage(response));
+
+        localStorage.setItem('isRegisterLocked', 'false');
+        isRegisterLocked = false;
+        closeOpenShiftModal();
+        checkRegisterLockState();
+        SalesCommon.alert("Shift Started Successfully", `Register is now OPEN with float ₱${floatAmount.toFixed(2)}.`, "success");
+    } catch (error) {
+        console.error('Could not open shift:', error);
+        SalesCommon.alert("Error", "Could not save the opening float. Please try again.", "warning");
+    }
 }
 
 async function openXReadingModal() {

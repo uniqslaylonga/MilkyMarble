@@ -197,6 +197,47 @@ function cleanItemLabel(rawLabel, fallback) {
   return cleanTitle || fallback;
 }
 
+// Reads a numeric value stored in system_settings (e.g. the sales counter's
+// opening cash float), falling back to `fallback` when Supabase is
+// unavailable, the row doesn't exist yet, or the stored value isn't a number.
+async function getNumericSystemSetting(settingKey, fallback = 0) {
+  if (!supabase) return fallback;
+
+  try {
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', settingKey)
+      .maybeSingle();
+
+    if (error) return fallback;
+    const value = Number.parseFloat(data?.setting_value);
+    return Number.isFinite(value) ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+// Days Sales Outstanding: prefer a configured target from sales_targets
+// (period = 'dso'), falling back to the generic system_settings key, and
+// finally to `0` (i.e. "not configured") rather than a fabricated number.
+async function getConfiguredDsoDays() {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('sales_targets')
+        .select('target_amount')
+        .eq('period', 'dso')
+        .maybeSingle();
+
+      const configured = Number.parseFloat(data?.target_amount);
+      if (!error && Number.isFinite(configured)) return configured;
+    } catch {}
+  }
+
+  return getNumericSystemSetting('dso_days', 0);
+}
+
 // Sales Officer Helpers & Timezone formatting
 const ORDER_REVIEW_STATUSES = ['PENDING', 'PAID_VERIFIED', 'CONFIRMED'];
 
@@ -302,7 +343,7 @@ async function buildSalesDashboard(req, res) {
       id: o.id,
       order_number: o.order_number,
       status: o.status,
-      payment_method: o.payment_method || 'N/A',
+      payment_method: o.payment_method || '',
       total_amount: parseFloat(o.total_amount || 0),
       placed_at: o.placed_at,
       customer_id: o.customer_id,
@@ -363,6 +404,47 @@ async function buildSalesDashboard(req, res) {
 
 router.get('/sales-officer/dashboard', buildSalesDashboard);
 
+// Persist the opening float used by the sales counter's X/Z readings, and
+// unlock the register for the new shift. Called by the "Open Shift" modal.
+router.post('/sales-officer/open-shift', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+
+    const openingFloat = Number.parseFloat(req.body?.opening_float);
+    if (!Number.isFinite(openingFloat) || openingFloat < 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'opening_float must be a valid non-negative number.'
+      });
+    }
+
+    const { error: floatError } = await supabase
+      .from('system_settings')
+      .upsert({
+        setting_key: 'opening_float',
+        setting_value: String(openingFloat),
+        description: 'Sales counter opening cash float for the current shift'
+      }, { onConflict: 'setting_key' });
+
+    if (floatError) throw floatError;
+
+    const { error: registerError } = await supabase
+      .from('system_settings')
+      .upsert({
+        setting_key: 'register_status',
+        setting_value: 'UNLOCKED',
+        description: 'Sales counter register lock state'
+      }, { onConflict: 'setting_key' });
+
+    if (registerError) throw registerError;
+
+    return res.json({ status: 'success', openingFloat });
+  } catch (error) {
+    console.error('[sales-officer/open-shift] error:', error.message);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
 // X-Reading interim endpoint
 router.get('/sales-officer/x-reading', async (req, res) => {
   try {
@@ -411,7 +493,7 @@ router.get('/sales-officer/x-reading', async (req, res) => {
       }
     });
 
-    const openingFloat = 1000.00;
+    const openingFloat = await getNumericSystemSetting('opening_float', 0);
     const expectedDrawer = openingFloat + walkinCashTotal;
     const grossTotal = eWalletTotal + walkinCashTotal;
 
@@ -522,8 +604,8 @@ async function getExpectedDrawer() {
     .filter(o => String(o.payment_method || '').toLowerCase().includes('cash'))
     .reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
 
-  const openingFloat = 1000.00; // same fixed float x-reading uses
-  return openingFloat + walkinCashTotal;
+  const openingFloat = await getNumericSystemSetting('opening_float', 0);
+  return { openingFloat, walkinCashTotal, expectedDrawer: openingFloat + walkinCashTotal };
 }
 
 // Order confirmation desk
@@ -556,8 +638,8 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
         customer_id: o.customer_id,
         guest_name: o.guest_name,
         customer_name: (o.customers && o.customers.users && o.customers.users.full_name) || o.guest_name || 'Walk-in Counter',
-        items_summary: itemLines.length ? itemLines.join(', ') : 'Custom drink order',
-        payment_method: o.payment_method || 'N/A',
+        items_summary: itemLines.length ? itemLines.join(', ') : '',
+        payment_method: o.payment_method || '',
         total_amount: parseFloat(o.total_amount || 0),
         placed_at: o.placed_at
       };
@@ -653,7 +735,7 @@ router.get('/sales-officer/order-monitoring', async (req, res) => {
         guest_name: o.guest_name,
         customer_name: (o.customers && o.customers.users && o.customers.users.full_name) || o.guest_name || 'Walk-in Counter',
         item_count: (o.order_items || []).length || 1,
-        items_summary: lines.length ? lines.join(', ') : 'Custom drink order'
+        items_summary: lines.length ? lines.join(', ') : ''
       };
     });
 
@@ -758,7 +840,7 @@ router.get('/sales-officer/customer-records', async (req, res) => {
       valid.sort((a, b) => new Date(b.placed_at) - new Date(a.placed_at));
       const payCounts = {};
       valid.forEach(o => { if (o.payment_method) payCounts[o.payment_method] = (payCounts[o.payment_method] || 0) + 1; });
-      const preferred = Object.keys(payCounts).sort((a, b) => payCounts[b] - payCounts[a])[0] || 'N/A';
+      const preferred = Object.keys(payCounts).sort((a, b) => payCounts[b] - payCounts[a])[0] || '';
       return {
         preferred_payment: preferred,
         total_orders: valid.length,
@@ -779,9 +861,9 @@ router.get('/sales-officer/customer-records', async (req, res) => {
       return {
         id: c.id,
         type: 'registered',
-        full_name: (userObj && userObj.full_name) || 'Customer',
+        full_name: (userObj && userObj.full_name) || '',
         email: (userObj && userObj.email) || '',
-        phone: c.phone || 'N/A',
+        phone: c.phone || '',
         avatar: resolveAvatar(userObj && userObj.avatar),
         address: null,
         created_at: c.created_at,
@@ -1002,7 +1084,7 @@ router.get('/sales-officer/sales-reports', async (req, res) => {
         grossSales,
         netSales,
         aov,
-        dso: 45
+        dso: await getConfiguredDsoDays()
       },
       productsRank
     });
@@ -1025,12 +1107,14 @@ router.get('/sales-officer/sales-target', async (req, res) => {
     const historyStart = phDayStartISO(historyStartDate);
     const sinceISO = new Date(Math.min(new Date(monthStart), new Date(historyStart))).toISOString();
 
-    let dailyTarget = 15000, monthlyTarget = 320000;
+    let dailyTarget = 0, monthlyTarget = 0, dso = await getConfiguredDsoDays();
     try {
       const { data: targets } = await supabase.from('sales_targets').select('period, target_amount');
       (targets || []).forEach(t => {
-        if (t.period === 'daily') dailyTarget = parseFloat(t.target_amount) || dailyTarget;
-        if (t.period === 'monthly') monthlyTarget = parseFloat(t.target_amount) || monthlyTarget;
+        const targetAmount = parseFloat(t.target_amount);
+        if (t.period === 'daily' && Number.isFinite(targetAmount)) dailyTarget = targetAmount;
+        if (t.period === 'monthly' && Number.isFinite(targetAmount)) monthlyTarget = targetAmount;
+        if (t.period === 'dso' && Number.isFinite(targetAmount)) dso = targetAmount;
       });
     } catch (e) {}
 
@@ -1116,7 +1200,7 @@ router.get('/sales-officer/sales-target', async (req, res) => {
         monthSales, monthlyTarget, monthlyPct: pct(monthSales, monthlyTarget),
         monthPreorderRev: monthPre, monthWalkinRev: monthWalk,
         preordersClaimed, preordersTotal, fulfillmentPct: pct(preordersClaimed, preordersTotal),
-        dso: 45
+        dso
       },
       presets
     });
@@ -1466,7 +1550,7 @@ async function computeDrawerBreakdown(periodStart, periodEnd) {
     else { eWalletTotal += amt; preordersCount++; }
   });
 
-  const openingFloat = 1000.00;
+  const openingFloat = await getNumericSystemSetting('opening_float', 0);
   const expectedDrawer = openingFloat + walkinCashTotal;
   const grossTotal = eWalletTotal + walkinCashTotal;
 
