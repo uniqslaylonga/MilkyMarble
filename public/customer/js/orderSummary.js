@@ -604,26 +604,25 @@ window.applyPromo = async function() {
 };
 
 window.openRecipientModal = function() {
-  const nameInput = document.getElementById('inputRecipientName');
-  const emailInput = document.getElementById('inputRecipientEmail');
+  const stored = getStoredUser();
+  const alreadySignedIn = !!(stored && (stored.customer_id || stored.user_id));
 
-  if (nameInput) {
-    nameInput.placeholder = 'Valued Customer';
-    nameInput.value = (currentRecipient.name && currentRecipient.name !== 'Valued Customer') ? currentRecipient.name : '';
-  }
-
-  if (emailInput) {
-    emailInput.placeholder = 'customer@gmail.com';
-    emailInput.value = (currentRecipient.email && currentRecipient.email !== 'customer@gmail.com') ? currentRecipient.email : '';
-  }
-
-  // Already signed in? No need to offer Google sign-in again here?
-  // just let them edit the manual fields.
   const googleRow = document.getElementById('recipientGoogleRow');
-  if (googleRow) {
-    const stored = getStoredUser();
-    const alreadySignedIn = !!(stored && (stored.customer_id || stored.user_id));
-    googleRow.style.display = alreadySignedIn ? 'none' : 'block';
+  const signedInRow = document.getElementById('recipientSignedInRow');
+
+  if (alreadySignedIn) {
+    if (googleRow) googleRow.style.display = 'none';
+    if (signedInRow) {
+      signedInRow.style.display = 'block';
+      const nameEl = document.getElementById('recipientSignedInName');
+      const emailEl = document.getElementById('recipientSignedInEmail');
+      if (nameEl) nameEl.textContent = currentRecipient.name || stored.full_name || stored.username || 'Valued Customer';
+      if (emailEl) emailEl.textContent = currentRecipient.email || stored.email || '';
+    }
+  } else {
+    if (googleRow) googleRow.style.display = 'flex';
+    if (signedInRow) signedInRow.style.display = 'none';
+    initGuestGoogleButton();
   }
 
   const modal = document.getElementById('recipientEditModal');
@@ -632,13 +631,29 @@ window.openRecipientModal = function() {
 
 // ==========================================
 // GOOGLE SIGN-IN FOR GUEST CHECKOUT
-// Mirrors the Google Identity Services flow used on the login page: a
-// hidden real GSI button is rendered off-screen, and our styled button
-// forwards its click to it. On success we hit the same /api/auth/google
-// endpoint, save mm_user, and refresh the checkout as a signed-in customer.
+// Renders the real Google Identity Services button directly and visibly
+// (no hidden-clone/forwarded-click trick — that breaks because a hidden
+// or zero-size button can't reliably receive clicks). On success it hits
+// the same /api/auth/google endpoint the login page uses, saves mm_user,
+// and refreshes the checkout as a signed-in customer.
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) return;
+let googleGuestButtonRendered = false;
+
+function initGuestGoogleButton() {
+  const container = document.getElementById('googleGuestButtonContainer');
+  const loadingMsg = document.getElementById('googleGuestLoadingMsg');
+  if (!container) return true;
+
+  if (googleGuestButtonRendered) {
+    if (loadingMsg) loadingMsg.style.display = 'none';
+    return true;
+  }
+
+  // The GSI script is loaded with async/defer, so `google` may genuinely
+  // not exist yet the first time this runs — that's expected, not an error.
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+    return false;
+  }
 
   google.accounts.id.initialize({
     client_id: "1077352091553-6d77b0rtu3km8r1har7ra3lsmbf5en35.apps.googleusercontent.com",
@@ -646,34 +661,28 @@ document.addEventListener('DOMContentLoaded', () => {
     auto_select: false
   });
 
-  const hiddenDiv = document.getElementById('googleGuestButtonHidden');
-  if (hiddenDiv) {
-    google.accounts.id.renderButton(hiddenDiv, {
-      type: 'standard',
-      shape: 'rectangular',
-      theme: 'outline',
-      text: 'signin_with',
-      size: 'large'
-    });
-  }
+  google.accounts.id.renderButton(container, {
+    type: 'standard',
+    shape: 'pill',
+    theme: 'filled_blue',
+    text: 'continue_with',
+    size: 'large',
+    logo_alignment: 'left'
+  });
 
-  const btnGoogleGuestLogin = document.getElementById('btnGoogleGuestLogin');
-  if (btnGoogleGuestLogin) {
-    btnGoogleGuestLogin.addEventListener('click', () => {
-      const hidden = document.getElementById('googleGuestButtonHidden');
-      const hiddenBtn = hidden && hidden.querySelector('div[role="button"]');
-      if (hiddenBtn) {
-        hiddenBtn.click();
-      } else {
-        showSweetAlert({
-          title: 'Google Sign-In Unavailable',
-          text: 'Google Sign-In is still loading. Please wait a moment and try again.',
-          icon: 'info',
-          confirmButtonText: 'OK',
-          showCancelButton: false
-        });
-      }
-    });
+  googleGuestButtonRendered = true;
+  if (loadingMsg) loadingMsg.style.display = 'none';
+  return true;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Try right away, then keep retrying for up to ~10s in case the async
+  // GSI script is still loading when the page first renders.
+  if (!initGuestGoogleButton()) {
+    const pollId = setInterval(() => {
+      if (initGuestGoogleButton()) clearInterval(pollId);
+    }, 300);
+    setTimeout(() => clearInterval(pollId), 10000);
   }
 });
 
