@@ -77,6 +77,12 @@ body {
     z-index: 1000001 !important;
 }
 
+/* The recipient editor is opened on top of the order summary. Keep it one
+   level higher than the summary and the mobile bottom navigation. */
+#recipientEditModal.product-modal-backdrop {
+    z-index: 1000002 !important;
+}
+
 .product-modal-container.order-summary-card {
     position: relative;
     background: var(--bg-modal);

@@ -768,11 +768,12 @@ window.openRecipientModal = function() {
   const modal = document.getElementById('recipientEditModal');
   const summaryModal = document.getElementById('orderSummaryModal');
 
-  // Force the recipient modal above the order summary modal regardless of
-  // whatever z-index the stylesheet gives .product-modal-backdrop.
-  if (summaryModal) summaryModal.style.zIndex = '9000';
+  // Keep the recipient modal above the order summary and the mobile bottom
+  // navigation. The CSS rule uses !important because the summary itself has
+  // a !important z-index for mobile stacking.
+  if (summaryModal) summaryModal.style.setProperty('z-index', '1000001', 'important');
   if (modal) {
-    modal.style.zIndex = '10000';
+    modal.style.setProperty('z-index', '1000002', 'important');
     modal.classList.add('active');
   }
 
