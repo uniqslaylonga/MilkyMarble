@@ -12,7 +12,7 @@ const authRoutes = require('./src/routes/authRoutes');
 const orderRoutes = require('./src/routes/orderRoutes');
 const paymentRoutes = require('./src/routes/paymentRoutes');
 const employeeRoutes = require('./src/routes/employeeRoutes');
-const { requireStaff, setStaffCookie, clearStaffCookie } = require('./src/middleware/staffAuth');
+const { requireStaff, setStaffCookie, clearStaffCookie, readToken, COOKIE_NAME } = require('./src/middleware/staffAuth');
 
 let customerRoutes = null;
 try {
@@ -168,6 +168,13 @@ app.use(
 // this serverless function on every single request -- the main driver of
 // Fast Origin Transfer for a static-asset-heavy app like this one.
 function staticCacheHeaders(res, filePath) {
+  // Logged-in staff pages must never be cached publicly (Vercel's edge would
+  // hand the cached copy to someone who isn't logged in).
+  if (/[\\/](management|employee)[\\/]/i.test(filePath) && /\.html$/i.test(filePath) &&
+      !/(managementlogin|login)\.html$/i.test(filePath)) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    return;
+  }
   if (/\.(png|jpe?g|gif|webp|svg|ico|ttf|otf|woff2?)$/i.test(filePath)) {
     // Images/fonts rarely change: cache long at the edge and in the browser,
     // but allow a background revalidation window instead of marking them
@@ -183,6 +190,35 @@ function staticCacheHeaders(res, filePath) {
 }
 
 const staticOpts = { maxAge: '7d', setHeaders: staticCacheHeaders };
+
+// Staff pages: no valid login cookie -> back to the login page.
+// Only .html files under /management and /employee are checked; CSS, JS,
+// fonts and images stay public and cached, so page speed is unchanged.
+const STAFF_LOGIN_PAGES = ['/management/managementlogin.html', '/employee/login.html'];
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  let p;
+  try {
+    p = path.posix.normalize(decodeURIComponent(req.path).replace(/\\/g, '/')).toLowerCase();
+  } catch (e) {
+    return res.status(400).end();
+  }
+  const isMgmt = p.startsWith('/management/');
+  const isEmp = p.startsWith('/employee/');
+  if ((!isMgmt && !isEmp) || !p.endsWith('.html') || STAFF_LOGIN_PAGES.includes(p)) return next();
+
+  const loginUrl = (isMgmt ? '/management/managementlogin.html' : '/employee/login.html') + '?error=login_required';
+  const session = readToken(req.cookies && req.cookies[COOKIE_NAME]);
+  const allowed = isMgmt
+    ? (p.startsWith('/management/ceo/') ? ['ceo'] : ['admin', 'ceo'])
+    : ['employee', 'admin', 'ceo'];
+
+  if (!session || !allowed.includes(session.type)) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.redirect(302, loginUrl);
+  }
+  next();
+});
 
 app.use(express.static(path.join(__dirname, 'public'), staticOpts));
 app.use('/customer', express.static(path.join(__dirname, 'public/customer'), staticOpts));
