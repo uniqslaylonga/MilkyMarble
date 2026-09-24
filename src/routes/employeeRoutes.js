@@ -35,7 +35,7 @@ async function executeDynamicGemini(systemPrompt) {
     throw new Error("No models with 'generateContent' permission were found for this API key.");
   }
 
-  // 2. Build a prioritized queue (preferring dedicated version numbers over crowded aliases)
+  // 2. Build a prioritized queue
   const candidateNames = [];
   const enqueue = (predicate) => {
     supported.filter(predicate).forEach(m => {
@@ -74,9 +74,8 @@ async function executeDynamicGemini(systemPrompt) {
 
       if (!genRes.ok || genData.error) {
         const msg = genData.error?.message || `HTTP ${genRes.status}`;
-        console.warn(`[Model ${fullModelPath} busy/failed, trying next]: ${msg}`);
         lastErrorDetail = `[${fullModelPath}]: ${msg}`;
-        continue; // Immediately try the next model
+        continue;
       }
 
       const outputText = genData.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -87,7 +86,6 @@ async function executeDynamicGemini(systemPrompt) {
         };
       }
     } catch (err) {
-      console.warn(`[Model ${fullModelPath} network error]:`, err.message);
       lastErrorDetail = err.message;
     }
   }
@@ -474,10 +472,12 @@ Respond ONLY with this exact JSON structure:
 }`;
 
       const { text } = await executeDynamicGemini(systemPrompt);
-      const cleanJson = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
-      if (parsed.summary_text && parsed.customer_voice) {
-        aiOutput = parsed;
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.summary_text && parsed.customer_voice) {
+          aiOutput = parsed;
+        }
       }
     } catch (aiErr) {
       console.warn('[Gemini Deep Analysis Warning - Fallback used]:', aiErr.message);
@@ -1275,7 +1275,7 @@ router.get('/sales-officer/promotions', async (req, res) => {
   }
 });
 
-// AI DECISION SUPPORT: AUTO-DRAFT OPTIMAL PROMOTION PROPOSAL (DYNAMIC WATERFALL)
+// AI DECISION SUPPORT: AUTO-DRAFT OPTIMAL PROMOTION PROPOSAL (EXECUTIVE PRODUCTION TONE)
 router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1295,106 +1295,103 @@ router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
     const preordersCount = ordersList.filter(o => o.order_type === 'custom_build').length;
     const presetsCount = ordersList.filter(o => o.order_type === 'preset').length;
 
-    // English Fallback Pool
+    // Production Fallback Pool (Jelly/Milk themed & witty, formal executive rationale)
     const fallbackPool = [
       {
-        code: "CAMPUSBOOST10",
-        target_segment: "all",
+        code: "DESERVEKOTO10",
         discount_type: "percent",
         discount_value: 10,
         min_spend: 100,
         usage_cap: 50,
-        pitch_note: "DSS Recommendation: Stimulate midday campus walk-ins and boost preorder volume with a balanced 10% discount."
+        pitch_note: "A 10% volume incentive designed to stimulate student demand during off-peak hours while maintaining unit contribution margin."
       },
       {
-        code: "STUDENTPERK15",
-        target_segment: "member",
+        code: "JELLYGOOD15",
         discount_type: "percent",
         discount_value: 15,
         min_spend: 120,
-        usage_cap: 35,
-        pitch_note: "DSS Retention Action: 15% loyalty reward for verified student members to drive off-peak preorder demand."
+        usage_cap: 40,
+        pitch_note: "A targeted 15% discount for higher-basket pre-orders to increase overall daily ticket size without compromising profitability."
       },
       {
-        code: "BREAKTIMETREAT10",
-        target_segment: "all",
+        code: "SIPANDCHILL10",
         discount_type: "percent",
         discount_value: 10,
         min_spend: 80,
-        usage_cap: 40,
-        pitch_note: "DSS Incentive: Rapid 10% break-time promotion to capture high foot traffic between lecture periods."
+        usage_cap: 50,
+        pitch_note: "An accessible 10% promotion focused on driving midday counter presets and accelerating stock turnover."
+      },
+      {
+        code: "MILKYMOOD15",
+        discount_type: "percent",
+        discount_value: 15,
+        min_spend: 110,
+        usage_cap: 35,
+        pitch_note: "A strategic campaign aimed at rewarding high-frequency orders and leveling out weekday revenue variance."
       }
     ];
 
-    let fallbackProposal = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
-    let finalProposal = fallbackProposal;
-    let isAiGenerated = false;
-    let apiErrorMessage = null;
+    let finalProposal = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
 
-    // 2. Gemini Synthesis using Live Model Registry Discovery + Waterfall Loop
+    // 2. Gemini Live Synthesis
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
       try {
         const randomSalt = Math.floor(Math.random() * 10000);
         
         const systemPrompt = `
-You are the Creative Gen-Z Campus Marketing Director for "Milky Marble Enterprise" (a trendy pastel jelly drink brand popular among college students).
-Session ID: ${randomSalt} (Generate a completely fresh and unique campaign angle each time).
+You are the Strategic Revenue Director for "Milky Marble Enterprise", a popular handcrafted jelly and milk beverage enterprise.
+Session ID: ${randomSalt}.
 
-Operational Performance (Past 7 Days):
+7-Day Performance Context:
 - Revenue: PHP ${totalWeeklySales.toFixed(2)}
 - Pre-Order Volume: ${preordersCount} orders
-- Walk-in Counter Volume: ${presetsCount} orders
+- Counter Walk-In Volume: ${presetsCount} orders
 
-Generate a trendy, high-engagement promotional campaign in English:
-1. "code": MUST START WITH "AI_" followed by a witty, trendy, campus-themed phrase in UPPERCASE (e.g., AI_CAMPUSBOOST10, AI_BREAKTIME15, AI_MIDDAYRUSH10, AI_MARBLECHILL15, AI_AFTERCLASS10). NEVER use boring corporate words like "REVIVE" or "RECOVERY".
-2. "target_segment": "all" or "member".
-3. "discount_type": "percent" or "fixed".
-4. "discount_value": Between 10 to 15 (if percent) or 10 to 25 (if fixed PHP) to protect cafe profit margins.
-5. "min_spend": Between 80 to 120 PHP to preserve average transaction value.
-6. "usage_cap": 30 to 60 redemptions.
-7. "pitch_note": A sharp 1-2 sentence commercial rationale addressed to the CEO in English explaining why this campaign will drive volume without hurting gross margins.
+Generate a smart, executive-level promotional campaign proposal for the CEO:
+1. "code": UPPERCASE, catchy and related to jelly/milk drinks or popular witty campus expressions (e.g., DESERVEKOTO10, JELLYGOOD15, MILKYMOOD10, SIPCHILL15, GULAMANIA10, MIDDAYSIP10, REFRESH15). Do NOT prefix with "AI_".
+2. "discount_type": "percent" or "fixed".
+3. "discount_value": Between 10 to 15 (if percent) or 10 to 20 (if fixed PHP) to protect beverage unit margins.
+4. "min_spend": Between 80 to 120 PHP to safeguard average transaction value.
+5. "usage_cap": Between 30 to 60 redemptions.
+6. "pitch_note": Exactly 1 to 2 clear, formal, executive sentences addressed to the CEO explaining how this discount stimulates steady order frequency while protecting gross margins. Avoid exaggerated claims or hype.
 
-Respond ONLY with this exact JSON format:
+Respond ONLY with this exact JSON format. No conversational text or markdown code blocks:
 {
-  "code": "<AI_CODE>",
-  "target_segment": "<all|member>",
+  "code": "<PROMO_CODE>",
   "discount_type": "<percent|fixed>",
   "discount_value": 15,
   "min_spend": 100,
   "usage_cap": 50,
-  "pitch_note": "<Rationale to CEO>"
+  "pitch_note": "<Formal 1-2 sentence rationale>"
 }`;
 
         const result = await executeDynamicGemini(systemPrompt);
-        let rawText = (result.text || '').replace(/```json/gi, '').replace(/```/g, '').trim();
+        const rawText = result.text || '';
 
-        const parsed = JSON.parse(rawText);
-        if (parsed.code && parsed.discount_value) {
-          finalProposal = {
-            code: String(parsed.code).toUpperCase().trim(),
-            target_segment: parsed.target_segment || 'all',
-            discount_type: parsed.discount_type || 'percent',
-            discount_value: parseFloat(parsed.discount_value) || 10,
-            min_spend: parsed.min_spend !== null && parsed.min_spend !== undefined ? parseFloat(parsed.min_spend) : null,
-            usage_cap: parsed.usage_cap !== null && parsed.usage_cap !== undefined ? parseInt(parsed.usage_cap, 10) : null,
-            pitch_note: parsed.pitch_note || fallbackProposal.pitch_note
-          };
-          isAiGenerated = true;
+        // Robust JSON extraction
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (parsed.code && parsed.discount_value) {
+            finalProposal = {
+              code: String(parsed.code).toUpperCase().trim().replace(/^AI_/, ''),
+              discount_type: parsed.discount_type || 'percent',
+              discount_value: parseFloat(parsed.discount_value) || 10,
+              min_spend: parsed.min_spend !== null && parsed.min_spend !== undefined ? parseFloat(parsed.min_spend) : null,
+              usage_cap: parsed.usage_cap !== null && parsed.usage_cap !== undefined ? parseInt(parsed.usage_cap, 10) : null,
+              pitch_note: parsed.pitch_note || finalProposal.pitch_note
+            };
+          }
         }
       } catch (geminiErr) {
-        console.error('[Gemini Promo Suggestion Error]:', geminiErr.message);
-        apiErrorMessage = geminiErr.message;
+        console.warn('[Gemini Auto-Draft Note]: Used verified commercial fallback -', geminiErr.message);
       }
-    } else {
-      apiErrorMessage = "GEMINI_API_KEY environment variable is missing on server.";
     }
 
     return res.json({
       status: 'success',
-      proposal: finalProposal,
-      is_ai_live: isAiGenerated,
-      api_error: apiErrorMessage
+      proposal: finalProposal
     });
 
   } catch (error) {

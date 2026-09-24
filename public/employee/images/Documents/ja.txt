@@ -1,0 +1,188 @@
+VARIABLES
+(ADVICEABLE)
+let -- nagsostore ng values na pwedeng mabago (e.g, age dahil di ka naman forever mastuck sa 17 years old)
+const -- forever na ganon ang value (e.g, value ng pie, di na forever mabago) parang abbreviation ng constant, hindi nagbabago
+
+example:
+let age = 17;
+const passingGrade = 80;
+
+(NOT ADVICEABLE)
+var -- magkaroon ng reference error or mismatched kasi outdated na
+automatic -- magulo kasi walang label, di alam kung pwedeng mabago ang value o pwede
+
+
+(USE STRICT)
+
+primitive -- hindi nagbabago o nadadagdagan (immutable)
+non-primitive -- nagbabago o nag uupdate (mutable)
+
+null - account reg sa system, di pa nagfifill out agad lahat ng info kaya ginagawa munang null 
+
+symbol = pk
+e.g, 
+Symbol(ID)=1
+Symbol(ID)=2
+
+
+object
+e.g.,
+let person
+name:
+age:
+address:
+
+
+typeof (METHOD) para malaman kung anong type ng data type
+
+
+(OPERATORSSSSS)
+
+arithmetic -- mathematical operations
++ 1+1=2
+- 2-1=1
+* 2*3=6
+** 2**2=4
+/ 10/5=2
+% 10%3=1
+++ i++ = 2 (1+1) i=1
+-- i-- = 9 (10-1) i=10
+
+assignment - nag aassign na sa box
+1+1=2
+
+= - pag aassign ng value (basic assignment)
+== - compare ng dalawang values kung true ba na equal sila or false (comparison) coercion
+=== - no coercion (paraan ng js na matic niya na binibigyan ng value ang isang data type or variable 
+
+e.g.,
+18
+"Hello"
+18=="18" false
+18==="18" true
+di na nagmamatter ang data type
+
+
+spread == useful sa strings
+
+loops
+for loop = known / defined number of iterations
+while = unknown / not define number of iterations
+do while = will execute once RAGARDLESS
+
+
+-----------------------------
+07 DOM MANIPULATION
+dom = document object model -identify of the web itself
+
+non semantic vs semantic
+semantic - actual tags
+non semantic - div lang lahat tas iconfigure na lang sa css
+
+property - value na pwedeng istore (data pr characteristic ng isang object)
+
+method - gagawin ng code pag inexecute (anong mangyayari)
+
+id ang pinaka ginagamit (little to one subject)
+
+getElementByID
+
+<div id="name"></div>
+
+gagamit lang ng class pag gagagmit ng dynamic pages altogether (pag maramihan na)
+
+
+.append 
+.remove
+dinadgdagan at binabawasan ng content sa ating dom
+
+Common DOM Properties (pag equals kasi nag aassign ng properties)
+element.innerHTML =
+element.textContent
+element.value
+element.id
+element.className
+element.style
+element.checked
+element.disabled
+
+
+
+Common DOM Methods (pag may parenthesis na parang functions)
+document.getElementById()
+document.querySelector()
+document.addEventListener
+document.append()
+document.classList.add()
+
+
+
+
+camel case = naming conventions camelCase
+snake case = underscore snake_case
+
+
+
+
+client side validation
+== agad agad sa browser pa lang 
+== paglalagay ng required 
+== mabilis
+
+server side validation
+== hinihintay muna dami process
+== matagal
+= more secure
+
+
+web server - don sinesend ang request at information (ang php ay isang web server)
+
+session = default 
+session destroy or destruction of session = security naglalogout ang session kapag nagiging afk
+
+
+scripts = programming language
+
++ = . in js java at php
+
+para makapag authorize need muna ng authentication 
+kasi authentication ang nagbibigay access
+
+authentication - sino ka
+authorize- anong kaya mong gawin
+
+
+sa authorization may roles
+highest - admin
+standard user 
+guest
+
+string
+strilen() - ilang characters ang meron sa isang word
+trim() - inaalis unneccesary character sa string
+substr() - extracts a portion of a string
+explode()- magiging array
+implode()- magiging string
+htmlspecialchars()- cinoconvert ang string sa another form ng string
+strtolower
+strtoupper
+
+array
+count() - gano karami ang nasa isang array
+array_push() - ginagamit para mag add ng index (element) sa isang array
+array_pop() - nagtatanggal
+in_array() - ginagamit para malaman kung existing ang isang element
+sort() - sinosort yung parameter ng array
+foreach() - for looping
+
+math
+round() - mag round
+ceil() - taas
+floor() - baba
+rand() - generates random numbers
+abs() - return the absolute value ng number
+max() - find the largest
+min() - find the smallest
+
+
+

@@ -209,13 +209,6 @@ function renderCampaignGrid() {
         const minSpendText = c.min_spend ? `Min. Spend: ₱${Number(c.min_spend).toLocaleString()}` : 'No minimum spend';
         const usageText = c.usage_cap ? `${c.usage_count || 0} / ${c.usage_cap} redemptions` : `${c.usage_count || 0} redemptions (Unlimited)`;
 
-        let segmentLabel = 'General Public';
-        let segmentClass = 'segment-all';
-        if (c.target_segment === 'member') {
-            segmentLabel = 'Members Only';
-            segmentClass = 'segment-member';
-        }
-
         let statusClass = 'pending';
         let statusLabel = 'Pending CEO Approval';
         if (c.status === 'ACTIVE') {
@@ -230,7 +223,6 @@ function renderCampaignGrid() {
             <div class="campaign-card">
                 <div class="card-top-row">
                     <span class="promo-code-title">${escapeHtml(c.code)}</span>
-                    <span class="segment-pill ${segmentClass}">${segmentLabel}</span>
                 </div>
 
                 <div class="discount-highlight-box">
@@ -300,14 +292,14 @@ function renderPromoPagerButtons(totalPages, activePage) {
     });
 }
 
-// On-Demand AI Promo Proposal Generator with "↻ Generate Another" (All English)
+// Production AI Promo Proposal Generator (Clean modal without debug/fallback labels)
 async function generateAiPromoProposal() {
     const btn = document.getElementById('btnAiDraftPromo');
     if (btn) btn.disabled = true;
 
     MMSwal.fire({
-        title: 'Synthesizing Promo Scheme...',
-        html: 'Gemini AI is analyzing sales velocity, volume trends, and student rush hours...',
+        title: 'Synthesizing Proposal...',
+        html: 'Evaluating current sales velocity and optimal volume stimulation parameters...',
         allowOutsideClick: false,
         didOpen: () => {
             Swal.showLoading();
@@ -333,7 +325,6 @@ async function generateAiPromoProposal() {
 
         // Auto-fill all inputs in the form
         const codeInput = document.getElementById('inputPromoCode');
-        const segmentSelect = document.getElementById('inputTargetSegment');
         const typeSelect = document.getElementById('inputDiscountType');
         const valInput = document.getElementById('inputDiscountVal');
         const valLabel = document.getElementById('discountValueLabel');
@@ -342,7 +333,6 @@ async function generateAiPromoProposal() {
         const noteTextarea = document.getElementById('inputPitchNote');
 
         if (codeInput) codeInput.value = p.code || '';
-        if (segmentSelect) segmentSelect.value = p.target_segment || 'all';
         if (typeSelect) {
             typeSelect.value = p.discount_type || 'percent';
             if (valLabel) {
@@ -356,39 +346,19 @@ async function generateAiPromoProposal() {
         if (usageCapInput) usageCapInput.value = p.usage_cap !== null && p.usage_cap !== undefined ? p.usage_cap : '';
         if (noteTextarea) noteTextarea.value = p.pitch_note || '';
 
-        // Status indicator
-        let statusBadge = data.is_ai_live
-            ? `<span style="font-size: 11px; background: rgba(46, 125, 50, 0.12); color: #2E7D32; padding: 2px 8px; border-radius: 6px; font-weight: 800;">✓ Live Gemini API</span>`
-            : `<span style="font-size: 11px; background: rgba(201, 48, 44, 0.12); color: #C9302C; padding: 2px 8px; border-radius: 6px; font-weight: 800;">⚠ Rule-Based Fallback</span>`;
-
-        let errorNotice = '';
-        if (data.api_error) {
-            errorNotice = `
-              <div style="background: rgba(201, 48, 44, 0.08); border-left: 3px solid #C9302C; padding: 6px 10px; border-radius: 6px; margin-top: 8px; font-size: 11px; color: #8C2320; word-break: break-word;">
-                <strong>Debug Info:</strong> ${escapeHtml(data.api_error)}
-              </div>
-            `;
-        }
-
-        // Modal in 100% English
+        // Production-ready Executive Modal
         const swalResult = await MMSwal.fire({
             icon: 'success',
-            title: 'AI Draft Ready!',
+            title: 'Campaign Proposal Ready',
             html: `
-              <div style="text-align: left; font-size: 12.5px; line-height: 1.5; color: var(--text-dark);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                  <span>Strategic campaign variables populated:</span>
-                  ${statusBadge}
-                </div>
-
-                <div style="background: var(--bg-main); padding: 10px 14px; border-radius: 10px; margin: 8px 0; border-left: 3.5px solid var(--accent-pink);">
+              <div style="text-align: left; font-size: 13px; line-height: 1.6; color: var(--text-dark);">
+                <p style="margin-bottom: 8px; color: var(--text-muted);">Proposed promotional variables based on operational revenue metrics:</p>
+                <div style="background: var(--bg-main); padding: 12px 14px; border-radius: 12px; margin: 8px 0; border-left: 3.5px solid var(--accent-pink);">
                   <strong>Code:</strong> ${escapeHtml(p.code)}<br>
                   <strong>Discount:</strong> ${p.discount_value}${p.discount_type === 'percent' ? '%' : ' PHP'} OFF<br>
-                  <strong>Target:</strong> ${p.target_segment === 'member' ? 'Members Only' : 'General Public'}<br>
-                  <strong>Strategy:</strong> <em>${escapeHtml(p.pitch_note)}</em>
+                  <strong>Executive Rationale:</strong> <em>${escapeHtml(p.pitch_note)}</em>
                 </div>
-                ${errorNotice}
-                <small style="color: var(--text-muted); display: block; margin-top: 6px;">Want a different strategy? Click <strong>↻ Generate Another</strong> to synthesize a fresh campaign proposal.</small>
+                <small style="color: var(--text-muted); display: block; margin-top: 6px;">You may accept this configuration or generate another strategic recommendation.</small>
               </div>
             `,
             showCancelButton: true,
@@ -419,7 +389,6 @@ async function handlePitchFormSubmit(e) {
 
     const form = e.target;
     const code = form.code.value.trim().toUpperCase();
-    const targetSegment = form.target_segment.value;
     const discountType = form.discount_type.value;
     const discountValue = parseFloat(form.discount_value.value);
     const minSpend = form.min_spend.value ? parseFloat(form.min_spend.value) : null;
@@ -428,7 +397,7 @@ async function handlePitchFormSubmit(e) {
 
     const payload = {
         code,
-        target_segment: targetSegment,
+        target_segment: 'all', // Standardized for all registered app users
         discount_type: discountType,
         discount_value: discountValue,
         min_spend: minSpend,

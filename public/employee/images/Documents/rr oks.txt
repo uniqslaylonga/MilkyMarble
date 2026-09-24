@@ -1,0 +1,9 @@
+rr oks
+pp oks
+ss oks
+rp oks
+rs oks
+pr oks
+ps oks
+sr oks
+sp oks

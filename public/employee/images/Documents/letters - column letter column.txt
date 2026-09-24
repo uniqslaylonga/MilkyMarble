@@ -1,0 +1,6 @@
+letters - column letter column
+numbers - rows number rows
+
+selected cell = active cells
+
+2010 tatlo ng default sheet

@@ -1,0 +1,55 @@
+//Override(MapName)
+//{
+//	DecalPLS(MeshName, SkinName, OverrideSkinName);
+//}
+
+//Gather(MapName)
+//{
+//	Skin(MeshName, SkinName);
+//}
+
+
+sub main()
+{
+	Override("slums")
+	{
+		DecalPLS("slums_poster_b.msh", "Default", "alternative");
+		//DecalPLS("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_a", "decal_lrp_mul_graffiti_mural_a_alternative");
+		//DecalPLS("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_b", "decal_lrp_mul_graffiti_mural_b_alternative");
+		//DecalPLS("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_c", "decal_lrp_mul_graffiti_mural_c_alternative");
+		//DecalPLS("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_d", "decal_lrp_mul_graffiti_mural_d_alternative");
+		//DecalPLS("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_f", "decal_lrp_mul_graffiti_mural_f_alternative"); // Cat
+	}
+	
+	Override("old_town")
+	{
+		//DecalPLS("murale_decal_b.msh", "002", "002_alternative");
+		//DecalPLS("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_a", "decal_lrp_mul_graffiti_mural_a_alternative");
+		//DecalPLS("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_bad_wolf", "decal_lrp_mul_graffiti_mural_b_alternative"); //Never use !
+		//DecalPLS("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_b", "decal_lrp_mul_graffiti_mural_b_alternative");
+		//DecalPLS("decal_plane_a.msh", "decal_lrp_mul_graffiti_decal_e", "decal_lrp_mul_graffiti_mural_c_alternative");
+		//DecalPLS("decal_plane_a.msh", "decal_lrp_mul_graffiti_decal_f", "decal_lrp_mul_graffiti_mural_d_alternative");
+	}
+	
+	
+	
+	Gather("slums")
+	{
+		Skin("slums_poster_b.msh", "alternative");
+		Skin("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_a_alternative");
+		Skin("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_b_alternative");
+		Skin("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_c_alternative");
+		Skin("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_d_alternative");
+		Skin("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_f_alternative");
+	}
+	
+	Gather("old_town")
+	{
+		Skin("murale_decal_b.msh", "002_alternative");
+		Skin("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_a_alternative");
+		Skin("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_b_alternative");
+		Skin("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_c_alternative");
+		Skin("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_d_alternative");
+		Skin("decal_plane_a.msh", "decal_lrp_mul_graffiti_mural_f_alternative");
+	}
+}
