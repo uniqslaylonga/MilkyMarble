@@ -2,13 +2,99 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../config/supabase');
 
-// Optional SDK load para sa Google Gemini AI
+// Optional SDK load for Google Gemini AI
 let GoogleGenAI;
 try {
   const genaiPkg = require('@google/genai');
   GoogleGenAI = genaiPkg.GoogleGenAI || genaiPkg;
 } catch (e) {
   console.warn('[Gemini SDK Warning]: @google/genai is not yet installed. Run "npm install @google/genai" if needed.');
+}
+
+// Multi-tier Gemini Execution Helper with Auto-Discovery
+async function executeGeminiPrompt(systemPrompt) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY environment variable is missing on server.");
+
+  const modelCandidates = ['gemini-2.0-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-flash-latest'];
+
+  // Tier 1: Try through @google/genai SDK
+  if (GoogleGenAI) {
+    const ai = new GoogleGenAI({ apiKey });
+    for (const modelName of modelCandidates) {
+      try {
+        const resp = await ai.models.generateContent({
+          model: modelName,
+          contents: systemPrompt,
+          config: { responseMimeType: 'application/json' }
+        });
+        let text = resp.text || '';
+        if (typeof text === 'function') text = text();
+        if (text) return { text, modelUsed: modelName };
+      } catch (sdkErr) {
+        console.warn(`[SDK attempt with ${modelName} failed]:`, sdkErr.message);
+      }
+    }
+  }
+
+  // Tier 2: Direct REST API fetch fallback (Bypasses any SDK version mismatch)
+  for (const modelName of modelCandidates) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: systemPrompt }] }],
+          generationConfig: { responseMimeType: 'application/json' }
+        })
+      });
+      const json = await res.json();
+      if (res.ok && json.candidates && json.candidates[0]?.content?.parts?.[0]?.text) {
+        return {
+          text: json.candidates[0].content.parts[0].text,
+          modelUsed: `rest-${modelName}`
+        };
+      }
+    } catch (fetchErr) {
+      console.warn(`[REST fetch attempt with ${modelName} failed]:`, fetchErr.message);
+    }
+  }
+
+  // Tier 3: Query Google ListModels live to find available models for this specific API key
+  try {
+    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    const listData = await listRes.json();
+    if (listData.models && Array.isArray(listData.models)) {
+      const usable = listData.models.filter(m => m.supportedGenerationMethods?.includes('generateContent'));
+      const chosen = usable.find(m => m.name.includes('flash')) || usable[0];
+      if (chosen) {
+        const cleanName = chosen.name.replace('models/', '');
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanName}:generateContent?key=${apiKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: systemPrompt }] }],
+            generationConfig: { responseMimeType: 'application/json' }
+          })
+        });
+        const json = await res.json();
+        if (res.ok && json.candidates && json.candidates[0]?.content?.parts?.[0]?.text) {
+          return {
+            text: json.candidates[0].content.parts[0].text,
+            modelUsed: `discovered-${cleanName}`
+          };
+        }
+      }
+    } else if (listData.error) {
+      throw new Error(`Google API Authentication Error: ${listData.error.message}`);
+    }
+  } catch (discoveryErr) {
+    throw new Error(discoveryErr.message || 'All Gemini model candidates and endpoints rejected the request.');
+  }
+
+  throw new Error("Unable to establish connection with any active Gemini model endpoint.");
 }
 
 // Recipe BOM and portions per cup size
@@ -345,9 +431,8 @@ async function generateDailyQualityReport(forceRefresh = false) {
   };
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (apiKey && GoogleGenAI) {
+  if (apiKey) {
     try {
-      const ai = new GoogleGenAI({ apiKey });
       const sanitizedDump = reviews.map(r => 
         `- Cup: "${r.product_title}" | Score: ${r.rating_score}/5 | Tags: [${r.experience_tags || ''}] | Comment: "${r.review_text || ''}"`
       ).join('\n');
@@ -360,9 +445,9 @@ ${sanitizedDump}
 
 CRITICAL RULES:
 1. NEVER output personal customer names, emails, or order numbers.
-2. Select 2 to 3 actual anonymized quotes from the comments. Keep quotes in their original Taglish phrasing.
-3. Explicitly state the counts and percentages of customers raising the primary complaint (e.g., "${issueCount} out of ${totalReviews} reviews (${issuePct}%) reported...").
-4. Formulate direct, concrete operational action items for the counter and kitchen.
+2. Select 2 to 3 actual anonymized quotes from the comments. Keep quotes in their original customer phrasing.
+3. Explicitly state the exact counts and percentages of customers raising the primary complaint (e.g., "${issueCount} out of ${totalReviews} reviews (${issuePct}%) reported...").
+4. Formulate direct, concrete operational action items for the counter and kitchen in English.
 
 Respond ONLY with this exact JSON structure:
 {
@@ -390,20 +475,14 @@ Respond ONLY with this exact JSON structure:
   ]
 }`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: systemPrompt,
-        config: {
-          responseMimeType: 'application/json'
-        }
-      });
-
-      const parsed = JSON.parse(response.text.trim());
+      const { text } = await executeGeminiPrompt(systemPrompt);
+      const cleanJson = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
       if (parsed.summary_text && parsed.customer_voice) {
         aiOutput = parsed;
       }
     } catch (aiErr) {
-      console.warn('[Gemini Deep Analysis Warning - Used Statistical Engine]:', aiErr.message);
+      console.warn('[Gemini Deep Analysis Warning - Fallback used]:', aiErr.message);
     }
   }
 
@@ -1198,7 +1277,7 @@ router.get('/sales-officer/promotions', async (req, res) => {
   }
 });
 
-// AI DECISION SUPPORT: AUTO-DRAFT OPTIMAL PROMOTION PROPOSAL (WITH ERROR REPORTER & REGENERATE SUPPORT)
+// AI DECISION SUPPORT: AUTO-DRAFT OPTIMAL PROMOTION PROPOSAL (MULTI-TIER DISCOVERY)
 router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1206,7 +1285,7 @@ router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    // 1. Basahin ang weekly sales velocity
+    // 1. Read weekly sales velocity
     const { data: recentOrders } = await supabase
       .from('orders')
       .select('id, total_amount, placed_at, order_type, order_items(item_label, quantity)')
@@ -1218,34 +1297,34 @@ router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
     const preordersCount = ordersList.filter(o => o.order_type === 'custom_build').length;
     const presetsCount = ordersList.filter(o => o.order_type === 'preset').length;
 
-    // Creative pool ng fallbacks para hindi pare-pareho kapag offline
+    // English Fallback Pool
     const fallbackPool = [
       {
-        code: "SIPANDCHILL10",
+        code: "CAMPUSBOOST10",
         target_segment: "all",
         discount_type: "percent",
         discount_value: 10,
         min_spend: 100,
         usage_cap: 50,
-        pitch_note: "DSS Recommendation: Stimulate midday campus walk-ins and boost preorder volume with a fresh 10% treat."
+        pitch_note: "DSS Recommendation: Stimulate midday campus walk-ins and boost preorder volume with a balanced 10% discount."
       },
       {
-        code: "DESERVEKO15",
+        code: "STUDENTPERK15",
         target_segment: "member",
         discount_type: "percent",
         discount_value: 15,
         min_spend: 120,
         usage_cap: 35,
-        pitch_note: "DSS Retention Action: 15% reward perk for loyal campus customers to stimulate off-peak preorder demand."
+        pitch_note: "DSS Retention Action: 15% loyalty reward for verified student members to drive off-peak preorder demand."
       },
       {
-        code: "BREAKTIME10",
+        code: "BREAKTIMETREAT10",
         target_segment: "all",
         discount_type: "percent",
         discount_value: 10,
         min_spend: 80,
         usage_cap: 40,
-        pitch_note: "DSS Incentive: Quick 10% breaktime promo to capture student rushes between vacant hours."
+        pitch_note: "DSS Incentive: Rapid 10% break-time promotion to capture high foot traffic between lecture periods."
       }
     ];
 
@@ -1254,30 +1333,29 @@ router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
     let isAiGenerated = false;
     let apiErrorMessage = null;
 
-    // 2. Gemini Synthesis
+    // 2. Gemini Synthesis using Multi-Tier Auto-Discovery Helper
     const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey && GoogleGenAI) {
+    if (apiKey) {
       try {
-        const ai = new GoogleGenAI({ apiKey });
         const randomSalt = Math.floor(Math.random() * 10000);
         
         const systemPrompt = `
 You are the Creative Gen-Z Campus Marketing Director for "Milky Marble Enterprise" (a trendy pastel jelly drink brand popular among college students).
-Session ID: ${randomSalt} (Generate a completely fresh and unique angle each time).
+Session ID: ${randomSalt} (Generate a completely fresh and unique campaign angle each time).
 
 Operational Performance (Past 7 Days):
 - Revenue: PHP ${totalWeeklySales.toFixed(2)}
 - Pre-Order Volume: ${preordersCount} orders
 - Walk-in Counter Volume: ${presetsCount} orders
 
-Generate a trendy, non-boring promotional campaign:
-1. "code": MUST START WITH "AI_" followed by a witty, trendy, campus-themed phrase in UPPERCASE (e.g., AI_DESERVEKO15, AI_BREAKTIME10, AI_HAPONCHILL15, AI_SIPANDCHILL10, AI_TUESDAYSIP10, AI_THURSDAYRUSH15, AI_JELLYFEELS10). NEVER use corporate words tulad ng "REVIVE" or "RECOVERY".
+Generate a trendy, high-engagement promotional campaign in English:
+1. "code": MUST START WITH "AI_" followed by a witty, trendy, campus-themed phrase in UPPERCASE (e.g., AI_CAMPUSBOOST10, AI_BREAKTIME15, AI_MIDDAYRUSH10, AI_MARBLECHILL15, AI_AFTERCLASS10). NEVER use boring corporate words like "REVIVE" or "RECOVERY".
 2. "target_segment": "all" or "member".
 3. "discount_type": "percent" or "fixed".
-4. "discount_value": Between 10 to 15 (if percent) or 10 to 25 (if fixed PHP).
-5. "min_spend": Between 80 to 120 PHP.
+4. "discount_value": Between 10 to 15 (if percent) or 10 to 25 (if fixed PHP) to protect cafe profit margins.
+5. "min_spend": Between 80 to 120 PHP to preserve average transaction value.
 6. "usage_cap": 30 to 60 redemptions.
-7. "pitch_note": A sharp 1-2 sentence commercial rationale addressed to the CEO explaining why this will excite students without hurting margins.
+7. "pitch_note": A sharp 1-2 sentence commercial rationale addressed to the CEO in English explaining why this campaign will drive volume without hurting gross margins.
 
 Respond ONLY with this exact JSON format:
 {
@@ -1290,25 +1368,8 @@ Respond ONLY with this exact JSON format:
   "pitch_note": "<Rationale to CEO>"
 }`;
 
-        let response;
-        try {
-          response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: systemPrompt,
-            config: { responseMimeType: 'application/json' }
-          });
-        } catch (modelErr) {
-          console.warn('[Gemini 2.5 failed, retrying with gemini-1.5-flash]:', modelErr.message);
-          response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
-            contents: systemPrompt,
-            config: { responseMimeType: 'application/json' }
-          });
-        }
-
-        let rawText = response.text || '';
-        if (typeof rawText === 'function') rawText = rawText();
-        rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const result = await executeGeminiPrompt(systemPrompt);
+        let rawText = (result.text || '').replace(/```json/gi, '').replace(/```/g, '').trim();
 
         const parsed = JSON.parse(rawText);
         if (parsed.code && parsed.discount_value) {
@@ -1328,8 +1389,7 @@ Respond ONLY with this exact JSON format:
         apiErrorMessage = geminiErr.message;
       }
     } else {
-      if (!apiKey) apiErrorMessage = "GEMINI_API_KEY environment variable is missing on server.";
-      if (!GoogleGenAI) apiErrorMessage = "@google/genai SDK failed to load.";
+      apiErrorMessage = "GEMINI_API_KEY environment variable is missing on server.";
     }
 
     return res.json({

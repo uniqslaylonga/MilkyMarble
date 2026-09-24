@@ -122,7 +122,7 @@ async function fetchPromotionsData() {
         MMSwal.fire({
             icon: 'warning',
             title: 'System Notice',
-            text: 'Could not load promotions data from server.'
+            text: 'Could not load promotions data from the server.'
         });
         SalesCommon.failTables();
     }
@@ -300,7 +300,7 @@ function renderPromoPagerButtons(totalPages, activePage) {
     });
 }
 
-// On-Demand AI Promo Proposal Generator na may "↻ Generate Another" feature
+// On-Demand AI Promo Proposal Generator with "↻ Generate Another" (All English)
 async function generateAiPromoProposal() {
     const btn = document.getElementById('btnAiDraftPromo');
     if (btn) btn.disabled = true;
@@ -356,7 +356,7 @@ async function generateAiPromoProposal() {
         if (usageCapInput) usageCapInput.value = p.usage_cap !== null && p.usage_cap !== undefined ? p.usage_cap : '';
         if (noteTextarea) noteTextarea.value = p.pitch_note || '';
 
-        // Status indicator at diagnostic badge
+        // Status indicator
         let statusBadge = data.is_ai_live
             ? `<span style="font-size: 11px; background: rgba(46, 125, 50, 0.12); color: #2E7D32; padding: 2px 8px; border-radius: 6px; font-weight: 800;">✓ Live Gemini API</span>`
             : `<span style="font-size: 11px; background: rgba(201, 48, 44, 0.12); color: #C9302C; padding: 2px 8px; border-radius: 6px; font-weight: 800;">⚠ Rule-Based Fallback</span>`;
@@ -364,13 +364,13 @@ async function generateAiPromoProposal() {
         let errorNotice = '';
         if (data.api_error) {
             errorNotice = `
-              <div style="background: rgba(201, 48, 44, 0.08); border-left: 3px solid #C9302C; padding: 6px 10px; border-radius: 6px; margin-top: 8px; font-size: 11px; color: #8C2320;">
+              <div style="background: rgba(201, 48, 44, 0.08); border-left: 3px solid #C9302C; padding: 6px 10px; border-radius: 6px; margin-top: 8px; font-size: 11px; color: #8C2320; word-break: break-word;">
                 <strong>Debug Info:</strong> ${escapeHtml(data.api_error)}
               </div>
             `;
         }
 
-        // Modal na may "Use This Proposal" at "↻ Generate Another"
+        // Modal in 100% English
         const swalResult = await MMSwal.fire({
             icon: 'success',
             title: 'AI Draft Ready!',
@@ -388,7 +388,7 @@ async function generateAiPromoProposal() {
                   <strong>Strategy:</strong> <em>${escapeHtml(p.pitch_note)}</em>
                 </div>
                 ${errorNotice}
-                <small style="color: var(--text-muted); display: block; margin-top: 6px;">Ayaw mo ba ng pitch na ito? Pindutin ang <strong>↻ Generate Another</strong> para gumawa si AI ng bagong pakulo.</small>
+                <small style="color: var(--text-muted); display: block; margin-top: 6px;">Want a different strategy? Click <strong>↻ Generate Another</strong> to synthesize a fresh campaign proposal.</small>
               </div>
             `,
             showCancelButton: true,
@@ -396,7 +396,7 @@ async function generateAiPromoProposal() {
             cancelButtonText: '↻ Generate Another'
         });
 
-        // Kapag pinindot ang "Generate Another", muling tawagin ang generator
+        // Trigger regeneration if button is clicked
         if (swalResult.dismiss === Swal.DismissReason.cancel) {
             await generateAiPromoProposal();
         }
@@ -451,14 +451,14 @@ async function handlePitchFormSubmit(e) {
         MMSwal.fire({
             icon: 'success',
             title: 'Promotion Pitched',
-            text: `Promotion proposal for "${code}" submitted. It is now waiting for CEO approval.`
+            text: `Promotion proposal for "${code}" submitted successfully. It is now awaiting CEO review.`
         });
     } catch (err) {
         console.error('Pitch submission failed:', err);
         MMSwal.fire({
             icon: 'warning',
             title: 'Pitch Failed',
-            text: err.message || 'Could not submit the promotion.'
+            text: err.message || 'Could not submit the promotion proposal.'
         });
     }
 }
