@@ -1,0 +1,350 @@
+/* ==========================================================================
+   CUSTOM FONT FAMILY SETUP (MATCHING ALL ERP MODULES)
+   ========================================================================== */
+@font-face {
+  font-family: 'Bootzy TM';
+  src: url('/customer/images/BootzyTM.ttf') format('woff2');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Urbanist';
+  src: url('/customer/images/Urbanist.ttf') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Kawaii RT';
+  src: url('/customer/images/KawaiiRT-Mona.ttf') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-family-heading: 'Bootzy TM', sans-serif;
+  --font-family-body: 'Urbanist', sans-serif;
+  --font-family-name: 'Kawaii RT', cursive;
+
+  /* Master Palette */
+  --bg-main: #FDEFEE;
+  --card-bg: #FFE4E2;
+  --card-sub-bg: #FFF5F4;
+  --card-white: #FFFFFF;
+  --accent-pink: #F69299;
+  --accent-pink-soft: #F8A5AD;
+  --accent-pink-light: #FAD5D9;
+  --brown-soft: #7C4F38;
+  --text-dark: #453434;
+  --text-muted: #8C6D6D;
+  --nav-link-color: #725555;
+  --border-soft: rgba(246, 146, 153, 0.28);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: var(--font-family-body);
+  background-color: var(--bg-main);
+  color: var(--text-dark);
+  min-height: 100vh;
+}
+
+.app-container {
+  display: block;
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* ===== FIXED STICKY SIDEBAR ===== */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 260px;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 30px 20px 30px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  border: none;
+  background-color: var(--bg-main);
+  z-index: 100;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(246, 146, 153, 0.3);
+  border-radius: 4px;
+}
+
+.brand-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.brand-logo-wrap {
+  width: 76px;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+  border: none;
+}
+
+.brand-title {
+  font-family: var(--font-family-name);
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--accent-pink);
+  -webkit-text-stroke: 1px var(--brown-soft);
+}
+
+.nav-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  color: var(--nav-link-color);
+  text-decoration: none;
+  font-family: var(--font-family-body);
+  font-size: 13.5px;
+  font-weight: 700;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  border: none;
+}
+
+.nav-svg {
+  width: 17px;
+  height: 17px;
+  color: var(--accent-pink);
+  stroke: currentColor !important;
+  stroke-width: 2 !important;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none !important;
+  flex-shrink: 0;
+}
+
+.nav-link:hover {
+  background-color: rgba(246, 146, 153, 0.15);
+}
+
+.nav-link.active {
+  background-color: var(--accent-pink-soft);
+  color: #fff;
+}
+
+.nav-link.active .nav-svg {
+  color: #fff;
+  stroke: #fff !important;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+}
+
+.logout-btn {
+  color: var(--nav-link-color);
+}
+
+/* ===== MAIN CONTENT ===== */
+.main-content {
+  margin-left: 260px;
+  width: calc(100% - 260px);
+  max-width: calc(100% - 260px);
+  min-width: 0;
+  padding: 24px 36px 40px 24px;
+  box-sizing: border-box;
+}
+
+/* TOPBAR */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 20px;
+}
+
+.topbar-title-block .welcome-title {
+  font-family: var(--font-family-heading);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--brown-soft);
+  letter-spacing: 1.5px;
+}
+
+.topbar-title-block .welcome-sub {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* SECTION */
+.section {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  font-family: var(--font-family-heading);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-dark);
+  letter-spacing: 1.5px;
+  margin-bottom: 14px;
+}
+
+/* ===== SETTINGS CARD ===== */
+.settings-card {
+  background-color: var(--card-white);
+  border-radius: 20px;
+  padding: 26px 28px;
+  margin-bottom: 22px;
+  box-shadow: 0 2px 8px rgba(246, 146, 153, 0.12);
+  max-width: 640px;
+}
+
+.settings-card-heading {
+  font-family: var(--font-family-heading);
+  font-size: 15px;
+  color: var(--brown-soft);
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.settings-card-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.pickup-days-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.pickup-day-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 10px;
+  border-radius: 14px;
+  background: var(--card-sub-bg);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.pickup-day-toggle:hover {
+  border-color: var(--accent-pink-light);
+}
+
+.pickup-day-toggle.active {
+  background: var(--accent-pink-soft);
+  border-color: var(--accent-pink);
+}
+
+.pickup-day-toggle.active .pickup-day-label {
+  color: #fff;
+}
+
+.pickup-day-toggle input[type="checkbox"] {
+  accent-color: var(--accent-pink);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.pickup-day-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.btn-save-settings {
+  background: var(--accent-pink);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 26px;
+  font-family: var(--font-family-body);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-save-settings:hover {
+  background: var(--accent-pink-soft);
+}
+
+.btn-save-settings:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settings-status-msg {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settings-status-msg.success {
+  color: #2e7d32;
+}
+
+.settings-status-msg.error {
+  color: #c62828;
+}
+
+.settings-loading-text {
+  font-size: 13px;
+  color: var(--text-muted);
+}

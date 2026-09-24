@@ -616,6 +616,76 @@ app.get('/api/cart/count', async (req, res) => {
 });
 
 // ==========================================
+// STORE SETTINGS (admin-configurable pickup days)
+// ==========================================
+// Falls back to Mon/Tue/Thu (the old hardcoded behavior) whenever the
+// settings row hasn't been created yet, or the DB is unreachable, so
+// checkout never breaks even before an admin has saved anything.
+const DEFAULT_PICKUP_DAYS = [1, 2, 4];
+
+async function getAllowedPickupDays() {
+  if (!supabase) return DEFAULT_PICKUP_DAYS;
+  try {
+    const { data, error } = await supabase
+      .from('store_settings')
+      .select('value')
+      .eq('key', 'pickup_days')
+      .maybeSingle();
+
+    if (error || !data || !data.value) return DEFAULT_PICKUP_DAYS;
+
+    const days = String(data.value)
+      .split(',')
+      .map(d => parseInt(d.trim(), 10))
+      .filter(d => Number.isInteger(d) && d >= 0 && d <= 6);
+
+    return days.length ? days : DEFAULT_PICKUP_DAYS;
+  } catch (e) {
+    console.warn('[Store Settings] Failed to load pickup days, using default:', e.message);
+    return DEFAULT_PICKUP_DAYS;
+  }
+}
+
+// Public — the checkout page needs this without being logged in as staff.
+app.get('/api/settings/pickup-days', async (req, res) => {
+  const days = await getAllowedPickupDays();
+  return res.json({ status: 'success', days });
+});
+
+// Admin-only — reuses the same '/api/admin' auth middleware already
+// applied above (requireStaff('admin', 'ceo')).
+app.get('/api/admin/settings/pickup-days', async (req, res) => {
+  const days = await getAllowedPickupDays();
+  return res.json({ status: 'success', days });
+});
+
+app.post('/api/admin/settings/pickup-days', async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ status: 'error', message: 'Database is disconnected.' });
+
+    const rawDays = Array.isArray(req.body.days) ? req.body.days : [];
+    const cleanDays = [...new Set(
+      rawDays.map(d => parseInt(d, 10)).filter(d => Number.isInteger(d) && d >= 0 && d <= 6)
+    )].sort((a, b) => a - b);
+
+    if (cleanDays.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'Select at least one pickup day.' });
+    }
+
+    const { error } = await supabase
+      .from('store_settings')
+      .upsert([{ key: 'pickup_days', value: cleanDays.join(',') }], { onConflict: 'key' });
+
+    if (error) throw error;
+
+    return res.json({ status: 'success', days: cleanDays });
+  } catch (err) {
+    console.error('[Store Settings] Failed to save pickup days:', err.message);
+    return res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// ==========================================
 // 4. LOYALTY POINTS ENDPOINTS
 // ==========================================
 app.get(['/api/customer/loyalty', '/customer/loyalty', '/loyalty'], async (req, res) => {

@@ -305,6 +305,7 @@ window.renderOrderSummaryModal = async function(items = []) {
   const loyaltyRow = document.getElementById('summaryLoyaltyDiscountRow');
   if (loyaltyRow) loyaltyRow.style.display = 'none';
 
+  await loadAllowedPickupDays();
   setNextDefaultPickupDate();
 
   const cupsList = document.getElementById('summaryCupsList');
@@ -487,6 +488,23 @@ window.selectPaymentMethod = function(btnElement) {
   if (ewalletHint) ewalletHint.style.display = isEwallet ? 'block' : 'none';
 };
 
+// Which weekdays (0=Sun..6=Sat) customers are allowed to pick up on.
+// Admin-configurable via the Store Settings page; falls back to the old
+// Mon/Tue/Thu default until that loads (or if it fails to load at all).
+let allowedPickupDays = [1, 2, 4];
+
+async function loadAllowedPickupDays() {
+  try {
+    const res = await fetch('/api/settings/pickup-days');
+    const data = await res.json();
+    if (data.status === 'success' && Array.isArray(data.days) && data.days.length > 0) {
+      allowedPickupDays = data.days;
+    }
+  } catch (e) {
+    console.warn('Could not load pickup day settings, using default:', e);
+  }
+}
+
 function setNextDefaultPickupDate() {
   const input = document.getElementById('pickupDateInput');
   if (!input) return;
@@ -494,7 +512,7 @@ function setNextDefaultPickupDate() {
   const date = new Date();
   date.setDate(date.getDate() + 1);
 
-  while (date.getDay() !== 1 && date.getDay() !== 2 && date.getDay() !== 4) {
+  while (!allowedPickupDays.includes(date.getDay())) {
     date.setDate(date.getDate() + 1);
   }
 
@@ -528,7 +546,7 @@ window.validatePickupDate = function(input) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  if (selected < today || (day !== 1 && day !== 2 && day !== 4)) {
+  if (selected < today || !allowedPickupDays.includes(day)) {
     if (dateErr) dateErr.style.display = 'block';
     targetInput.value = '';
   }
