@@ -97,6 +97,9 @@
                 <span>Back to Order Queue</span>
             </a>
 
+            <!-- Option B: Heads-Up Quality Calibration Alert Strip -->
+            <div id="qualityAlertBanner" class="quality-alert-strip" style="display: none;"></div>
+
             <!-- Top Summary Cards (Split View) -->
             <div class="order-summary">
                 <!-- Order Specification Card -->
@@ -118,6 +121,17 @@
                         <span class="notes-label">Standard Operating Procedure:</span>
                         <p id="recipeInstructions" class="notes-text"></p>
                     </div>
+
+                    <!-- Step-by-Step Cup Preparation Guide -->
+                    <div class="assembly-checklist-box">
+                        <span class="checklist-header-label">Assembly Workflow:</span>
+                        <div class="checklist-grid" id="assemblyWorkflowGrid">
+                            <label class="check-item"><input type="checkbox" id="stepGulaman"> <span>1. Scoop Gelatin Base</span></label>
+                            <label class="check-item"><input type="checkbox" id="stepMilk"> <span>2. Dispense Condensed Milk</span></label>
+                            <label class="check-item"><input type="checkbox" id="stepToppings"> <span>3. Add Pearls &amp; Toppings</span></label>
+                            <label class="check-item"><input type="checkbox" id="stepSeal"> <span>4. Seal Lid &amp; Add Straw</span></label>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Complete Order Action Card -->
@@ -135,7 +149,7 @@
 
                     <div class="close-copy">
                         <h3>Seal &amp; Mark Ready</h3>
-                        <p>Confirm cup assembly is complete and place on counter holding rack for pickup.</p>
+                        <p>Confirm cup assembly is complete, verified against quality pulse calibration directives, and transfer to holding rack.</p>
                     </div>
 
                     <form id="completeOrderForm">
@@ -149,7 +163,7 @@
                 </div>
             </div>
 
-            <!-- Ingredients & Raw Material Inventory Check -->
+            <!-- Ingredients & Raw Material Inventory Check with Live Steppers -->
             <div class="materials-panel">
                 <div class="panel-title-wrap">
                     <div class="panel-icon">
@@ -159,7 +173,7 @@
                     </div>
                     <div>
                         <h3>Ingredients &amp; Material Inventory Check</h3>
-                        <p class="materials-sub">Auto-calculated inventory deductions for this specific cup customization.</p>
+                        <p class="materials-sub">Auto-calculated Bill of Materials with real-time on-hand stock verification and manual portion tuning.</p>
                     </div>
                 </div>
 
@@ -167,8 +181,10 @@
                     <div class="materials-table">
                         <div class="materials-head">
                             <span class="col-name">Raw Ingredient / Consumable</span>
-                            <span class="col-amount">Calculated Quantity</span>
-                            <span class="col-unit">Unit of Measure</span>
+                            <span class="col-bom">Recipe BOM</span>
+                            <span class="col-amount">Deduction Qty</span>
+                            <span class="col-stock">On-Hand Stock</span>
+                            <span class="col-unit">Unit</span>
                         </div>
 
                         <div id="materialsList">

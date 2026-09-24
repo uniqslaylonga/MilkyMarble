@@ -48,7 +48,7 @@
                 <span>Order Production</span>
             </a>
 
-            <!-- 4. Production Planning (Target for PDF Export) -->
+            <!-- 4. Production Planning -->
             <a href="productionPlanning.html" class="nav-link">
                 <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -94,7 +94,7 @@
             <div class="welcome-banner-content">
                 <div class="welcome-text-col">
                     <h1 class="welcome-title">Glad to have you here, <span id="userFirstName">Supervisor</span>!</h1>
-                    <p class="welcome-sub">Prepare pre-orders and walk-in preset batches, and manage ingredient restock requisitions.</p>
+                    <p class="welcome-sub">Prepare pre-orders and walk-in preset batches, monitor kitchen quality, and manage ingredient requisitions.</p>
                 </div>
                 <div class="banner-action-col">
                     <button type="button" class="btn-pitch-restock" onclick="openRestockModal()">
@@ -162,9 +162,10 @@
             </div>
         </section>
 
-        <!-- Section 2: Restock Routing -->
+        <!-- Section 2: Requisitions & Kitchen Quality Pulse (Side-by-Side Split) -->
         <div class="split-dashboard-layout">
-            <div class="transactions-column" style="grid-column: 1 / -1;">
+            <!-- Left Column: Requisitions -->
+            <div class="transactions-column">
                 <div class="stat-card transactions-card">
                     <div class="card-head-row">
                         <div class="head-titles">
@@ -175,13 +176,46 @@
                     </div>
 
                     <div class="threshold-legend-row">
-                        <span class="badge-route route-procure">≤ ₱300: Procurement Direct</span>
-                        <span class="badge-route route-finance">₱301–₱500: Finance Endorsement</span>
-                        <span class="badge-route route-ceo">&gt; ₱500: CEO Executive</span>
+                        <span class="badge-route route-procure">≤ ₱300: Procurement</span>
+                        <span class="badge-route route-finance">₱301–₱500: Finance</span>
+                        <span class="badge-route route-ceo">&gt; ₱500: CEO</span>
                     </div>
 
                     <div class="orders-container-vertical" id="restockPitchList">
                         <p class="loading-state-text">Loading requisitions...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Option A - Kitchen Quality & Recipe Pulse Card -->
+            <div class="quality-column">
+                <div class="stat-card quality-pulse-card">
+                    <div class="card-head-row">
+                        <div class="head-titles">
+                            <h3 class="section-title tx-title">Kitchen Quality Pulse</h3>
+                            <span class="section-badge-pink">Customer Ratings &amp; Calibration</span>
+                        </div>
+                        <div class="csat-pill-tag">
+                            <span class="csat-score-text" id="pulseCsatScore">5.0</span>
+                            <span class="csat-max-text">/ 5.0 CSAT</span>
+                        </div>
+                    </div>
+
+                    <div class="quality-sentiment-summary" id="pulseSentimentRow">
+                        <span class="sentiment-item sentiment-pos"><strong id="pulsePosPct">100%</strong> Taste Consistency</span>
+                        <span class="sentiment-item sentiment-neutral"><strong id="pulseNeutralPct">0%</strong> Formulation / Portion Notes</span>
+                    </div>
+
+                    <div class="quality-directives-box">
+                        <div class="directives-header-label">Active Kitchen Action Directives:</div>
+                        <ul class="directives-list" id="pulseDirectivesList">
+                            <li class="directive-loading">Loading quality control directives...</li>
+                        </ul>
+                    </div>
+
+                    <div class="customer-voice-preview" id="pulseVoiceBox" style="display: none;">
+                        <span class="voice-label">Verified Customer Feedback:</span>
+                        <p class="voice-quote" id="pulseVoiceQuote">—</p>
                     </div>
                 </div>
             </div>

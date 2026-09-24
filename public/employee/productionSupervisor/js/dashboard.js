@@ -84,13 +84,70 @@ async function fetchProductionDashboardData() {
         allRestockPitches = data.restockPitches || [];
         filteredQueueOrders = [...allQueueOrders];
 
+        // Render sections
         renderQueueTable();
         renderRestockPitches();
         renderScheduleList(data.scheduleList);
+        renderQualityPulseCard(data.qualityPulse); // Render Option A Kitchen Pulse
 
     } catch (error) {
         console.error('Could not load live dashboard data:', error);
         showCustomSwal('Error Loading Data', error.message || 'Live server data could not be retrieved.', 'warning');
+    }
+}
+
+// Option A: Render Kitchen Quality & Recipe Pulse Card
+function renderQualityPulseCard(pulse) {
+    const csatEl = document.getElementById('pulseCsatScore');
+    const posPctEl = document.getElementById('pulsePosPct');
+    const neutralPctEl = document.getElementById('pulseNeutralPct');
+    const listEl = document.getElementById('pulseDirectivesList');
+    const voiceBox = document.getElementById('pulseVoiceBox');
+    const voiceQuote = document.getElementById('pulseVoiceQuote');
+
+    if (!pulse) return;
+
+    if (csatEl) {
+        csatEl.textContent = Number(pulse.averageCsat || 5.0).toFixed(1);
+    }
+
+    if (posPctEl && pulse.sentimentBreakdown) {
+        posPctEl.textContent = `${pulse.sentimentBreakdown.positive || 100}%`;
+    }
+    if (neutralPctEl && pulse.sentimentBreakdown) {
+        neutralPctEl.textContent = `${pulse.sentimentBreakdown.neutral || 0}%`;
+    }
+
+    // Directives list
+    if (listEl) {
+        const alerts = pulse.alerts || [];
+        if (alerts.length === 0) {
+            listEl.innerHTML = '<li class="directive-empty">No active recipe calibration directives for today. Standard portioning active.</li>';
+        } else {
+            listEl.innerHTML = alerts.map(alertText => `
+                <li class="directive-item">
+                    <svg viewBox="0 0 24 24" class="directive-icon" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <span>${escapeHtml(alertText)}</span>
+                </li>
+            `).join('');
+        }
+    }
+
+    // Voice of Customer quote
+    if (voiceBox && voiceQuote) {
+        const voiceList = pulse.customerVoice || [];
+        const featuredVoice = voiceList.find(v => v.quote && v.quote.trim().length > 3) || voiceList[0];
+
+        if (featuredVoice && featuredVoice.quote) {
+            voiceBox.style.display = 'block';
+            voiceQuote.textContent = `"${featuredVoice.quote}" — ${featuredVoice.context || 'Customer'}`;
+        } else {
+            voiceBox.style.display = 'none';
+        }
     }
 }
 

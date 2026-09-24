@@ -728,50 +728,6 @@ router.post('/sales-officer/ai-sentiment/generate', async (req, res) => {
   }
 });
 
-router.get('/production-supervisor/kitchen-pulse', async (req, res) => {
-  try {
-    if (!supabase) return noDb(res);
-    const userProfile = await getEmployeeProfile(req);
-    const requestedDate = req.query.date;
-
-    const { data: dateRows } = await supabase
-      .from('daily_quality_reports')
-      .select('report_date')
-      .order('report_date', { ascending: false });
-
-    const availableDates = (dateRows || []).map(d => d.report_date);
-
-    let query = supabase.from('daily_quality_reports').select('*');
-    if (requestedDate) {
-      query = query.eq('report_date', requestedDate);
-    } else {
-      query = query.order('report_date', { ascending: false }).limit(1);
-    }
-
-    let { data: targetReport } = await query.maybeSingle();
-
-    if (!targetReport && !requestedDate) {
-      targetReport = await generateDailyQualityReport(false);
-    }
-
-    return res.json({
-      status: 'success',
-      user: userProfile,
-      availableDates,
-      selectedDate: targetReport?.report_date || requestedDate || phDate(new Date()),
-      qualityPulse: targetReport?.kitchen_quality_alerts || {
-        alerts: ["No kitchen calibration alerts for this date."],
-        bom_adjustments: ["Maintain standard recipe allocations."]
-      },
-      averageCsat: targetReport?.average_csat || 5.0
-    });
-
-  } catch (error) {
-    console.error('[production-supervisor/kitchen-pulse] error:', error.message);
-    return res.status(500).json({ status: 'error', message: error.message });
-  }
-});
-
 router.get('/sales-officer/x-reading', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -2554,6 +2510,7 @@ router.get('/procurement-officer/stock-control', async (req, res) => {
 // PRODUCTION SUPERVISOR API ROUTES
 // ==========================================================================
 
+// Production Dashboard (Option A: Macro Quality & Calibration Pulse Integration)
 router.get('/production-supervisor/dashboard', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -2597,6 +2554,44 @@ router.get('/production-supervisor/dashboard', async (req, res) => {
       };
     });
     const pendingRestocks = restockPitches.filter(p => !['PURCHASED', 'REJECTED'].includes(p.status)).length;
+
+    // Macro Quality Pulse for Dashboard (Live CSAT & Action Directives)
+    let qualityPulse = {
+      averageCsat: 5.0,
+      totalReviewsAnalyzed: 0,
+      sentimentBreakdown: { positive: 100, neutral: 0, negative: 0 },
+      alerts: [
+        "Maintain standard recipe allocation and portion accuracy.",
+        "Verify cup lid seal and straw placement for takeaway items."
+      ],
+      customerVoice: []
+    };
+
+    try {
+      const { data: latestReport } = await supabase
+        .from('daily_quality_reports')
+        .select('*')
+        .order('report_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestReport) {
+        qualityPulse = {
+          reportDate: latestReport.report_date,
+          averageCsat: parseFloat(latestReport.average_csat) || 5.0,
+          totalReviewsAnalyzed: latestReport.total_reviews_analyzed || 0,
+          sentimentBreakdown: latestReport.sentiment_breakdown || { positive: 100, neutral: 0, negative: 0 },
+          alerts: latestReport.kitchen_quality_alerts?.operational_actions ||
+                  latestReport.kitchen_quality_alerts?.alerts || [
+                    "Maintain standard recipe allocation.",
+                    "Verify proper gulaman resting time before serving."
+                  ],
+          customerVoice: latestReport.sales_insights?.customer_voice || []
+        };
+      }
+    } catch (qErr) {
+      console.warn('[Dashboard Quality Pulse fetch notice]:', qErr.message);
+    }
 
     const { data: rawOrders } = await supabase
       .from('orders')
@@ -2674,6 +2669,7 @@ router.get('/production-supervisor/dashboard', async (req, res) => {
         preordersClaimedStr: `${claimedTodayCount || 0} / ${totalTodayCount || 0}`,
         pendingRestocks
       },
+      qualityPulse, // Macro Quality Metrics & Directives
       recentOrders,
       restockPitches,
       scheduleList
@@ -2751,6 +2747,7 @@ router.get('/production-supervisor/order-list', async (req, res) => {
   }
 });
 
+// Production Station (Option B: Micro Assembly Line View with Heads-Up Calibration Alerts)
 router.get('/production-supervisor/order-production', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -2818,7 +2815,37 @@ router.get('/production-supervisor/order-production', async (req, res) => {
       materials = [];
     }
 
-    return res.json({ status: 'success', user: userProfile, order: orderData, materials });
+    // Micro Station Directives (Heads-Up Alert Banner above BOM)
+    let qualityAlerts = [];
+    try {
+      const { data: qReport } = await supabase
+        .from('daily_quality_reports')
+        .select('kitchen_quality_alerts, average_csat')
+        .order('report_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (qReport?.kitchen_quality_alerts?.operational_actions?.length) {
+        qualityAlerts = qReport.kitchen_quality_alerts.operational_actions;
+      } else if (qReport?.kitchen_quality_alerts?.alerts?.length) {
+        qualityAlerts = qReport.kitchen_quality_alerts.alerts;
+      } else {
+        qualityAlerts = [
+          "Maintain standard recipe allocation and portion accuracy.",
+          "Verify lid tightness and straw placement before completing orders."
+        ];
+      }
+    } catch (e) {
+      qualityAlerts = ["Adhere strictly to recipe measurements."];
+    }
+
+    return res.json({ 
+      status: 'success', 
+      user: userProfile, 
+      order: orderData, 
+      materials,
+      qualityAlerts // Heads-up calibration strip
+    });
   } catch (error) {
     console.error('[production-supervisor/order-production] error:', error.message);
     return res.status(500).json({ status: 'error', message: error.message });
