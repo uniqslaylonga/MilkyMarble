@@ -149,6 +149,56 @@
       <!-- Main Layout -->
       <div class="split-dashboard-layout">
         <div class="analytics-column">
+          <!-- AI Customer Sentiment & Quality Pulse Card -->
+          <div class="stat-card compact-panel ai-sentiment-panel">
+            <div class="card-head-row">
+              <div class="head-titles">
+                <span class="stat-title">Customer Sentiment &amp; AI Pulse</span>
+                <span class="stat-subtitle-text" id="aiReportDateLabel">Daily Automated Review Synthesis</span>
+              </div>
+              <div class="filter-wrapper">
+                <select id="aiDateSelector" class="custom-select-sm" title="Select Report Date">
+                  <option value="">Today (Latest)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="ai-sentiment-summary-row">
+              <div class="csat-score-cell">
+                <div class="csat-number-wrap">
+                  <svg class="csat-star-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                  <span class="csat-val" id="aiCsatScore">0.0</span>
+                </div>
+                <span class="csat-sub" id="aiReviewsCount">0 Reviews Analyzed</span>
+              </div>
+
+              <div class="sentiment-bars-col">
+                <div class="sentiment-bar-track">
+                  <div class="bar-fill bar-pos" id="barPositive" style="width: 0%;"></div>
+                  <div class="bar-fill bar-neu" id="barNeutral" style="width: 0%;"></div>
+                  <div class="bar-fill bar-neg" id="barNegative" style="width: 0%;"></div>
+                </div>
+                <div class="sentiment-legend-row">
+                  <span class="legend-item"><span class="legend-dot dot-pos"></span> Pos: <strong id="pctPositive">0%</strong></span>
+                  <span class="legend-item"><span class="legend-dot dot-neu"></span> Neu: <strong id="pctNeutral">0%</strong></span>
+                  <span class="legend-item"><span class="legend-dot dot-neg"></span> Neg: <strong id="pctNegative">0%</strong></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="ai-insight-box">
+              <div class="ai-insight-header">
+                <svg class="ai-sparkle-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v4m0 12v4M2 12h4m12 0h4m-3.17-6.83l-2.83 2.83m-8 8l-2.83 2.83m0-13.66l2.83 2.83m8 8l2.83 2.83"/>
+                </svg>
+                <span>Executive Quality Pulse</span>
+              </div>
+              <p class="ai-insight-text" id="aiExecutiveSummary">Awaiting automated synthesis post Z-reading...</p>
+            </div>
+          </div>
+
           <!-- Customer Acquisition -->
           <div class="stat-card compact-panel">
             <div class="card-head-row">
@@ -263,7 +313,7 @@
     </main>
   </div>
 
-  <!-- Pitch Promo Modal (Pantay na sa Contents ng Promotions Desk) -->
+  <!-- Pitch Promo Modal -->
   <div class="modal-overlay" id="pitchPromoModal">
     <div class="audit-modal-card" onclick="event.stopPropagation()">
       <div class="audit-modal-header">
@@ -512,7 +562,7 @@
             </svg>
           </div>
           <div class="audit-warning-text">
-            <strong>Sales Counter Lockdown Notice:</strong> Submitting this Z-Reading will <strong>permanently lock</strong> the sales counter for this shift. No further orders can be processed, and the final collection packet will be transmitted directly to the <strong>Financial Officer</strong> for reconciliation.
+            <strong>Sales Counter Lockdown Notice:</strong> Submitting this Z-Reading will <strong>permanently lock</strong> the sales counter for this shift. Automated review synthesis will trigger in the background via Gemini 2.5 Flash, and the final collection packet will be transmitted directly to the <strong>Finance Officer</strong>.
           </div>
         </div>
       </div>
