@@ -271,12 +271,12 @@ function initNavbarState() {
       userSlot.innerHTML = `
         <div class="nav-profile-dropdown-wrapper" id="navProfileDropdown">
           <div class="nav-avatar-trigger" id="navAvatarTrigger" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false">
-            <img id="navAvatarImgDisplay" src="${avatarUrl}" alt="User Avatar" class="nav-avatar-img-badge" onerror="this.src='images/account.png'">
+            <img id="navAvatarImgDisplay" src="${avatarUrl}" referrerpolicy="no-referrer" alt="User Avatar" class="nav-avatar-img-badge" onerror="this.src='images/account.png'">
           </div>
           <div class="nav-profile-menu" id="navProfileMenu">
             <div class="profile-dropdown-header">
               <div style="position: relative; width: 64px; height: 64px; margin: 0 auto 10px; border-radius: 50%; overflow: hidden; border: 2.5px solid #F48A8E; background: #FFF5F4;">
-                <img id="dropdownAvatarImgDisplay" src="${avatarUrl}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='images/account.png'">
+                <img id="dropdownAvatarImgDisplay" src="${avatarUrl}" referrerpolicy="no-referrer" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='images/account.png'">
               </div>
               <span class="dropdown-greeting">SIGNED IN AS</span>
               <span class="dropdown-username">${displayName}</span>
