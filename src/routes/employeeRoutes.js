@@ -11,59 +11,74 @@ try {
   console.warn('[Gemini SDK Warning]: @google/genai is not yet installed. Run "npm install @google/genai" if needed.');
 }
 
-// Clean API Key and Multi-Tier Native Fetch Helper (v1 + v1beta)
-async function callGeminiApi(systemPrompt) {
+// Live Model Discovery & Execution Engine
+async function executeDynamicGemini(systemPrompt) {
   let rawKey = process.env.GEMINI_API_KEY || '';
   const apiKey = rawKey.trim().replace(/^["']|["']$/g, '');
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY environment variable is missing on server.");
+    throw new Error("GEMINI_API_KEY environment variable is missing on the server.");
   }
 
-  // Endpoints and models to attempt in order of stability
-  const attempts = [
-    { version: 'v1', model: 'gemini-1.5-flash' },
-    { version: 'v1beta', model: 'gemini-2.0-flash' },
-    { version: 'v1', model: 'gemini-1.5-pro' },
-    { version: 'v1beta', model: 'gemini-1.5-flash-latest' },
-    { version: 'v1beta', model: 'gemini-2.0-flash-exp' }
-  ];
+  // Step 1: Query Google's Model Registry live for this specific API Key
+  const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+  const listRes = await fetch(listUrl);
+  const listData = await listRes.json();
 
-  let lastErrorDetail = null;
-
-  for (const { version, model } of attempts) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${apiKey}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: systemPrompt }] }],
-          generationConfig: {
-            responseMimeType: 'application/json'
-          }
-        })
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-        return {
-          text: data.candidates[0].content.parts[0].text,
-          modelUsed: `${version}/${model}`
-        };
-      }
-
-      if (data.error) {
-        lastErrorDetail = `[${version}/${model} - HTTP ${res.status}]: ${data.error.message || JSON.stringify(data.error)}`;
-      } else {
-        lastErrorDetail = `[${version}/${model} - HTTP ${res.status}]: ${JSON.stringify(data)}`;
-      }
-    } catch (err) {
-      lastErrorDetail = `[${version}/${model}]: ${err.message}`;
-    }
+  if (!listRes.ok || listData.error) {
+    const errMsg = listData.error?.message || `HTTP ${listRes.status}`;
+    throw new Error(`Google API Authentication Error: ${errMsg}`);
   }
 
-  throw new Error(lastErrorDetail || "All Gemini API endpoints failed to respond.");
+  const allModels = listData.models || [];
+  if (allModels.length === 0) {
+    throw new Error("Google returned 0 models for this key. If you used a School/University Google Account, Google Workspace policies block Gemini models. Please generate an API key using a personal @gmail.com account.");
+  }
+
+  // Filter models that support content generation
+  const supported = allModels.filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'));
+  if (supported.length === 0) {
+    throw new Error("No models with 'generateContent' permission were found for this API key.");
+  }
+
+  // Select the best available model (prioritizing flash, then pro, then first supported)
+  const chosenModelObj = 
+    supported.find(m => m.name.includes('gemini-2.0-flash') && !m.name.includes('exp')) ||
+    supported.find(m => m.name.includes('gemini-1.5-flash')) ||
+    supported.find(m => m.name.includes('gemini-flash')) ||
+    supported.find(m => m.name.includes('gemini-1.5-pro')) ||
+    supported.find(m => m.name.includes('gemini-pro')) ||
+    supported[0];
+
+  const fullModelPath = chosenModelObj.name; // e.g. "models/gemini-2.0-flash" or "models/gemini-1.5-flash"
+
+  // Step 2: Generate Content via REST
+  const generateUrl = `https://generativelanguage.googleapis.com/v1beta/${fullModelPath}:generateContent?key=${apiKey}`;
+  const genRes = await fetch(generateUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: systemPrompt }] }],
+      generationConfig: {
+        responseMimeType: 'application/json'
+      }
+    })
+  });
+
+  const genData = await genRes.json();
+  if (!genRes.ok || genData.error) {
+    const genErrMsg = genData.error?.message || `HTTP ${genRes.status}`;
+    throw new Error(`[${fullModelPath}]: ${genErrMsg}`);
+  }
+
+  const outputText = genData.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!outputText) {
+    throw new Error(`Model ${fullModelPath} returned an empty candidate response.`);
+  }
+
+  return {
+    text: outputText,
+    modelUsed: fullModelPath.replace('models/', '')
+  };
 }
 
 // Recipe BOM and portions per cup size
@@ -387,15 +402,15 @@ async function generateDailyQualityReport(forceRefresh = false) {
   }
 
   const issueCount = neutralOrNegReviews.length;
-  let directCardSummary = `${posReviews.length} out of ${totalReviews} ratings (${posPct}%) praised flavor quality, while ${issueCount} out of ${totalReviews} (${issuePct}%) reported packaging and missing utensil issues.`;
+  let directCardSummary = `${posReviews.length} out of ${totalReviews} ratings (${posPct}%) were positive on taste, while ${issueCount} out of ${totalReviews} (${issuePct}%) flagged packaging and missing utensils.`;
 
   let aiOutput = {
     sentiment_breakdown: { positive: posPct, neutral: issuePct, negative: 0 },
     summary_text: directCardSummary,
     customer_voice: defaultVoice,
     operational_actions: [
-      `Counter: ${issueCount} out of ${totalReviews} customers (${issuePct}%) reported missing spoons. Mandate disposable spoons with all jelly takeout.`,
-      "Inventory: Verify straw length compatibility to ensure stability in 8oz cups."
+      `Counter: ${issueCount} out of ${totalReviews} customers (${issuePct}%) noted missing spoons. Mandate including a spoon for every jelly takeaway.`,
+      "Inventory: Check straw sizing to prevent tipping on 8oz cups."
     ]
   };
 
@@ -425,7 +440,7 @@ Respond ONLY with this exact JSON structure:
     "neutral": ${issuePct},
     "negative": 0
   },
-  "summary_text": "${posReviews.length} out of ${totalReviews} ratings (${posPct}%) liked the beverages, while ${issueCount} out of ${totalReviews} (${issuePct}%) reported issues with missing spoons and straw length.",
+  "summary_text": "${posReviews.length} out of ${totalReviews} ratings (${posPct}%) liked the drinks, while ${issueCount} out of ${totalReviews} (${issuePct}%) reported issues with missing spoons and straw length.",
   "customer_voice": [
     {
       "type": "positive",
@@ -439,12 +454,12 @@ Respond ONLY with this exact JSON structure:
     }
   ],
   "operational_actions": [
-    "Counter: ${issueCount} out of ${totalReviews} customers (${issuePct}%) reported missing spoons. Always include disposable spoons with takeaway orders.",
-    "Inventory: Verify straw sizing suitability for 8oz beverage cups."
+    "Counter: ${issueCount} out of ${totalReviews} customers (${issuePct}%) flagged missing spoons. Always include disposable spoons with jelly orders.",
+    "Inventory: Verify straw length compatibility for 8oz cups."
   ]
 }`;
 
-      const { text } = await callGeminiApi(systemPrompt);
+      const { text } = await executeDynamicGemini(systemPrompt);
       const cleanJson = text.replace(/```json/gi, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(cleanJson);
       if (parsed.summary_text && parsed.customer_voice) {
@@ -1246,7 +1261,7 @@ router.get('/sales-officer/promotions', async (req, res) => {
   }
 });
 
-// AI DECISION SUPPORT: AUTO-DRAFT OPTIMAL PROMOTION PROPOSAL (PRODUCTION-STABLE)
+// AI DECISION SUPPORT: AUTO-DRAFT OPTIMAL PROMOTION PROPOSAL (DYNAMIC DISCOVERY)
 router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1302,7 +1317,7 @@ router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
     let isAiGenerated = false;
     let apiErrorMessage = null;
 
-    // 2. Gemini Synthesis using Clean Multi-Tier Caller
+    // 2. Gemini Synthesis using Live Model Registry Discovery
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
       try {
@@ -1337,7 +1352,7 @@ Respond ONLY with this exact JSON format:
   "pitch_note": "<Rationale to CEO>"
 }`;
 
-        const result = await callGeminiApi(systemPrompt);
+        const result = await executeDynamicGemini(systemPrompt);
         let rawText = (result.text || '').replace(/```json/gi, '').replace(/```/g, '').trim();
 
         const parsed = JSON.parse(rawText);
