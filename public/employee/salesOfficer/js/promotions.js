@@ -285,6 +285,92 @@ function renderPromoPagerButtons(totalPages, activePage) {
     });
 }
 
+// On-Demand AI Promo Proposal Generator (DSS Action)
+async function generateAiPromoProposal() {
+    const btn = document.getElementById('btnAiDraftPromo');
+    if (btn) btn.disabled = true;
+
+    Swal.fire({
+        title: 'Synthesizing Promo Scheme...',
+        html: 'Gemini AI is reviewing weekly sales velocity, volume trends, and product retention...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    try {
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const headers = { 'Content-Type': 'application/json' };
+        if (userId) headers['x-user-id'] = userId;
+
+        const response = await fetch('/api/sales-officer/promotions/ai-suggest', {
+            method: 'POST',
+            headers
+        });
+
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            throw new Error(data.message || 'Failed to auto-draft promo scheme.');
+        }
+
+        const p = data.proposal;
+
+        // Auto-fill all inputs in the form
+        const codeInput = document.getElementById('inputPromoCode');
+        const segmentSelect = document.getElementById('inputTargetSegment');
+        const typeSelect = document.getElementById('inputDiscountType');
+        const valInput = document.getElementById('inputDiscountVal');
+        const valLabel = document.getElementById('discountValueLabel');
+        const minSpendInput = document.getElementById('inputMinSpend');
+        const usageCapInput = document.getElementById('inputUsageCap');
+        const noteTextarea = document.getElementById('inputPitchNote');
+
+        if (codeInput) codeInput.value = p.code || '';
+        if (segmentSelect) segmentSelect.value = p.target_segment || 'all';
+        if (typeSelect) {
+            typeSelect.value = p.discount_type || 'percent';
+            if (valLabel) {
+                valLabel.textContent = p.discount_type === 'percent'
+                    ? 'Discount Value * (%)'
+                    : 'Discount Value * (₱ Fixed)';
+            }
+        }
+        if (valInput) valInput.value = p.discount_value || 10;
+        if (minSpendInput) minSpendInput.value = p.min_spend !== null && p.min_spend !== undefined ? p.min_spend : '';
+        if (usageCapInput) usageCapInput.value = p.usage_cap !== null && p.usage_cap !== undefined ? p.usage_cap : '';
+        if (noteTextarea) noteTextarea.value = p.pitch_note || '';
+
+        Swal.fire({
+            icon: 'success',
+            title: 'AI Draft Ready!',
+            html: `
+              <div style="text-align: left; font-size: 12.5px; line-height: 1.5; color: var(--text-dark);">
+                <p>Gemini has populated optimal campaign variables based on current sales velocity:</p>
+                <div style="background: var(--bg-main); padding: 10px 14px; border-radius: 10px; margin: 10px 0; border-left: 3.5px solid var(--accent-pink);">
+                  <strong>Code:</strong> ${p.code}<br>
+                  <strong>Discount:</strong> ${p.discount_value}${p.discount_type === 'percent' ? '%' : ' PHP'} OFF<br>
+                  <strong>Target:</strong> ${p.target_segment === 'member' ? 'Members Only' : 'General Public'}<br>
+                  <strong>Strategy:</strong> <em>${escapeHtml(p.pitch_note)}</em>
+                </div>
+                <small style="color: var(--text-muted);">You may adjust any values before submitting to the CEO.</small>
+              </div>
+            `,
+            confirmButtonText: 'Review Proposal'
+        });
+
+    } catch (err) {
+        console.error('AI Suggestion error:', err);
+        Swal.fire({
+            icon: 'warning',
+            title: 'Auto-Draft Warning',
+            text: err.message
+        });
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
 // Submit proposal to CEO with themed SweetAlert
 async function handlePitchFormSubmit(e) {
     e.preventDefault();

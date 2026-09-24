@@ -173,7 +173,7 @@
             </section>
         </main>
 
-        <!-- Pitch Promotion Modal -->
+        <!-- Pitch Promotion Modal (With AI Proposal Generator Bar) -->
         <div class="modal-overlay" id="promoModalOverlay">
             <div class="profile-modal pitch-modal" onclick="event.stopPropagation()">
                 <div class="modal-header">
@@ -186,6 +186,23 @@
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
+                    </button>
+                </div>
+
+                <!-- AI Decision Support Auto-Draft Bar -->
+                <div class="ai-assist-bar">
+                    <div class="ai-assist-info">
+                        <svg class="ai-sparkle-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v4m0 12v4M2 12h4m12 0h4m-3.17-6.83l-2.83 2.83m-8 8l-2.83 2.83m0-13.66l2.83 2.83m8 8l2.83 2.83"/>
+                        </svg>
+                        <span>Analyze sales velocity &amp; draft optimal proposal</span>
+                    </div>
+                    <button type="button" class="btn-ai-autodraft" id="btnAiDraftPromo" onclick="generateAiPromoProposal()" title="Run Gemini AI DSS promo analysis">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="23 4 23 10 17 10" />
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                        </svg>
+                        <span>Auto-Draft with AI</span>
                     </button>
                 </div>
 
