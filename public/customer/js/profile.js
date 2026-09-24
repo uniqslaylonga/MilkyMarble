@@ -129,7 +129,12 @@ async function loadProfileDetails() {
 function populateProfileFields(data) {
     const user = data.users || data;
 
-    const rawAvatar = user.avatar || user.profile_picture || user.avatar_url || data.avatar || '';
+    // Use the first REAL photo: the database value first, then the photo saved
+    // at login (Google accounts). "account.png" counts as "no photo".
+    const savedLogin = JSON.parse(localStorage.getItem('mm_user') || '{}');
+    const rawAvatar = [user.avatar, user.profile_picture, user.avatar_url, data.avatar,
+                       savedLogin.avatar, savedLogin.profile_picture]
+        .find(a => a && typeof a === 'string' && !/account\.png$/i.test(a.trim())) || '';
     const avatarSrc = sanitizeAvatarString(rawAvatar);
 
     const avatarRound = document.getElementById('avatarRoundPreview');

@@ -78,7 +78,10 @@ function populateSettingsUI(data) { //[cite: 4]
     document.getElementById('overviewEmail').textContent = email; //[cite: 4]
     document.getElementById('otpTargetEmail').textContent = email; //[cite: 4]
     
-    const rawAvatar = user.avatar || data.avatar; //[cite: 4]
+    // Database photo first, then the photo saved at login (Google accounts).
+    const savedLogin = JSON.parse(localStorage.getItem('mm_user') || '{}');
+    const rawAvatar = [user.avatar, data.avatar, savedLogin.avatar, savedLogin.profile_picture]
+        .find(a => a && typeof a === 'string' && !/account\.png$/i.test(a.trim())); //[cite: 4]
     if (rawAvatar) { //[cite: 4]
         const avatarUrl = cleanAvatarUrl(rawAvatar);
         const overviewAvatarEl = document.getElementById('overviewAvatar');

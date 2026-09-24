@@ -205,6 +205,24 @@ router.post('/google', async (req, res) => {
       });
     }
 
+    // If the saved photo is empty or just the default placeholder (an old
+    // profile-save bug could overwrite it), restore the Google photo.
+    if (googleAvatar && (!user.avatar || /account\.png$/i.test(String(user.avatar).trim()))) {
+      const { data: fixedRows, error: avatarFixErr } = await supabase
+        .from('users')
+        .update({ avatar: googleAvatar })
+        .eq('id', user.id)
+        .select('id');
+      if (avatarFixErr) {
+        console.warn('[google-auth] Could not save Google photo:', avatarFixErr.message);
+      } else if (!fixedRows || fixedRows.length === 0) {
+        // Update ran but changed nothing = blocked by Row Level Security.
+        console.warn('[google-auth] Google photo NOT saved (0 rows updated) - set SUPABASE_SERVICE_ROLE_KEY on the server or allow updates on users.');
+      } else {
+        user.avatar = googleAvatar;
+      }
+    }
+
     let { data: customer } = await supabase
       .from('customers')
       .select('id, loyalty_points')
