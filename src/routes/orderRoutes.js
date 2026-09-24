@@ -76,6 +76,66 @@ async function resolveCustomer(req) {
   return null;
 }
 
+// Rebuild the flavor/toppings/cup layer image paths (and the is_custom flag)
+// straight from the item's title/flavor/variation/size/toppings, the same
+// way the front-end previews do. The cart only ever persists a single
+// `image` field, so by checkout time flavor_img/toppings_img/cup_img/is_custom
+// are missing on the item — without this, order history would save/display
+// only a lone flavor-layer PNG with no cup outline or toppings on top.
+function resolveOrderItemAssets(item) {
+  const title = item.title || item.item_label || '';
+  const titleLower = title.toLowerCase();
+  const flavorLower = (item.flavor || title).toLowerCase();
+  const varLower = (item.variation || '').toLowerCase();
+  const size = item.size || '12oz';
+  const isLarge = size !== '8oz';
+  const folderSize = isLarge ? 'Large' : 'Small';
+
+  const presets = {
+    'chocolatey coffee noodly jelly': 'images/Chocolatey Coffee Noodly Jelly.png',
+    'cheesy pandan cubes': 'images/Cheesy Pandan Cubes.png',
+    'bubbly coffee jelly': 'images/Bubbly Coffee Jelly.png',
+    'strawberry string party': 'images/Strawberry String Party.png'
+  };
+
+  for (const [pName, pImage] of Object.entries(presets)) {
+    if (titleLower.includes(pName)) {
+      return { is_custom: false, flavor_img: pImage, toppings_img: null, cup_img: null };
+    }
+  }
+
+  let flavor = 'Pandan';
+  if (flavorLower.includes('strawberry') || titleLower.includes('strawberry')) flavor = 'Strawberry';
+  else if (flavorLower.includes('coffee') || titleLower.includes('coffee')) flavor = 'Coffee';
+
+  let jelly = 'cube';
+  if (varLower.includes('spaghetti') || titleLower.includes('spaghetti') || titleLower.includes('string')) jelly = 'spaghetti';
+  else if (varLower.includes('whole') || titleLower.includes('whole')) jelly = 'whole';
+
+  const flavor_img = `images/Layer 1/${folderSize} Flavors/${flavor} ${jelly}.png`;
+  const cup_img = isLarge ? 'images/Layer 3/Large Cup.png' : 'images/Layer 3/Small Cup.png';
+
+  const toppingsArr = Array.isArray(item.toppings)
+    ? item.toppings
+    : (item.toppings || '').split(',').map(t => t.trim()).filter(Boolean);
+  const toppingsStr = toppingsArr.join(' ').toLowerCase();
+  const toppingMap = {
+    'cheese': 'Cheese', 'tapioca': 'Tapioca', 'marshmallow': 'Mashmallow', 'nuts': 'Nuts',
+    'assorted sprinkles': 'Assorted Sprinkles', 'choco sprinkles': 'Choco Sprinkles',
+    'sprinkles': 'Assorted Sprinkles', 'choco chips': 'Choco Chips', 'chocolate chip': 'Choco Chips'
+  };
+
+  let toppings_img = null;
+  for (const [keyword, fileBase] of Object.entries(toppingMap)) {
+    if (toppingsStr.includes(keyword)) {
+      toppings_img = `images/Layer 2/${folderSize} Toppings/${fileBase}.png`;
+      break;
+    }
+  }
+
+  return { is_custom: true, flavor_img, toppings_img, cup_img };
+}
+
 // POST /api/orders
 router.post('/', async (req, res) => {
   try {
@@ -181,21 +241,30 @@ router.post('/', async (req, res) => {
     }
 
     if (Array.isArray(items) && items.length > 0) {
-      const orderItemsToInsert = items.map(item => ({
-        order_id: newOrder.id,
-        item_label: item.title || item.item_label || 'Special Blend Cup',
-        quantity: parseInt(item.quantity || 1, 10),
-        unit_price: parseFloat(item.unit_price || item.price || orderSubtotal),
-        line_total: parseFloat((parseInt(item.quantity || 1, 10)) * (parseFloat(item.unit_price || item.price || orderSubtotal))),
-        size: item.size || null,
-        is_custom: !!(item.is_custom || item.custom_build),
-        toppings: Array.isArray(item.toppings) ? item.toppings.join(', ') : (item.toppings || null),
-        addons: item.addons || null,
-        flavor_img: item.flavor_img || item.image || null,
-        toppings_img: item.toppings_img || null,
-        cup_img: item.cup_img || null,
-        accent_color: item.accent_color || null
-      }));
+      const orderItemsToInsert = items.map(item => {
+        // The cart only ever saves one flat `image`, so flavor_img/toppings_img/
+        // cup_img/is_custom are normally missing here — rebuild them from the
+        // item's own title/flavor/variation/size/toppings so the composite
+        // (flavor + toppings + cup) layers actually persist and redisplay later.
+        const hasAllLayers = item.flavor_img && (item.cup_img || item.is_custom === false);
+        const resolved = hasAllLayers ? null : resolveOrderItemAssets(item);
+
+        return {
+          order_id: newOrder.id,
+          item_label: item.title || item.item_label || 'Special Blend Cup',
+          quantity: parseInt(item.quantity || 1, 10),
+          unit_price: parseFloat(item.unit_price || item.price || orderSubtotal),
+          line_total: parseFloat((parseInt(item.quantity || 1, 10)) * (parseFloat(item.unit_price || item.price || orderSubtotal))),
+          size: item.size || null,
+          is_custom: (item.is_custom !== undefined) ? !!(item.is_custom || item.custom_build) : (resolved ? resolved.is_custom : false),
+          toppings: Array.isArray(item.toppings) ? item.toppings.join(', ') : (item.toppings || null),
+          addons: item.addons || null,
+          flavor_img: item.flavor_img || (resolved && resolved.flavor_img) || item.image || null,
+          toppings_img: item.toppings_img || (resolved && resolved.toppings_img) || null,
+          cup_img: item.cup_img || (resolved && resolved.cup_img) || null,
+          accent_color: item.accent_color || null
+        };
+      });
 
       await supabase.from('order_items').insert(orderItemsToInsert);
     }
