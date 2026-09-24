@@ -315,7 +315,7 @@ async function generateDailyQualityReport(forceRefresh = false) {
   const posPct = Math.round((posReviews.length / totalReviews) * 100);
   const issuePct = 100 - posPct;
 
-  // 3. I-extract ang anonymized direct quotes (Walang names o order IDs para sa privacy)
+  // 3. I-extract ang anonymized direct quotes (Protektado ang privacy: walang names o IDs)
   const samplePraise = posReviews.find(r => r.review_text && r.review_text.trim().length > 5);
   const sampleIssue = neutralOrNegReviews.find(r => r.review_text && r.review_text.trim().length > 5);
 
@@ -347,7 +347,7 @@ async function generateDailyQualityReport(forceRefresh = false) {
     ]
   };
 
-  // 4. Gemini 2.5 Flash Synthesis
+  // 4. Gemini 2.5 Flash Synthesis (Deep analysis na may anonymized quotes at action items)
   const apiKey = process.env.GEMINI_API_KEY;
   if (apiKey && GoogleGenAI) {
     try {
@@ -439,7 +439,104 @@ Respond ONLY with this exact JSON structure:
   return savedReport || insertPayload;
 }
 
-// Start Shift / Open Register endpoint
+// ==========================================================================
+// SALES OFFICER DASHBOARD API ROUTES
+// ==========================================================================
+
+// 1. Dashboard Overview Metrics (Fixes 404 Endpoint Not Found)
+router.get('/sales-officer/dashboard', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+
+    const userProfile = await getEmployeeProfile(req);
+    const todayStr = phDate(new Date());
+    const todayStart = phDayStartISO(todayStr);
+
+    // Fetch today's orders & revenue
+    const { data: todayOrdersData } = await supabase
+      .from('orders')
+      .select('id, total_amount, status, placed_at')
+      .gte('placed_at', todayStart);
+
+    const ordersList = todayOrdersData || [];
+    const todayOrders = ordersList.filter(o => o.status !== 'CANCELLED').length;
+    const todaySales = ordersList
+      .filter(o => isSaleStatus(o.status))
+      .reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
+
+    // Fetch pending approvals
+    const { count: pendingOrders } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .in('status', ORDER_REVIEW_STATUSES);
+
+    // Customer acquisition counts
+    const { data: acqData } = await supabase.from('customers').select('created_at');
+    const allCust = acqData || [];
+
+    const newAccounts = {
+      today: allCust.filter(c => phDate(c.created_at) === todayStr).length,
+      week: allCust.filter(c => new Date(c.created_at) >= startOfDaysAgo(7)).length,
+      month: allCust.filter(c => new Date(c.created_at) >= monthsAgo(1)).length,
+      last3Months: allCust.filter(c => new Date(c.created_at) >= monthsAgo(3)).length,
+      last6Months: allCust.filter(c => new Date(c.created_at) >= monthsAgo(6)).length
+    };
+
+    // Register Status Check mula sa system_settings
+    const { data: regSetting } = await supabase
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', 'register_status')
+      .maybeSingle();
+
+    const registerStatus = regSetting?.setting_value === 'LOCKED' ? 'LOCKED' : 'OPEN';
+
+    // Recent 50 transactions with customer info
+    const { data: recentOrders } = await supabase
+      .from('orders')
+      .select(`
+        id, order_number, order_type, status, total_amount, placed_at, customer_id, guest_name,
+        customers (
+          users (full_name)
+        )
+      `)
+      .order('placed_at', { ascending: false })
+      .limit(50);
+
+    const formattedRecent = (recentOrders || []).map(o => {
+      const userObj = Array.isArray(o.customers) ? o.customers[0]?.users : o.customers?.users;
+      const custName = (Array.isArray(userObj) ? userObj[0]?.full_name : userObj?.full_name) || o.guest_name || 'Walk-in Counter';
+      return {
+        id: o.id,
+        order_number: o.order_number,
+        order_type: o.order_type,
+        status: o.status,
+        total_amount: parseFloat(o.total_amount) || 0,
+        placed_at: o.placed_at,
+        customer_id: o.customer_id,
+        customer_name: custName
+      };
+    });
+
+    return res.json({
+      user: userProfile,
+      metrics: {
+        todayOrders,
+        todaySales,
+        pendingOrders: pendingOrders || 0
+      },
+      newAccounts,
+      registerStatus,
+      recentOrders: formattedRecent
+    });
+
+  } catch (error) {
+    console.error('[sales-officer/dashboard] error:', error.message);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// 2. Start Shift / Open Register endpoint
 router.post('/sales-officer/open-shift', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -472,7 +569,7 @@ router.post('/sales-officer/open-shift', async (req, res) => {
   }
 });
 
-// Sales Officer Sentiment & Decision Support Endpoint
+// 3. Sales Officer Sentiment & Decision Support Endpoint
 router.get('/sales-officer/ai-sentiment', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -542,7 +639,7 @@ router.get('/sales-officer/ai-sentiment', async (req, res) => {
   }
 });
 
-// On-Demand Trigger para sa Comprehensive AI Summary (Bypasses Idempotency Cache)
+// 4. On-Demand Manual Trigger para sa Comprehensive AI Summary (Bypasses Cache)
 router.post('/sales-officer/ai-sentiment/generate', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -567,7 +664,7 @@ router.post('/sales-officer/ai-sentiment/generate', async (req, res) => {
   }
 });
 
-// Production Supervisor Kitchen Pulse
+// 5. Production Supervisor Kitchen Pulse
 router.get('/production-supervisor/kitchen-pulse', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -612,7 +709,7 @@ router.get('/production-supervisor/kitchen-pulse', async (req, res) => {
   }
 });
 
-// X-Reading interim endpoint
+// 6. X-Reading interim endpoint
 router.get('/sales-officer/x-reading', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -685,7 +782,7 @@ router.get('/sales-officer/x-reading', async (req, res) => {
   }
 });
 
-// Z-Reading official end of shift cut-off
+// 7. Z-Reading official end of shift cut-off
 router.post('/sales-officer/z-reading', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -760,7 +857,7 @@ router.post('/sales-officer/z-reading', async (req, res) => {
   }
 });
 
-// Order confirmation desk
+// 8. Order confirmation desk
 router.get('/sales-officer/order-confirmation', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -825,7 +922,7 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
   }
 });
 
-// Generic order status patch route
+// 9. Generic order status patch route
 router.patch('/orders/:id/status', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -849,7 +946,7 @@ router.patch('/orders/:id/status', async (req, res) => {
   }
 });
 
-// Order monitoring desk
+// 10. Order monitoring desk
 router.get('/sales-officer/order-monitoring', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -900,7 +997,7 @@ router.get('/sales-officer/order-monitoring', async (req, res) => {
   }
 });
 
-// Order completion & instant walk-in sale puncher
+// 11. Order completion & instant walk-in sale puncher
 router.post('/sales-officer/order-monitoring/update', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -969,7 +1066,7 @@ router.post('/sales-officer/order-monitoring/update', async (req, res) => {
   }
 });
 
-// Customer records
+// 12. Customer records
 router.get('/sales-officer/customer-records', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1077,7 +1174,7 @@ router.get('/sales-officer/customer-records', async (req, res) => {
   }
 });
 
-// Promotions desk
+// 13. Promotions desk
 router.get('/sales-officer/promotions', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1190,7 +1287,7 @@ router.post('/sales-officer/promotions/toggle', async (req, res) => {
   }
 });
 
-// Sales reports & records audit endpoint
+// 14. Sales reports & records audit endpoint
 router.get('/sales-officer/sales-reports', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1248,7 +1345,7 @@ router.get('/sales-officer/sales-reports', async (req, res) => {
   }
 });
 
-// Sales targets & quota metrics endpoint
+// 15. Sales targets & quota metrics endpoint
 router.get('/sales-officer/sales-target', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1362,7 +1459,10 @@ router.get('/sales-officer/sales-target', async (req, res) => {
   }
 });
 
-// Finance Officer Dashboard
+// ==========================================================================
+// FINANCE OFFICER API ROUTES
+// ==========================================================================
+
 router.get('/finance-officer/dashboard', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1421,7 +1521,6 @@ router.get('/finance-officer/dashboard', async (req, res) => {
   }
 });
 
-// Finance Revenue
 router.get('/finance-officer/revenue', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1526,7 +1625,6 @@ router.get('/finance-officer/revenue', async (req, res) => {
   }
 });
 
-// Finance Budget Cycles
 router.get('/finance-officer/budget', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1683,7 +1781,6 @@ router.get('/finance-officer/payments', async (req, res) => {
   }
 });
 
-// Finance Drawer Breakdown Helper
 async function computeDrawerBreakdown(periodStart, periodEnd) {
   const { data: orders, error } = await supabase
     .from('orders')
@@ -1798,7 +1895,10 @@ router.post('/finance-officer/reconciliation', async (req, res) => {
   }
 });
 
-// Procurement Officer
+// ==========================================================================
+// PROCUREMENT OFFICER API ROUTES
+// ==========================================================================
+
 function routeForAmount(amount) {
   const n = parseFloat(amount) || 0;
   return n > 500 ? 'ceo' : (n > 300 ? 'finance' : 'procure');
@@ -2268,7 +2368,10 @@ router.get('/procurement-officer/stock-control', async (req, res) => {
   }
 });
 
-// Production Supervisor
+// ==========================================================================
+// PRODUCTION SUPERVISOR API ROUTES
+// ==========================================================================
+
 router.get('/production-supervisor/dashboard', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
