@@ -274,14 +274,14 @@ function resolveAvatar(raw) {
 }
 
 // ==========================================================================
-// GEMINI 2.5 FLASH AI AUTOMATED SENTIMENT & QUALITY PULSE ENGINE
+// PERCENTAGE-BASED REAL SENTIMENT & QUALITY PULSE ENGINE
 // ==========================================================================
 async function generateDailyQualityReport(forceRefresh = false) {
   if (!supabase) return null;
 
   const todayStr = phDate(new Date());
 
-  // 1. Idempotency Check: Isang beses lang tatakbo kada operational day
+  // 1. Idempotency Check (Kung may lumang dummy row, kusa itong i-overwrite)
   if (!forceRefresh) {
     const { data: existingReport } = await supabase
       .from('daily_quality_reports')
@@ -289,12 +289,12 @@ async function generateDailyQualityReport(forceRefresh = false) {
       .eq('report_date', todayStr)
       .maybeSingle();
 
-    if (existingReport) {
+    if (existingReport && !existingReport.raw_ai_summary?.includes('Automated analysis benchmark')) {
       return existingReport;
     }
   }
 
-  // 2. Basahin ang customer ratings mula sa public.ratings
+  // 2. Basahin ang totoong customer reviews
   const { data: reviews, error: reviewErr } = await supabase
     .from('ratings')
     .select('id, product_title, rating_score, experience_tags, review_text, created_at')
@@ -307,54 +307,70 @@ async function generateDailyQualityReport(forceRefresh = false) {
   }
 
   const totalReviews = reviews.length;
-  const avgScore = (reviews.reduce((sum, r) => sum + (parseInt(r.rating_score, 10) || 5), 0) / totalReviews).toFixed(2);
+  const avgScore = (reviews.reduce((sum, r) => sum + (parseInt(r.rating_score, 10) || 5), 0) / totalReviews).toFixed(1);
 
-  // 3. Fallback baseline sakaling hindi available ang network/key
+  // 3. Kalkulahin ang totoong porsyento mula sa database
+  const posCount = reviews.filter(r => (parseInt(r.rating_score, 10) || 5) >= 4).length;
+  const neuCount = reviews.filter(r => (parseInt(r.rating_score, 10) || 5) === 3).length;
+  const negCount = reviews.filter(r => (parseInt(r.rating_score, 10) || 5) <= 2).length;
+
+  const posPct = Math.round((posCount / totalReviews) * 100);
+  const neuPct = Math.round((neuCount / totalReviews) * 100);
+  const negPct = Math.max(0, 100 - posPct - neuPct);
+
+  const allTags = reviews.map(r => r.experience_tags || '').filter(Boolean).join(', ');
+  const commonPraises = allTags.toLowerCase().includes('creamy') ? 'rich creaminess and jelly texture' : 'beverage flavor and packaging';
+  const commonComplaints = allTags.toLowerCase().includes('sweet') ? '12oz sweetness and pearl chewiness' : 'ingredient consistency';
+
+  let directSummary = `${posPct}% of customer ratings liked the drinks (praising ${commonPraises}), while ${neuPct + negPct}% flagged issues with ${commonComplaints}.`;
+
   let aiOutput = {
-    sentiment_breakdown: { positive: 85, neutral: 10, negative: 5 },
+    sentiment_breakdown: { positive: posPct, neutral: neuPct, negative: negPct },
     sales_insights: {
-      top_praises: ["Consistent beverage taste and rich creamy profile.", "Convenient counter pick-up experience."],
-      retention_summary: "Customers express high satisfaction with jelly texture and counter responsiveness."
+      top_praises: [`${posPct}% satisfied with beverage taste and counter pickup.`],
+      retention_summary: `${posPct}% overall positive customer sentiment recorded.`
     },
     kitchen_quality_alerts: {
-      alerts: ["Maintain consistent boba pearl tenderness during peak morning batches."],
+      alerts: [`${neuPct + negPct}% of customers flagged adjustments needed for sweetness or pearls.`],
       bom_adjustments: ["Maintain standard recipe portions."]
     },
-    summary_text: "Automated analysis benchmark based on standard customer rating distributions."
+    summary_text: directSummary
   };
 
+  // 4. Refinement via Gemini kung available ang environment variable
   const apiKey = process.env.GEMINI_API_KEY;
   if (apiKey && GoogleGenAI) {
     try {
       const ai = new GoogleGenAI({ apiKey });
       const reviewsDump = reviews.map(r => 
-        `- Drink: "${r.product_title}" | Score: ${r.rating_score}/5 | Tags: [${r.experience_tags || ''}] | Comment: "${r.review_text || 'No comment'}"`
+        `- Drink: "${r.product_title}" | Score: ${r.rating_score}/5 | Tags: [${r.experience_tags || ''}] | Comment: "${r.review_text || ''}"`
       ).join('\n');
 
       const systemPrompt = `
-You are the Executive Quality Control & AI Decision Support System for "Milky Marble Enterprise" (a specialized jelly, boba, and milk tea beverage brand).
-Analyze these real customer ratings and Taglish reviews:
+You are the Quality Control System for "Milky Marble Enterprise".
+Analyze these ${totalReviews} customer reviews:
 
 ${reviewsDump}
 
-Respond ONLY with a valid, clean JSON object matching this exact structure:
+DO NOT write long conversational paragraphs or Taglish greetings.
+Provide a strictly percentage-based, direct statistical summary.
+Respond ONLY with this exact JSON format:
 {
   "sentiment_breakdown": {
-    "positive": <integer percentage 0-100>,
-    "neutral": <integer percentage 0-100>,
-    "negative": <integer percentage 0-100>
+    "positive": ${posPct},
+    "neutral": ${neuPct},
+    "negative": ${negPct}
   },
   "sales_insights": {
-    "top_praises": ["<praise 1>", "<praise 2>"],
-    "retention_summary": "<1-2 sentence executive summary for Sales Officer regarding customer retention>"
+    "top_praises": ["<short stat or top praised feature>"],
+    "retention_summary": "<1-sentence direct metric summary>"
   },
   "kitchen_quality_alerts": {
-    "alerts": ["<specific complaint on sweetness, jelly hardness, or boba texture, clustering similar Taglish reviews together>"],
-    "bom_adjustments": ["<actionable recommendation for Production Supervisor, e.g., 'Reduce condensed milk by 0.2oz on 8oz Coffee Jelly' or 'Increase pearl boil time by 5 mins'>"]
+    "alerts": ["<specific complaint with percentage, e.g., '14% flagged noon batch pearls'>"],
+    "bom_adjustments": ["<exact adjustment, e.g., 'Reduce condensed milk by 0.2oz'>"]
   },
-  "summary_text": "<concise 2-sentence executive summary>"
-}
-Do not enclose in markdown code fences if possible, or provide raw json string.`;
+  "summary_text": "${posPct}% of ratings liked the drink (<top 2 praised features>), while ${neuPct + negPct}% reported issues with <specific complaints>."
+}`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -365,15 +381,15 @@ Do not enclose in markdown code fences if possible, or provide raw json string.`
       });
 
       const parsed = JSON.parse(response.text.trim());
-      if (parsed.sentiment_breakdown && parsed.sales_insights) {
+      if (parsed.summary_text) {
         aiOutput = parsed;
       }
     } catch (aiErr) {
-      console.error('[Gemini 2.5 Flash Synthesis Warning]:', aiErr.message);
+      console.warn('[Gemini AI Fallback to Direct Percentages]:', aiErr.message);
     }
   }
 
-  // 4. I-save sa daily_quality_reports table
+  // 5. I-save sa daily_quality_reports table
   const insertPayload = {
     report_date: todayStr,
     total_reviews_analyzed: totalReviews,
@@ -397,7 +413,7 @@ Do not enclose in markdown code fences if possible, or provide raw json string.`
   return savedReport || insertPayload;
 }
 
-// Sales Officer Dashboard (Direct AI Sentiment payload included)
+// Sales Officer Dashboard
 async function buildSalesDashboard(req, res) {
   try {
     if (!supabase) return noDb(res);
@@ -479,13 +495,8 @@ async function buildSalesDashboard(req, res) {
       .maybeSingle();
     const registerStatus = registerSetting?.setting_value || 'UNLOCKED';
 
-    // Direct fetch of latest AI Quality Report para handa agad sa Dashboard cards
-    const { data: latestAiReport } = await supabase
-      .from('daily_quality_reports')
-      .select('*')
-      .order('report_date', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Kukunin ang pinakabagong report o bubuo ng bago
+    let latestAiReport = await generateDailyQualityReport(false);
 
     return res.json({
       status: 'success',
@@ -505,7 +516,32 @@ async function buildSalesDashboard(req, res) {
 
 router.get('/sales-officer/dashboard', buildSalesDashboard);
 
-// Start Shift / Open Register endpoint (Fixes 404 Error)
+// On-demand manual trigger para sa Comprehensive AI Summary (Button Trigger)
+router.post('/sales-officer/ai-sentiment/generate', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+
+    const freshReport = await generateDailyQualityReport(true);
+
+    if (!freshReport) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'No customer reviews found in database to analyze.'
+      });
+    }
+
+    return res.json({
+      status: 'success',
+      message: 'AI Quality Pulse generated successfully.',
+      report: freshReport
+    });
+  } catch (error) {
+    console.error('[sales-officer/ai-sentiment/generate] error:', error.message);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// Start Shift / Open Register endpoint
 router.post('/sales-officer/open-shift', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -538,7 +574,7 @@ router.post('/sales-officer/open-shift', async (req, res) => {
   }
 });
 
-// Sales Officer Sentiment & Decision Support Endpoint (May Date Filter & History List)
+// Sales Officer Sentiment & Decision Support Endpoint
 router.get('/sales-officer/ai-sentiment', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -608,7 +644,7 @@ router.get('/sales-officer/ai-sentiment', async (req, res) => {
   }
 });
 
-// Production Supervisor Kitchen Pulse & Recipe Quality Alert Endpoint (May Date Filter)
+// Production Supervisor Kitchen Pulse
 router.get('/production-supervisor/kitchen-pulse', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -726,7 +762,7 @@ router.get('/sales-officer/x-reading', async (req, res) => {
   }
 });
 
-// Z-Reading official end of shift cut-off (Automatically triggers Gemini AI Quality Report)
+// Z-Reading official end of shift cut-off
 router.post('/sales-officer/z-reading', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -790,8 +826,7 @@ router.post('/sales-officer/z-reading', async (req, res) => {
       }, { onConflict: 'setting_key' });
     } catch (e) {}
 
-    // Awtomatikong pinatatakbo ang Gemini AI Review Analysis sa background
-    generateDailyQualityReport(false).catch(err => 
+    generateDailyQualityReport(true).catch(err => 
       console.error('[Z-Reading Automated AI Sentinel Error]:', err.message)
     );
 
@@ -867,7 +902,7 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
   }
 });
 
-// Generic order status patch route for confirmation desk
+// Generic order status patch route
 router.patch('/orders/:id/status', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -960,9 +995,10 @@ router.post('/sales-officer/order-monitoring/update', async (req, res) => {
         .from('orders')
         .insert([{
           order_number: orderNum,
-          order_type: 'walkin_preset',
+          order_type: 'preset',
           status: 'COMPLETED',
           payment_method: 'Cash on Counter',
+          subtotal: amount,
           total_amount: amount,
           placed_at: nowISO,
           completed_at: nowISO,
@@ -983,6 +1019,7 @@ router.post('/sales-officer/order-monitoring/update', async (req, res) => {
             quantity: 1,
             size: size || '8oz',
             line_total: amount,
+            unit_price: amount,
             is_custom: false
           }]);
 
@@ -1009,7 +1046,7 @@ router.post('/sales-officer/order-monitoring/update', async (req, res) => {
   }
 });
 
-// Customer records (With Lifetime Ratings History)
+// Customer records
 router.get('/sales-officer/customer-records', async (req, res) => {
   try {
     if (!supabase) return noDb(res);

@@ -46,7 +46,7 @@
   padding: 0;
 }
 
-/* Master SOP 2.C Fixed Viewport Standard (No overflow-x: hidden on body) */
+/* Master SOP 2.C Fixed Viewport Standard */
 html, body {
   width: 100%;
   max-width: 100%;
@@ -256,7 +256,7 @@ body {
 .user-avatar-svg {
   width: 100%;
   height: 100%;
-  display: block;
+  object-fit: cover;
 }
 
 .user-name {
@@ -618,11 +618,18 @@ body {
   padding: 10px 14px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   border: 1.5px solid var(--border-soft);
 }
 
 .ai-insight-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.ai-sparkle-title-group {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -637,6 +644,37 @@ body {
   width: 14px;
   height: 14px;
   stroke: var(--accent-pink);
+  flex-shrink: 0;
+}
+
+.btn-refresh-pulse {
+  background: var(--card-white);
+  border: 1.5px solid var(--accent-pink);
+  color: var(--brown-soft);
+  font-family: var(--font-family-body);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.btn-refresh-pulse:hover {
+  background: var(--accent-pink);
+  color: #ffffff;
+}
+
+.btn-refresh-pulse:hover svg {
+  stroke: #ffffff;
+}
+
+.btn-refresh-pulse svg {
+  stroke: var(--accent-pink);
+  transition: stroke 0.15s ease;
 }
 
 .ai-insight-text {

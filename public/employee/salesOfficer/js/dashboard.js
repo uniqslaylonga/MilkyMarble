@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         pitchTypeSelect.addEventListener('change', (e) => {
             pitchValLabel.textContent = e.target.value === 'percent'
                 ? 'Discount Value * (%)'
-                : 'Discount Value * (₱ Fixed)';
+                : 'Discount Value * (\u20B1 Fixed)';
         });
     }
 
@@ -135,7 +135,7 @@ function initCharts() {
             data: {
                 labels: ['3 Wks Ago', '2 Wks Ago', 'Last Week', 'This Week'],
                 datasets: [{
-                    label: 'Inflow (₱)',
+                    label: 'Inflow (\u20B1)',
                     data: [0, 0, 0, 0],
                     backgroundColor: ['#FAD5D9', '#FAD5D9', '#F8A5AD', '#F69299'],
                     borderRadius: 4,
@@ -149,7 +149,7 @@ function initCharts() {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => `₱${Number(ctx.raw || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                            label: (ctx) => `\u20B1${Number(ctx.raw || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
                         }
                     }
                 },
@@ -188,7 +188,7 @@ async function loadPageData() {
 
         if (todayOrdersEl && data.metrics) todayOrdersEl.textContent = Number(data.metrics.todayOrders || 0).toLocaleString();
         if (todaySalesEl && data.metrics) {
-            todaySalesEl.textContent = '₱' + Number(data.metrics.todaySales || 0).toLocaleString('en-US', {
+            todaySalesEl.textContent = '\u20B1' + Number(data.metrics.todaySales || 0).toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
             });
@@ -303,12 +303,111 @@ async function fetchAiSentimentReport(selectedDate = '') {
 
         // Executive Synthesis
         if (summaryTextEl) {
-            const summary = report.raw_ai_summary || report.sales_insights?.retention_summary || 'Positive operational sentiment maintained across active jelly beverage lines.';
+            const summary = report.raw_ai_summary || report.summary_text || report.sales_insights?.retention_summary || 'Positive operational sentiment maintained across active jelly beverage lines.';
             summaryTextEl.textContent = summary;
         }
 
     } catch (e) {
         console.warn('[AI Quality Card Sync Warning]:', e.message);
+    }
+}
+
+// On-Demand Manual Trigger para sa Comprehensive AI Summary (Button Function)
+async function triggerManualAiPulse() {
+    const btn = document.getElementById('btnRunAiPulse');
+    if (btn) btn.disabled = true;
+
+    // SweetAlert2 Loading State
+    MMSwal.fire({
+        title: 'Synthesizing Reviews...',
+        html: 'Analyzing customer feedback, rating scores, and product tags...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    try {
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const headers = { 'Content-Type': 'application/json' };
+        if (userId) headers['x-user-id'] = userId;
+
+        const response = await fetch('/api/sales-officer/ai-sentiment/generate', {
+            method: 'POST',
+            headers
+        });
+
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            throw new Error(data.message || 'Failed to generate AI report.');
+        }
+
+        const report = data.report;
+
+        // 1. I-update ang Card sa Dashboard
+        const summaryTextEl = document.getElementById('aiExecutiveSummary');
+        const csatEl = document.getElementById('aiCsatScore');
+        const reviewsCountEl = document.getElementById('aiReviewsCount');
+
+        if (summaryTextEl) summaryTextEl.textContent = report.raw_ai_summary || report.summary_text;
+        if (csatEl) csatEl.textContent = parseFloat(report.average_csat || 5.0).toFixed(1);
+        if (reviewsCountEl) reviewsCountEl.textContent = `${report.total_reviews_analyzed || 0} Reviews Analyzed`;
+
+        // 2. I-update ang Progress Bars
+        const breakdown = report.sentiment_breakdown || {};
+        const pos = parseInt(breakdown.positive, 10) || 0;
+        const neu = parseInt(breakdown.neutral, 10) || 0;
+        const neg = parseInt(breakdown.negative, 10) || 0;
+
+        const barPos = document.getElementById('barPositive');
+        const barNeu = document.getElementById('barNeutral');
+        const barNeg = document.getElementById('barNegative');
+        if (barPos) barPos.style.width = `${pos}%`;
+        if (barNeu) barNeu.style.width = `${neu}%`;
+        if (barNeg) barNeg.style.width = `${neg}%`;
+
+        const pctPos = document.getElementById('pctPositive');
+        const pctNeu = document.getElementById('pctNeutral');
+        const pctNeg = document.getElementById('pctNegative');
+        if (pctPos) pctPos.textContent = `${pos}%`;
+        if (pctNeu) pctNeu.textContent = `${neu}%`;
+        if (pctNeg) pctNeg.textContent = `${neg}%`;
+
+        // 3. Ipakita ang Comprehensive Popup Modal
+        const praisesList = (report.sales_insights?.top_praises || []).map(p => `<li>${p}</li>`).join('') || '<li>Consistent product quality maintained.</li>';
+        const alertsList = (report.kitchen_quality_alerts?.alerts || []).map(a => `<li>${a}</li>`).join('') || '<li>No critical kitchen alerts.</li>';
+
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Comprehensive Quality Summary',
+            html: `
+              <div style="text-align: left; font-size: 12.5px; line-height: 1.5; color: var(--text-dark);">
+                <div style="background: var(--card-sub-bg); padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; border-left: 3px solid var(--accent-pink);">
+                  <strong>Executive Summary:</strong><br>
+                  ${report.raw_ai_summary || report.summary_text}
+                </div>
+                <div style="margin-bottom: 10px;">
+                  <strong style="color: #2E7D32;">Top Praises (${pos}% Positive):</strong>
+                  <ul style="margin: 4px 0 0 16px; padding: 0;">${praisesList}</ul>
+                </div>
+                <div>
+                  <strong style="color: #C9302C;">Quality Alerts &amp; Adjustments:</strong>
+                  <ul style="margin: 4px 0 0 16px; padding: 0;">${alertsList}</ul>
+                </div>
+              </div>
+            `,
+            confirmButtonText: 'Done'
+        });
+
+    } catch (err) {
+        console.error('Manual AI Pulse Error:', err);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Synthesis Warning',
+            text: err.message
+        });
+    } finally {
+        if (btn) btn.disabled = false;
     }
 }
 
@@ -343,8 +442,8 @@ function updateWeeklyInflowAndDSS() {
     const dssMessage = document.getElementById('dssMessage');
     const btnPitch = document.getElementById('btnDssPitch');
 
-    if (thisWeekEl) thisWeekEl.textContent = '₱' + thisWeek.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (lastWeekEl) lastWeekEl.textContent = '₱' + lastWeek.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (thisWeekEl) thisWeekEl.textContent = '\u20B1' + thisWeek.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (lastWeekEl) lastWeekEl.textContent = '\u20B1' + lastWeek.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     if (weeklyRevenueChartInstance) {
         weeklyRevenueChartInstance.data.datasets[0].data = [threeWeeksAgo, twoWeeksAgo, lastWeek, thisWeek];
@@ -560,10 +659,10 @@ function renderPaginatedTransactions() {
                         <span class="customer-name-bold">${displayName}</span>
                         <span class="client-badge ${badgeClass}">${badgeText}</span>
                     </div>
-                    <div class="order-amount-display">₱${amount}</div>
+                    <div class="order-amount-display">\u20B1${amount}</div>
                 </div>
                 <div class="row-item-footer">
-                    <span class="order-meta-info">${escapeHtml(ord.order_number || '')} • ${dateFormatted}</span>
+                    <span class="order-meta-info">${escapeHtml(ord.order_number || '')} &bull; ${dateFormatted}</span>
                     <span>Status: <strong>${escapeHtml(ord.status || 'PENDING')}</strong></span>
                 </div>
             </div>
@@ -643,7 +742,7 @@ function checkRegisterLockState() {
     if (isRegisterLocked) {
         if (banner) {
             banner.className = 'topbar-status-strip locked';
-            bannerText.innerHTML = '<span class="status-pulse-dot"></span><strong>Shift Closed &amp; Register Locked</strong> — Transmitted to Finance';
+            bannerText.innerHTML = '<span class="status-pulse-dot"></span><strong>Shift Closed &amp; Register Locked</strong> \u2014 Transmitted to Finance';
         }
         if (shiftBtn) {
             shiftBtn.className = 'btn-open-shift';
@@ -658,7 +757,7 @@ function checkRegisterLockState() {
     } else {
         if (banner) {
             banner.className = 'topbar-status-strip open';
-            bannerText.innerHTML = '<span class="status-pulse-dot"></span>Register Open • Tuesday &amp; Thursday Release Window (10:00 AM – 3:00 PM)';
+            bannerText.innerHTML = '<span class="status-pulse-dot"></span>Register Open \u2022 Tuesday &amp; Thursday Release Window (10:00 AM – 3:00 PM)';
         }
         if (shiftBtn) {
             shiftBtn.className = 'btn-z-reading';
@@ -734,7 +833,7 @@ async function confirmOpenShift() {
         MMSwal.fire({
             icon: 'success',
             title: 'Shift Started Successfully',
-            text: `Register is now OPEN with float ₱${floatAmount.toFixed(2)}.`
+            text: `Register is now OPEN with float \u20B1${floatAmount.toFixed(2)}.`
         });
     } catch (error) {
         console.error('Could not open shift:', error);
@@ -767,11 +866,11 @@ async function openXReadingModal() {
         latestXReading = data;
 
         document.getElementById('xPreOrdersCount').textContent = `${data.preordersCount} Claims`;
-        document.getElementById('xEwalletAmount').textContent = '₱' + (data.eWalletTotal || 0).toFixed(2);
+        document.getElementById('xEwalletAmount').textContent = '\u20B1' + (data.eWalletTotal || 0).toFixed(2);
         document.getElementById('xPresetsCount').textContent = `${data.presetsCount} Presets Sold`;
-        document.getElementById('xWalkinCash').textContent = '₱' + (data.walkinCashTotal || 0).toFixed(2);
-        document.getElementById('xExpectedDrawer').textContent = '₱' + (data.expectedDrawer || 0).toFixed(2);
-        document.getElementById('xGrossTotal').textContent = '₱' + (data.grossTotal || 0).toFixed(2);
+        document.getElementById('xWalkinCash').textContent = '\u20B1' + (data.walkinCashTotal || 0).toFixed(2);
+        document.getElementById('xExpectedDrawer').textContent = '\u20B1' + (data.expectedDrawer || 0).toFixed(2);
+        document.getElementById('xGrossTotal').textContent = '\u20B1' + (data.grossTotal || 0).toFixed(2);
     } catch (error) {
         console.error('Could not load X-Reading data:', error);
         MMSwal.fire({
@@ -815,11 +914,11 @@ async function openZReadingModal() {
         latestXReading = data;
 
         document.getElementById('zPreOrdersCount').textContent = `${data.preordersCount} Orders`;
-        document.getElementById('zClaimedAmount').textContent = '₱' + (data.claimedAmount || 0).toFixed(2);
-        document.getElementById('zEwalletAmount').textContent = '₱' + (data.eWalletTotal || 0).toFixed(2);
-        document.getElementById('zUnclaimedAmount').textContent = '₱' + (data.unclaimedAmount || 0).toFixed(2);
+        document.getElementById('zClaimedAmount').textContent = '\u20B1' + (data.claimedAmount || 0).toFixed(2);
+        document.getElementById('zEwalletAmount').textContent = '\u20B1' + (data.eWalletTotal || 0).toFixed(2);
+        document.getElementById('zUnclaimedAmount').textContent = '\u20B1' + (data.unclaimedAmount || 0).toFixed(2);
         document.getElementById('zPresetsCount').textContent = `${data.presetsCount} Cups Sold`;
-        document.getElementById('zExpectedCash').textContent = '₱' + (data.expectedDrawer || 0).toFixed(2);
+        document.getElementById('zExpectedCash').textContent = '\u20B1' + (data.expectedDrawer || 0).toFixed(2);
     } catch (error) {
         console.error('Could not refresh totals:', error);
         MMSwal.fire({
@@ -844,16 +943,16 @@ function calculateZVariance() {
 
     if (!varNumEl || !varPillEl) return;
     if (isNaN(actualInput) || actualInput === 0) {
-        varNumEl.textContent = '₱0.00';
+        varNumEl.textContent = '\u20B10.00';
         varNumEl.style.color = '#8C6D6D';
         varPillEl.className = 'var-status-pill neutral';
         varPillEl.textContent = 'Awaiting Count';
         return;
     }
 
-    const varFormatted = '₱' + Math.abs(variance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const varFormatted = '\u20B1' + Math.abs(variance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (variance === 0) {
-        varNumEl.textContent = '₱0.00';
+        varNumEl.textContent = '\u20B10.00';
         varNumEl.style.color = '#2E7D32';
         varPillEl.className = 'var-status-pill exact';
         varPillEl.textContent = 'Exact Balanced';
@@ -884,7 +983,7 @@ async function promptZReadingConfirmation() {
 
     const result = await MMSwal.fire({
         title: 'Confirm End-of-Shift Z-Reading?',
-        html: `Expected Cash: <strong>₱${expectedCounterCash.toFixed(2)}</strong><br>Actual Drawer: <strong>₱${actualCash.toFixed(2)}</strong><br>Variance: <strong>${variance >= 0 ? '+' : ''}₱${variance.toFixed(2)}</strong><br><br><span style="color:#C9302C;font-size:12px;">Notice: Register will be locked permanently and background AI sentiment analysis will execute.</span>`,
+        html: `Expected Cash: <strong>\u20B1${expectedCounterCash.toFixed(2)}</strong><br>Actual Drawer: <strong>\u20B1${actualCash.toFixed(2)}</strong><br>Variance: <strong>${variance >= 0 ? '+' : ''}\u20B1${variance.toFixed(2)}</strong><br><br><span style="color:#C9302C;font-size:12px;">Notice: Register will be locked permanently and background AI sentiment analysis will execute.</span>`,
         showCancelButton: true,
         confirmButtonText: 'Lock & Transmit',
         cancelButtonText: 'Cancel'
@@ -908,7 +1007,7 @@ async function executeLockdown() {
             actual_cash: actualCash,
             expected_cash: expectedCounterCash,
             variance: variance,
-            notes: `Z-Reading | Digital: ₱${(latestXReading?.eWalletTotal ?? 0).toFixed(2)} | Cash: ₱${(latestXReading?.walkinCashTotal ?? 0).toFixed(2)}`
+            notes: `Z-Reading | Digital: \u20B1${(latestXReading?.eWalletTotal ?? 0).toFixed(2)} | Cash: \u20B1${(latestXReading?.walkinCashTotal ?? 0).toFixed(2)}`
         };
 
         const response = await fetch('/api/sales-officer/z-reading', {
