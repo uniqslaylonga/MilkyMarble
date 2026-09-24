@@ -305,7 +305,7 @@ async function fetchAiSentimentReport(selectedDate = '') {
     }
 }
 
-// On-Demand Manual Trigger para sa Comprehensive AI Summary (Voice of Customer Modal)
+// On-Demand Manual Trigger para sa Comprehensive AI Summary (Berdeng Checkmark + Redirection)
 async function triggerManualAiPulse() {
     const btn = document.getElementById('btnRunAiPulse');
     if (btn) btn.disabled = true;
@@ -336,7 +336,7 @@ async function triggerManualAiPulse() {
 
         const report = data.report;
 
-        // 1. I-update ang Dashboard Card (Maikling Macro Summary lamang)
+        // 1. I-update ang Dashboard Card
         const summaryTextEl = document.getElementById('aiExecutiveSummary');
         const csatEl = document.getElementById('aiCsatScore');
         const reviewsCountEl = document.getElementById('aiReviewsCount');
@@ -365,7 +365,7 @@ async function triggerManualAiPulse() {
         if (pctNeu) pctNeu.textContent = `${neu}%`;
         if (pctNeg) pctNeg.textContent = `${neg}%`;
 
-        // 3. I-render ang Comprehensive Modal (Quotes + Actions)
+        // 3. I-render ang Comprehensive Modal (Quotes + Actions + Count)
         const customerVoice = report.sales_insights?.customer_voice || [];
         const actions = report.kitchen_quality_alerts?.operational_actions || report.kitchen_quality_alerts?.alerts || [];
 
@@ -394,13 +394,14 @@ async function triggerManualAiPulse() {
 
         const actionsHtml = actions.map(act => `<li style="margin-bottom: 4px;">${escapeHtml(act)}</li>`).join('');
 
-        MMSwal.fire({
-            icon: 'info',
+        // Modal gamit ang Berdeng Checkmark (icon: 'success') at Redirection Link
+        const swalResult = await MMSwal.fire({
+            icon: 'success',
             title: 'Shift Quality & Voice of Customer',
             html: `
               <div style="text-align: left; font-size: 12px; line-height: 1.45; color: var(--text-dark);">
                 <div style="background: var(--card-sub-bg); padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; border-left: 3px solid var(--accent-pink);">
-                  <strong style="color: var(--brown-soft); font-size: 12.5px;">Macro Performance:</strong><br>
+                  <strong style="color: var(--brown-soft); font-size: 12.5px;">Performance Summary:</strong><br>
                   ${escapeHtml(report.raw_ai_summary || report.summary_text)}
                 </div>
 
@@ -417,8 +418,14 @@ async function triggerManualAiPulse() {
                 </div>
               </div>
             `,
-            confirmButtonText: 'Understood'
+            showCancelButton: true,
+            confirmButtonText: 'Understood',
+            cancelButtonText: 'View in Customer Records &rarr;'
         });
+
+        if (swalResult.dismiss === Swal.DismissReason.cancel) {
+            window.location.href = 'customerRecords.html';
+        }
 
     } catch (err) {
         console.error('Manual AI Pulse Error:', err);

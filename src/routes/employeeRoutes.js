@@ -315,7 +315,7 @@ async function generateDailyQualityReport(forceRefresh = false) {
   const posPct = Math.round((posReviews.length / totalReviews) * 100);
   const issuePct = 100 - posPct;
 
-  // 3. I-extract ang anonymized direct quotes (Protektado ang privacy: walang names o IDs)
+  // 3. I-extract ang anonymized direct quotes at bilangin ang mga reklamo
   const samplePraise = posReviews.find(r => r.review_text && r.review_text.trim().length > 5);
   const sampleIssue = neutralOrNegReviews.find(r => r.review_text && r.review_text.trim().length > 5);
 
@@ -335,19 +335,20 @@ async function generateDailyQualityReport(forceRefresh = false) {
     });
   }
 
-  let directCardSummary = `${posPct}% of customer ratings liked the drinks, while ${issuePct}% flagged operational or packaging concerns.`;
+  const issueCount = neutralOrNegReviews.length;
+  let directCardSummary = `${posReviews.length} out of ${totalReviews} ratings (${posPct}%) were positive on taste, while ${issueCount} out of ${totalReviews} (${issuePct}%) flagged packaging and missing utensils.`;
 
   let aiOutput = {
     sentiment_breakdown: { positive: posPct, neutral: issuePct, negative: 0 },
     summary_text: directCardSummary,
     customer_voice: defaultVoice,
     operational_actions: [
-      "Counter: Ensure complete utensils (straws and spoons) are placed in every takeaway bag.",
-      "Inventory: Verify straw sizing suitability for 8oz beverage cups."
+      `Counter: ${issueCount} out of ${totalReviews} customers (${issuePct}%) noted missing spoons. Mandate including a spoon for every jelly takeaway.`,
+      "Inventory: Check straw sizing to prevent tipping on 8oz cups."
     ]
   };
 
-  // 4. Gemini 2.5 Flash Synthesis (Deep analysis na may anonymized quotes at action items)
+  // 4. Gemini 2.5 Flash Synthesis (May bilang at porsyento)
   const apiKey = process.env.GEMINI_API_KEY;
   if (apiKey && GoogleGenAI) {
     try {
@@ -365,7 +366,8 @@ ${sanitizedDump}
 CRITICAL RULES:
 1. NEVER output personal customer names, emails, or order numbers.
 2. Select 2 to 3 actual anonymized quotes from the comments. Keep quotes in their original Taglish phrasing.
-3. Formulate direct, concrete operational action items for the sales counter and kitchen.
+3. Explicitly state the counts and percentages of customers raising the primary complaint (e.g., "${issueCount} out of ${totalReviews} reviews (${issuePct}%) reported...").
+4. Formulate direct, concrete operational action items for the counter and kitchen.
 
 Respond ONLY with this exact JSON structure:
 {
@@ -374,7 +376,7 @@ Respond ONLY with this exact JSON structure:
     "neutral": ${issuePct},
     "negative": 0
   },
-  "summary_text": "${posPct}% of customer ratings were positive, while ${issuePct}% noted concerns regarding packaging and utensils.",
+  "summary_text": "${posReviews.length} out of ${totalReviews} ratings (${posPct}%) liked the drinks, while ${issueCount} out of ${totalReviews} (${issuePct}%) reported issues with missing spoons and straw length.",
   "customer_voice": [
     {
       "type": "positive",
@@ -388,8 +390,8 @@ Respond ONLY with this exact JSON structure:
     }
   ],
   "operational_actions": [
-    "Counter: <action for cashier/staff, e.g., ensure spoons are included for jelly drinks>",
-    "Kitchen/Packaging: <action for inventory or prep, e.g., verify straw length for 8oz cups>"
+    "Counter: ${issueCount} out of ${totalReviews} customers (${issuePct}%) flagged missing spoons. Always include disposable spoons with jelly orders.",
+    "Inventory: Verify straw length compatibility for 8oz cups."
   ]
 }`;
 
@@ -443,7 +445,7 @@ Respond ONLY with this exact JSON structure:
 // SALES OFFICER DASHBOARD API ROUTES
 // ==========================================================================
 
-// 1. Dashboard Overview Metrics (Fixes 404 Endpoint Not Found)
+// 1. Dashboard Overview Metrics (Solves 404 Endpoint Not Found)
 router.get('/sales-officer/dashboard', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -639,7 +641,7 @@ router.get('/sales-officer/ai-sentiment', async (req, res) => {
   }
 });
 
-// 4. On-Demand Manual Trigger para sa Comprehensive AI Summary (Bypasses Cache)
+// 4. On-Demand Trigger para sa Comprehensive AI Summary (Bypasses Idempotency Cache)
 router.post('/sales-officer/ai-sentiment/generate', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
