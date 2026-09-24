@@ -20,7 +20,7 @@ let isRegisterLocked = localStorage.getItem('isRegisterLocked') === 'true';
 let expectedCounterCash = 0;
 let latestXReading = null;
 
-// Global SweetAlert2 Config matching Master SOP Section 2.E
+// Global SweetAlert2 Config
 const MMSwal = Swal.mixin({
     customClass: {
         popup: 'mm-swal-popup',
@@ -89,7 +89,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // AI Sentiment Date Selector Event Listener
     const aiDateSelector = document.getElementById('aiDateSelector');
     if (aiDateSelector) {
         aiDateSelector.addEventListener('change', async (e) => {
@@ -220,12 +219,10 @@ async function loadPageData() {
 
         syncRegisterLockState(data.registerStatus);
 
-        // Transactions and Weekly Inflow DSS
         allFetchedOrders = data.recentOrders || [];
         updateWeeklyInflowAndDSS();
         applyTransactionFilters();
 
-        // Render AI Sentiment & CSAT Pulse directly from database report payload
         await fetchAiSentimentReport();
 
     } catch (error) {
@@ -239,7 +236,7 @@ async function loadPageData() {
     }
 }
 
-// Fetch AI Sentiment & CSAT Quality Report from employeeRoutes
+// Fetch AI Sentiment Report
 async function fetchAiSentimentReport(selectedDate = '') {
     try {
         const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
@@ -259,7 +256,6 @@ async function fetchAiSentimentReport(selectedDate = '') {
         const report = data.report;
         const availableDates = data.availableDates || [];
 
-        // Populate Date Dropdown if options not yet rendered
         const dateSelect = document.getElementById('aiDateSelector');
         if (dateSelect && dateSelect.options.length <= 1 && availableDates.length > 0) {
             dateSelect.innerHTML = availableDates.map(d => {
@@ -268,7 +264,6 @@ async function fetchAiSentimentReport(selectedDate = '') {
             }).join('');
         }
 
-        // Render CSAT & Metrics
         const csatEl = document.getElementById('aiCsatScore');
         const reviewsCountEl = document.getElementById('aiReviewsCount');
         const dateLabelEl = document.getElementById('aiReportDateLabel');
@@ -280,7 +275,6 @@ async function fetchAiSentimentReport(selectedDate = '') {
             dateLabelEl.textContent = `Report: ${new Date(data.selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
         }
 
-        // Sentiment Breakdown Bars
         const breakdown = report.sentiment_breakdown || { positive: 85, neutral: 10, negative: 5 };
         const pos = parseInt(breakdown.positive, 10) || 0;
         const neu = parseInt(breakdown.neutral, 10) || 0;
@@ -301,9 +295,8 @@ async function fetchAiSentimentReport(selectedDate = '') {
         if (pctNeu) pctNeu.textContent = `${neu}%`;
         if (pctNeg) pctNeg.textContent = `${neg}%`;
 
-        // Executive Synthesis
         if (summaryTextEl) {
-            const summary = report.raw_ai_summary || report.summary_text || report.sales_insights?.retention_summary || 'Positive operational sentiment maintained across active jelly beverage lines.';
+            const summary = report.raw_ai_summary || report.summary_text || 'Positive operational sentiment maintained across active jelly beverage lines.';
             summaryTextEl.textContent = summary;
         }
 
@@ -312,12 +305,11 @@ async function fetchAiSentimentReport(selectedDate = '') {
     }
 }
 
-// On-Demand Manual Trigger para sa Comprehensive AI Summary (Button Function)
+// On-Demand Manual Trigger para sa Comprehensive AI Summary (Voice of Customer Modal)
 async function triggerManualAiPulse() {
     const btn = document.getElementById('btnRunAiPulse');
     if (btn) btn.disabled = true;
 
-    // SweetAlert2 Loading State
     MMSwal.fire({
         title: 'Synthesizing Reviews...',
         html: 'Analyzing customer feedback, rating scores, and product tags...',
@@ -344,7 +336,7 @@ async function triggerManualAiPulse() {
 
         const report = data.report;
 
-        // 1. I-update ang Card sa Dashboard
+        // 1. I-update ang Dashboard Card (Maikling Macro Summary lamang)
         const summaryTextEl = document.getElementById('aiExecutiveSummary');
         const csatEl = document.getElementById('aiCsatScore');
         const reviewsCountEl = document.getElementById('aiReviewsCount');
@@ -353,7 +345,7 @@ async function triggerManualAiPulse() {
         if (csatEl) csatEl.textContent = parseFloat(report.average_csat || 5.0).toFixed(1);
         if (reviewsCountEl) reviewsCountEl.textContent = `${report.total_reviews_analyzed || 0} Reviews Analyzed`;
 
-        // 2. I-update ang Progress Bars
+        // 2. I-update ang Progress Bars sa Card
         const breakdown = report.sentiment_breakdown || {};
         const pos = parseInt(breakdown.positive, 10) || 0;
         const neu = parseInt(breakdown.neutral, 10) || 0;
@@ -373,30 +365,59 @@ async function triggerManualAiPulse() {
         if (pctNeu) pctNeu.textContent = `${neu}%`;
         if (pctNeg) pctNeg.textContent = `${neg}%`;
 
-        // 3. Ipakita ang Comprehensive Popup Modal
-        const praisesList = (report.sales_insights?.top_praises || []).map(p => `<li>${p}</li>`).join('') || '<li>Consistent product quality maintained.</li>';
-        const alertsList = (report.kitchen_quality_alerts?.alerts || []).map(a => `<li>${a}</li>`).join('') || '<li>No critical kitchen alerts.</li>';
+        // 3. I-render ang Comprehensive Modal (Quotes + Actions)
+        const customerVoice = report.sales_insights?.customer_voice || [];
+        const actions = report.kitchen_quality_alerts?.operational_actions || report.kitchen_quality_alerts?.alerts || [];
+
+        let voiceHtml = '';
+        if (customerVoice.length > 0) {
+            voiceHtml = customerVoice.map(v => {
+                const isPos = v.type === 'positive';
+                const borderColor = isPos ? '#2E7D32' : '#C9302C';
+                const badgeBg = isPos ? 'rgba(46, 125, 50, 0.12)' : 'rgba(201, 48, 44, 0.12)';
+                const badgeColor = isPos ? '#2E7D32' : '#C9302C';
+                const label = isPos ? 'Praise' : 'Pain Point';
+
+                return `
+                  <div style="background: #ffffff; border-left: 3px solid ${borderColor}; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                      <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; background: ${badgeBg}; color: ${badgeColor}; padding: 2px 6px; border-radius: 4px;">${label}</span>
+                      <small style="color: var(--text-muted); font-size: 10.5px;">${escapeHtml(v.context || 'Verified Order')}</small>
+                    </div>
+                    <p style="font-style: italic; margin: 0; color: var(--text-dark); font-size: 12px;">"${escapeHtml(v.quote || '')}"</p>
+                  </div>
+                `;
+            }).join('');
+        } else {
+            voiceHtml = '<p style="font-size: 11.5px; color: var(--text-muted); margin: 0;">No written comments recorded for this batch.</p>';
+        }
+
+        const actionsHtml = actions.map(act => `<li style="margin-bottom: 4px;">${escapeHtml(act)}</li>`).join('');
 
         MMSwal.fire({
-            icon: 'success',
-            title: 'Comprehensive Quality Summary',
+            icon: 'info',
+            title: 'Shift Quality & Voice of Customer',
             html: `
-              <div style="text-align: left; font-size: 12.5px; line-height: 1.5; color: var(--text-dark);">
+              <div style="text-align: left; font-size: 12px; line-height: 1.45; color: var(--text-dark);">
                 <div style="background: var(--card-sub-bg); padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; border-left: 3px solid var(--accent-pink);">
-                  <strong>Executive Summary:</strong><br>
-                  ${report.raw_ai_summary || report.summary_text}
+                  <strong style="color: var(--brown-soft); font-size: 12.5px;">Macro Performance:</strong><br>
+                  ${escapeHtml(report.raw_ai_summary || report.summary_text)}
                 </div>
-                <div style="margin-bottom: 10px;">
-                  <strong style="color: #2E7D32;">Top Praises (${pos}% Positive):</strong>
-                  <ul style="margin: 4px 0 0 16px; padding: 0;">${praisesList}</ul>
+
+                <div style="margin-bottom: 12px;">
+                  <strong style="color: var(--brown-soft); font-size: 12px; display: block; margin-bottom: 6px;">Voice of Customer (Anonymized Quotes):</strong>
+                  ${voiceHtml}
                 </div>
+
                 <div>
-                  <strong style="color: #C9302C;">Quality Alerts &amp; Adjustments:</strong>
-                  <ul style="margin: 4px 0 0 16px; padding: 0;">${alertsList}</ul>
+                  <strong style="color: var(--brown-soft); font-size: 12px; display: block; margin-bottom: 4px;">Immediate Shift Actions:</strong>
+                  <ul style="margin: 0; padding-left: 18px; color: var(--text-dark); font-size: 11.5px;">
+                    ${actionsHtml}
+                  </ul>
                 </div>
               </div>
             `,
-            confirmButtonText: 'Done'
+            confirmButtonText: 'Understood'
         });
 
     } catch (err) {
@@ -466,7 +487,6 @@ function updateWeeklyInflowAndDSS() {
         }
     }
 
-    // Decision Support System (DSS) Rule
     if (dssBox && dssMessage && btnPitch) {
         if (hasPriorData && diffPct < 0) {
             dssBox.className = 'dss-alert-box alert-active';
@@ -1031,7 +1051,6 @@ async function executeLockdown() {
             text: 'Sales counter locked. Shift collection transmitted to Finance Officer and AI review analysis initiated.'
         });
 
-        // Refresh AI Sentiment Card after Z-reading trigger
         setTimeout(() => fetchAiSentimentReport(), 1500);
 
     } catch (error) {

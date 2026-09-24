@@ -46,7 +46,6 @@
   padding: 0;
 }
 
-/* Master SOP 2.C Fixed Viewport Standard */
 html, body {
   width: 100%;
   max-width: 100%;
@@ -509,7 +508,7 @@ body {
   cursor: pointer;
 }
 
-/* AI Sentiment & CSAT Analytics Panel Styles */
+/* AI Sentiment Panel */
 .ai-sentiment-panel {
   background: var(--card-bg);
   border: 1.5px solid var(--border-soft);
@@ -713,7 +712,7 @@ body {
   height: 100px;
 }
 
-/* Weekly Inflow & DSS Advisory Layout */
+/* Weekly Inflow & DSS Layout */
 .weekly-metrics-row {
   display: flex;
   align-items: center;
@@ -1523,7 +1522,7 @@ body {
   opacity: 0.9;
 }
 
-/* Master SOP 2.E SweetAlert2 Standard Dialog Classes */
+/* SweetAlert2 Standard Dialog Customization */
 .mm-swal-popup {
   background-color: var(--card-white) !important;
   border-radius: 20px !important;

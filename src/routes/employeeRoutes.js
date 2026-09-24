@@ -274,14 +274,14 @@ function resolveAvatar(raw) {
 }
 
 // ==========================================================================
-// PERCENTAGE-BASED REAL SENTIMENT & QUALITY PULSE ENGINE
+// QUALITY PULSE ENGINE WITH ANONYMIZED VOICE OF CUSTOMER & ACTION ITEMS
 // ==========================================================================
 async function generateDailyQualityReport(forceRefresh = false) {
   if (!supabase) return null;
 
   const todayStr = phDate(new Date());
 
-  // 1. Idempotency Check (Kung may lumang dummy row, kusa itong i-overwrite)
+  // 1. Idempotency Check: I-load ang existing kung hindi pinipilit ang refresh
   if (!forceRefresh) {
     const { data: existingReport } = await supabase
       .from('daily_quality_reports')
@@ -294,82 +294,103 @@ async function generateDailyQualityReport(forceRefresh = false) {
     }
   }
 
-  // 2. Basahin ang totoong customer reviews
+  // 2. Basahin ang pinakabagong reviews mula sa public.ratings
   const { data: reviews, error: reviewErr } = await supabase
     .from('ratings')
     .select('id, product_title, rating_score, experience_tags, review_text, created_at')
     .order('created_at', { ascending: false })
-    .limit(60);
+    .limit(30);
 
   if (reviewErr || !reviews || reviews.length === 0) {
-    console.log('[AI Quality Sentinel]: No customer reviews found in database.');
     return null;
   }
 
   const totalReviews = reviews.length;
   const avgScore = (reviews.reduce((sum, r) => sum + (parseInt(r.rating_score, 10) || 5), 0) / totalReviews).toFixed(1);
 
-  // 3. Kalkulahin ang totoong porsyento mula sa database
-  const posCount = reviews.filter(r => (parseInt(r.rating_score, 10) || 5) >= 4).length;
-  const neuCount = reviews.filter(r => (parseInt(r.rating_score, 10) || 5) === 3).length;
-  const negCount = reviews.filter(r => (parseInt(r.rating_score, 10) || 5) <= 2).length;
+  // Kalkulahin ang distribusyon
+  const posReviews = reviews.filter(r => (parseInt(r.rating_score, 10) || 5) >= 4);
+  const neutralOrNegReviews = reviews.filter(r => (parseInt(r.rating_score, 10) || 5) <= 3);
 
-  const posPct = Math.round((posCount / totalReviews) * 100);
-  const neuPct = Math.round((neuCount / totalReviews) * 100);
-  const negPct = Math.max(0, 100 - posPct - neuPct);
+  const posPct = Math.round((posReviews.length / totalReviews) * 100);
+  const issuePct = 100 - posPct;
 
-  const allTags = reviews.map(r => r.experience_tags || '').filter(Boolean).join(', ');
-  const commonPraises = allTags.toLowerCase().includes('creamy') ? 'rich creaminess and jelly texture' : 'beverage flavor and packaging';
-  const commonComplaints = allTags.toLowerCase().includes('sweet') ? '12oz sweetness and pearl chewiness' : 'ingredient consistency';
+  // 3. I-extract ang anonymized direct quotes (Walang names o order IDs para sa privacy)
+  const samplePraise = posReviews.find(r => r.review_text && r.review_text.trim().length > 5);
+  const sampleIssue = neutralOrNegReviews.find(r => r.review_text && r.review_text.trim().length > 5);
 
-  let directSummary = `${posPct}% of customer ratings liked the drinks (praising ${commonPraises}), while ${neuPct + negPct}% flagged issues with ${commonComplaints}.`;
+  const defaultVoice = [];
+  if (samplePraise) {
+    defaultVoice.push({
+      type: 'positive',
+      quote: samplePraise.review_text,
+      context: `Customer (${samplePraise.product_title})`
+    });
+  }
+  if (sampleIssue) {
+    defaultVoice.push({
+      type: 'complaint',
+      quote: sampleIssue.review_text,
+      context: `Customer (${sampleIssue.product_title})`
+    });
+  }
+
+  let directCardSummary = `${posPct}% of customer ratings liked the drinks, while ${issuePct}% flagged operational or packaging concerns.`;
 
   let aiOutput = {
-    sentiment_breakdown: { positive: posPct, neutral: neuPct, negative: negPct },
-    sales_insights: {
-      top_praises: [`${posPct}% satisfied with beverage taste and counter pickup.`],
-      retention_summary: `${posPct}% overall positive customer sentiment recorded.`
-    },
-    kitchen_quality_alerts: {
-      alerts: [`${neuPct + negPct}% of customers flagged adjustments needed for sweetness or pearls.`],
-      bom_adjustments: ["Maintain standard recipe portions."]
-    },
-    summary_text: directSummary
+    sentiment_breakdown: { positive: posPct, neutral: issuePct, negative: 0 },
+    summary_text: directCardSummary,
+    customer_voice: defaultVoice,
+    operational_actions: [
+      "Counter: Ensure complete utensils (straws and spoons) are placed in every takeaway bag.",
+      "Inventory: Verify straw sizing suitability for 8oz beverage cups."
+    ]
   };
 
-  // 4. Refinement via Gemini kung available ang environment variable
+  // 4. Gemini 2.5 Flash Synthesis
   const apiKey = process.env.GEMINI_API_KEY;
   if (apiKey && GoogleGenAI) {
     try {
       const ai = new GoogleGenAI({ apiKey });
-      const reviewsDump = reviews.map(r => 
-        `- Drink: "${r.product_title}" | Score: ${r.rating_score}/5 | Tags: [${r.experience_tags || ''}] | Comment: "${r.review_text || ''}"`
+      const sanitizedDump = reviews.map(r => 
+        `- Cup: "${r.product_title}" | Score: ${r.rating_score}/5 | Tags: [${r.experience_tags || ''}] | Comment: "${r.review_text || ''}"`
       ).join('\n');
 
       const systemPrompt = `
 You are the Quality Control System for "Milky Marble Enterprise".
 Analyze these ${totalReviews} customer reviews:
 
-${reviewsDump}
+${sanitizedDump}
 
-DO NOT write long conversational paragraphs or Taglish greetings.
-Provide a strictly percentage-based, direct statistical summary.
-Respond ONLY with this exact JSON format:
+CRITICAL RULES:
+1. NEVER output personal customer names, emails, or order numbers.
+2. Select 2 to 3 actual anonymized quotes from the comments. Keep quotes in their original Taglish phrasing.
+3. Formulate direct, concrete operational action items for the sales counter and kitchen.
+
+Respond ONLY with this exact JSON structure:
 {
   "sentiment_breakdown": {
     "positive": ${posPct},
-    "neutral": ${neuPct},
-    "negative": ${negPct}
+    "neutral": ${issuePct},
+    "negative": 0
   },
-  "sales_insights": {
-    "top_praises": ["<short stat or top praised feature>"],
-    "retention_summary": "<1-sentence direct metric summary>"
-  },
-  "kitchen_quality_alerts": {
-    "alerts": ["<specific complaint with percentage, e.g., '14% flagged noon batch pearls'>"],
-    "bom_adjustments": ["<exact adjustment, e.g., 'Reduce condensed milk by 0.2oz'>"]
-  },
-  "summary_text": "${posPct}% of ratings liked the drink (<top 2 praised features>), while ${neuPct + negPct}% reported issues with <specific complaints>."
+  "summary_text": "${posPct}% of customer ratings were positive, while ${issuePct}% noted concerns regarding packaging and utensils.",
+  "customer_voice": [
+    {
+      "type": "positive",
+      "quote": "<exact customer praise quote>",
+      "context": "Customer (<Product Name>)"
+    },
+    {
+      "type": "complaint",
+      "quote": "<exact customer issue quote>",
+      "context": "Customer (<Product Name>)"
+    }
+  ],
+  "operational_actions": [
+    "Counter: <action for cashier/staff, e.g., ensure spoons are included for jelly drinks>",
+    "Kitchen/Packaging: <action for inventory or prep, e.g., verify straw length for 8oz cups>"
+  ]
 }`;
 
       const response = await ai.models.generateContent({
@@ -381,22 +402,27 @@ Respond ONLY with this exact JSON format:
       });
 
       const parsed = JSON.parse(response.text.trim());
-      if (parsed.summary_text) {
+      if (parsed.summary_text && parsed.customer_voice) {
         aiOutput = parsed;
       }
     } catch (aiErr) {
-      console.warn('[Gemini AI Fallback to Direct Percentages]:', aiErr.message);
+      console.warn('[Gemini Deep Analysis Warning - Used Statistical Engine]:', aiErr.message);
     }
   }
 
-  // 5. I-save sa daily_quality_reports table
+  // 5. I-save sa daily_quality_reports
   const insertPayload = {
     report_date: todayStr,
     total_reviews_analyzed: totalReviews,
     average_csat: parseFloat(avgScore),
     sentiment_breakdown: aiOutput.sentiment_breakdown,
-    sales_insights: aiOutput.sales_insights,
-    kitchen_quality_alerts: aiOutput.kitchen_quality_alerts,
+    sales_insights: {
+      customer_voice: aiOutput.customer_voice || defaultVoice,
+      retention_summary: aiOutput.summary_text
+    },
+    kitchen_quality_alerts: {
+      operational_actions: aiOutput.operational_actions || []
+    },
     raw_ai_summary: aiOutput.summary_text
   };
 
@@ -412,134 +438,6 @@ Respond ONLY with this exact JSON format:
 
   return savedReport || insertPayload;
 }
-
-// Sales Officer Dashboard
-async function buildSalesDashboard(req, res) {
-  try {
-    if (!supabase) return noDb(res);
-
-    const userProfile = await getEmployeeProfile(req);
-    const now = new Date();
-    const todayStr = phDate(now);
-    const todayStart = phDayStartISO(todayStr);
-
-    const { data: todayOrdersData, error: todayErr } = await supabase
-      .from('orders')
-      .select('total_amount')
-      .gte('placed_at', todayStart)
-      .not('status', 'in', NOT_SALES);
-    if (todayErr) throw todayErr;
-
-    const { count: pendingCount, error: pendingErr } = await supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .in('status', ORDER_REVIEW_STATUSES);
-    if (pendingErr) throw pendingErr;
-
-    const todayOrders = (todayOrdersData || []).length;
-    const todaySales = (todayOrdersData || [])
-      .reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
-
-    const { data: recentOrders, error: recentErr } = await supabase
-      .from('orders')
-      .select('id, order_number, status, total_amount, payment_method, placed_at, guest_name, customer_id, customers(users(full_name))')
-      .order('placed_at', { ascending: false })
-      .limit(200);
-    if (recentErr) throw recentErr;
-
-    const formattedRecent = (recentOrders || []).map(o => ({
-      id: o.id,
-      order_number: o.order_number,
-      status: o.status,
-      payment_method: o.payment_method || 'N/A',
-      total_amount: parseFloat(o.total_amount || 0),
-      placed_at: o.placed_at,
-      customer_id: o.customer_id,
-      customer_name: (o.customers && o.customers.users && o.customers.users.full_name) || o.guest_name || 'Walk-in Counter'
-    }));
-
-    const customersForAcq = await fetchAllRows(() =>
-      supabase.from('customers').select('id, created_at').order('id', { ascending: true }));
-    const acqDates = customersForAcq.map(c => new Date(c.created_at)).filter(d => !isNaN(d));
-    const weekAgo = startOfDaysAgo(7);
-    const monthAgo = monthsAgo(1);
-    const threeMoAgo = monthsAgo(3);
-    const sixMoAgo = monthsAgo(6);
-    const newAccounts = {
-      today: acqDates.filter(d => phDate(d) === todayStr).length,
-      week: acqDates.filter(d => d >= weekAgo).length,
-      month: acqDates.filter(d => d >= monthAgo).length,
-      last3Months: acqDates.filter(d => d >= threeMoAgo).length,
-      last6Months: acqDates.filter(d => d >= sixMoAgo).length
-    };
-
-    const salesOrders = await fetchAllRows(() =>
-      supabase.from('orders').select('id, total_amount, customer_id').not('status', 'in', NOT_SALES).order('id', { ascending: true }));
-    let registeredRevenue = 0, guestRevenue = 0;
-    salesOrders.forEach(o => {
-      const amt = parseFloat(o.total_amount) || 0;
-      if (o.customer_id) registeredRevenue += amt; else guestRevenue += amt;
-    });
-    const totalRev = registeredRevenue + guestRevenue;
-    const revenueSplit = {
-      registeredRevenue,
-      guestRevenue,
-      registeredPercent: totalRev ? (registeredRevenue / totalRev) * 100 : 0,
-      guestPercent: totalRev ? (guestRevenue / totalRev) * 100 : 0
-    };
-
-    const { data: registerSetting } = await supabase
-      .from('system_settings')
-      .select('setting_value')
-      .eq('setting_key', 'register_status')
-      .maybeSingle();
-    const registerStatus = registerSetting?.setting_value || 'UNLOCKED';
-
-    // Kukunin ang pinakabagong report o bubuo ng bago
-    let latestAiReport = await generateDailyQualityReport(false);
-
-    return res.json({
-      status: 'success',
-      user: userProfile,
-      metrics: { todayOrders, todaySales, pendingOrders: pendingCount || 0 },
-      recentOrders: formattedRecent,
-      newAccounts,
-      revenueSplit,
-      registerStatus,
-      aiReport: latestAiReport || null
-    });
-  } catch (error) {
-    console.error('[sales-officer/dashboard] error:', error.message);
-    return res.status(500).json({ status: 'error', message: error.message });
-  }
-}
-
-router.get('/sales-officer/dashboard', buildSalesDashboard);
-
-// On-demand manual trigger para sa Comprehensive AI Summary (Button Trigger)
-router.post('/sales-officer/ai-sentiment/generate', async (req, res) => {
-  try {
-    if (!supabase) return noDb(res);
-
-    const freshReport = await generateDailyQualityReport(true);
-
-    if (!freshReport) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'No customer reviews found in database to analyze.'
-      });
-    }
-
-    return res.json({
-      status: 'success',
-      message: 'AI Quality Pulse generated successfully.',
-      report: freshReport
-    });
-  } catch (error) {
-    console.error('[sales-officer/ai-sentiment/generate] error:', error.message);
-    return res.status(500).json({ status: 'error', message: error.message });
-  }
-});
 
 // Start Shift / Open Register endpoint
 router.post('/sales-officer/open-shift', async (req, res) => {
@@ -640,6 +538,31 @@ router.get('/sales-officer/ai-sentiment', async (req, res) => {
 
   } catch (error) {
     console.error('[sales-officer/ai-sentiment] error:', error.message);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// On-Demand Trigger para sa Comprehensive AI Summary (Bypasses Idempotency Cache)
+router.post('/sales-officer/ai-sentiment/generate', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+
+    const freshReport = await generateDailyQualityReport(true);
+
+    if (!freshReport) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'No customer reviews found in database to analyze.'
+      });
+    }
+
+    return res.json({
+      status: 'success',
+      message: 'AI Quality Pulse generated successfully.',
+      report: freshReport
+    });
+  } catch (error) {
+    console.error('[sales-officer/ai-sentiment/generate] error:', error.message);
     return res.status(500).json({ status: 'error', message: error.message });
   }
 });
