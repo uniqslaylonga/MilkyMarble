@@ -11,7 +11,7 @@ try {
   console.warn('[Gemini SDK Warning]: @google/genai is not yet installed. Run "npm install @google/genai" if needed.');
 }
 
-// Live Model Discovery & Execution Engine
+// Live Model Discovery & Waterfall Execution Engine
 async function executeDynamicGemini(systemPrompt) {
   let rawKey = process.env.GEMINI_API_KEY || '';
   const apiKey = rawKey.trim().replace(/^["']|["']$/g, '');
@@ -19,7 +19,7 @@ async function executeDynamicGemini(systemPrompt) {
     throw new Error("GEMINI_API_KEY environment variable is missing on the server.");
   }
 
-  // Step 1: Query Google's Model Registry live for this specific API Key
+  // 1. Fetch available models from Google's live registry for this key
   const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
   const listRes = await fetch(listUrl);
   const listData = await listRes.json();
@@ -30,55 +30,69 @@ async function executeDynamicGemini(systemPrompt) {
   }
 
   const allModels = listData.models || [];
-  if (allModels.length === 0) {
-    throw new Error("Google returned 0 models for this key. If you used a School/University Google Account, Google Workspace policies block Gemini models. Please generate an API key using a personal @gmail.com account.");
-  }
-
-  // Filter models that support content generation
   const supported = allModels.filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'));
   if (supported.length === 0) {
     throw new Error("No models with 'generateContent' permission were found for this API key.");
   }
 
-  // Select the best available model (prioritizing flash, then pro, then first supported)
-  const chosenModelObj = 
-    supported.find(m => m.name.includes('gemini-2.0-flash') && !m.name.includes('exp')) ||
-    supported.find(m => m.name.includes('gemini-1.5-flash')) ||
-    supported.find(m => m.name.includes('gemini-flash')) ||
-    supported.find(m => m.name.includes('gemini-1.5-pro')) ||
-    supported.find(m => m.name.includes('gemini-pro')) ||
-    supported[0];
+  // 2. Build a prioritized queue (preferring dedicated version numbers over crowded aliases)
+  const candidateNames = [];
+  const enqueue = (predicate) => {
+    supported.filter(predicate).forEach(m => {
+      if (!candidateNames.includes(m.name)) candidateNames.push(m.name);
+    });
+  };
 
-  const fullModelPath = chosenModelObj.name; // e.g. "models/gemini-2.0-flash" or "models/gemini-1.5-flash"
-
-  // Step 2: Generate Content via REST
-  const generateUrl = `https://generativelanguage.googleapis.com/v1beta/${fullModelPath}:generateContent?key=${apiKey}`;
-  const genRes = await fetch(generateUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: systemPrompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json'
-      }
-    })
+  enqueue(m => m.name.includes('gemini-2.0-flash') && !m.name.includes('exp') && !m.name.includes('latest'));
+  enqueue(m => m.name.includes('gemini-1.5-flash') && !m.name.includes('latest'));
+  enqueue(m => m.name.includes('gemini-2.0-flash'));
+  enqueue(m => m.name.includes('gemini-1.5-flash'));
+  enqueue(m => m.name.includes('gemini-1.5-pro'));
+  enqueue(m => m.name.includes('gemini-pro'));
+  supported.forEach(m => {
+    if (!candidateNames.includes(m.name)) candidateNames.push(m.name);
   });
 
-  const genData = await genRes.json();
-  if (!genRes.ok || genData.error) {
-    const genErrMsg = genData.error?.message || `HTTP ${genRes.status}`;
-    throw new Error(`[${fullModelPath}]: ${genErrMsg}`);
+  let lastErrorDetail = null;
+
+  // 3. Waterfall: Iterate through models until one generates content successfully
+  for (const fullModelPath of candidateNames) {
+    try {
+      const generateUrl = `https://generativelanguage.googleapis.com/v1beta/${fullModelPath}:generateContent?key=${apiKey}`;
+      const genRes = await fetch(generateUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: systemPrompt }] }],
+          generationConfig: {
+            responseMimeType: 'application/json'
+          }
+        })
+      });
+
+      const genData = await genRes.json();
+
+      if (!genRes.ok || genData.error) {
+        const msg = genData.error?.message || `HTTP ${genRes.status}`;
+        console.warn(`[Model ${fullModelPath} busy/failed, trying next]: ${msg}`);
+        lastErrorDetail = `[${fullModelPath}]: ${msg}`;
+        continue; // Immediately try the next model
+      }
+
+      const outputText = genData.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (outputText) {
+        return {
+          text: outputText,
+          modelUsed: fullModelPath.replace('models/', '')
+        };
+      }
+    } catch (err) {
+      console.warn(`[Model ${fullModelPath} network error]:`, err.message);
+      lastErrorDetail = err.message;
+    }
   }
 
-  const outputText = genData.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!outputText) {
-    throw new Error(`Model ${fullModelPath} returned an empty candidate response.`);
-  }
-
-  return {
-    text: outputText,
-    modelUsed: fullModelPath.replace('models/', '')
-  };
+  throw new Error(lastErrorDetail || "All available Gemini models are currently overloaded. Please try again shortly.");
 }
 
 // Recipe BOM and portions per cup size
@@ -402,15 +416,15 @@ async function generateDailyQualityReport(forceRefresh = false) {
   }
 
   const issueCount = neutralOrNegReviews.length;
-  let directCardSummary = `${posReviews.length} out of ${totalReviews} ratings (${posPct}%) were positive on taste, while ${issueCount} out of ${totalReviews} (${issuePct}%) flagged packaging and missing utensils.`;
+  let directCardSummary = `${posReviews.length} out of ${totalReviews} ratings (${posPct}%) praised flavor quality, while ${issueCount} out of ${totalReviews} (${issuePct}%) reported packaging and missing utensil issues.`;
 
   let aiOutput = {
     sentiment_breakdown: { positive: posPct, neutral: issuePct, negative: 0 },
     summary_text: directCardSummary,
     customer_voice: defaultVoice,
     operational_actions: [
-      `Counter: ${issueCount} out of ${totalReviews} customers (${issuePct}%) noted missing spoons. Mandate including a spoon for every jelly takeaway.`,
-      "Inventory: Check straw sizing to prevent tipping on 8oz cups."
+      `Counter: ${issueCount} out of ${totalReviews} customers (${issuePct}%) reported missing spoons. Mandate disposable spoons with all jelly takeout.`,
+      "Inventory: Verify straw length compatibility to ensure stability in 8oz cups."
     ]
   };
 
@@ -1261,7 +1275,7 @@ router.get('/sales-officer/promotions', async (req, res) => {
   }
 });
 
-// AI DECISION SUPPORT: AUTO-DRAFT OPTIMAL PROMOTION PROPOSAL (DYNAMIC DISCOVERY)
+// AI DECISION SUPPORT: AUTO-DRAFT OPTIMAL PROMOTION PROPOSAL (DYNAMIC WATERFALL)
 router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1317,7 +1331,7 @@ router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
     let isAiGenerated = false;
     let apiErrorMessage = null;
 
-    // 2. Gemini Synthesis using Live Model Registry Discovery
+    // 2. Gemini Synthesis using Live Model Registry Discovery + Waterfall Loop
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
       try {
