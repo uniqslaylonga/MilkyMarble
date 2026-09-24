@@ -1,357 +1,429 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Milky Marble — Procurement &amp; Vendor Management</title>
-    <link rel="icon" type="image/png" href="/customer/images/logo.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="css/vendorManagement.css">
-</head>
-<body>
-
-<div class="app-container">
-    <!-- STICKY SIDEBAR (PAREHONG DESIGN SA LAHAT NG MODULES) -->
-    <aside class="sidebar">
-        <div class="brand-section">
-            <div class="brand-logo-wrap">
-                <img src="/customer/images/logo.png" alt="Milky Marble" class="brand-logo-img">
-            </div>
-            <div class="brand-title">Milky Marble</div>
-        </div>
-
-        <nav class="nav-menu">
-            <a href="dashboard.html" class="nav-link">
-                <i class="fa-solid fa-table-cells-large nav-fa"></i>
-                <span>Dashboard</span>
-            </a>
-            <a href="procurement.html" class="nav-link active">
-                <i class="fa-solid fa-cart-shopping nav-fa"></i>
-                <span>Procurement</span>
-            </a>
-            <a href="inventorySection.html" class="nav-link">
-                <i class="fa-solid fa-box-archive nav-fa"></i>
-                <span>Inventory Section</span>
-            </a>
-            <a href="stockControl.html" class="nav-link">
-                <i class="fa-solid fa-warehouse nav-fa"></i>
-                <span>Stock Control</span>
-            </a>
-        </nav>
-
-        <div class="sidebar-bottom">
-            <a href="../login.html" class="nav-link logout-btn">
-                <i class="fa-solid fa-arrow-right-from-bracket nav-fa"></i>
-                <span>Log out</span>
-            </a>
-        </div>
-    </aside>
-
-    <!-- MAIN SCROLLABLE CONTENT -->
-    <main class="main-content">
-        <!-- TOPBAR -->
-        <header class="topbar">
-            <div class="search-box">
-                <input type="text" id="procurementSearchInput" placeholder="Search purchase requests, suppliers, or items...">
-                <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            </div>
-            
-            <div class="topbar-right">
-                <button class="notif-btn" title="Alerts"><i class="fa-regular fa-bell"></i></button>
-                <div class="user-profile">
-                    <div class="user-avatar">
-                        <img id="userAvatar" src="/customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
-                    </div>
-                    <span id="userFullName" class="user-name"></span>
-                </div>
-            </div>
-        </header>
-
-        <!-- PAGE HEADER -->
-        <section class="page-header">
-            <div class="page-eyebrow">Procurement Desk &amp; Sourcing Operations</div>
-            <div class="header-row">
-                <div>
-                    <h1 class="page-title">Keep Purchasing Moving</h1>
-                    <p class="header-sub">Raise purchase requests and manage suppliers. Each request is routed by total cost.</p>
-                </div>
-                <button type="button" class="btn-primary" onclick="openModal('addRequestModal')">
-                    <i class="fa-solid fa-plus"></i> New Purchase Request
-                </button>
-            </div>
-        </section>
-
-        <!-- MAIN TABLE PANEL WITH TABS -->
-        <section class="directory-card">
-            <div class="panel-header-bar">
-                <!-- Tabs: Requests vs Vendors -->
-                <div class="order-filter-tabs">
-                    <button type="button" class="tab-btn active" id="tabBtnRequests">
-                        <i class="fa-solid fa-clipboard-list"></i>
-                        <span>Purchase Requests</span>
-                        <span id="requestsCount" class="counter-badge">0</span>
-                    </button>
-                    <button type="button" class="tab-btn" id="tabBtnVendors">
-                        <i class="fa-solid fa-store"></i>
-                        <span>Vendor Directory</span>
-                        <span id="vendorsCount" class="counter-badge">0</span>
-                    </button>
-                </div>
-
-                <!-- Right Action / Filter Controls -->
-                <div class="filter-controls-group">
-                    <button type="button" class="btn-panel-add-vendor" id="btnAddVendorTrigger" onclick="openModal('addVendorModal')">
-                        <i class="fa-solid fa-plus"></i> Add Vendor
-                    </button>
-
-                    <div class="custom-select-wrap">
-                        <i class="fa-solid fa-filter filter-icon"></i>
-                        <select id="statusFilter">
-                            <option value="">All Statuses</option>
-                            <option value="APPROVED">Approved (Direct Buy)</option>
-                            <option value="PENDING_FINANCE">Pending Finance (₱301–₱500)</option>
-                            <option value="PENDING_CEO">Pending CEO (> ₱500)</option>
-                            <option value="PURCHASED">Purchased</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- THRESHOLD LEGEND PILLS -->
-            <div class="threshold-legend-row" id="doaLegendRow">
-                <span class="badge-route route-procure">🟢 ≤ ₱300: Procurement Direct Buy Authorized</span>
-                <span class="badge-route route-finance">🟠 ₱301–₱500: Finance Officer Clearance</span>
-                <span class="badge-route route-ceo">🔴 &gt; ₱500: CEO Executive Approval</span>
-            </div>
-
-            <!-- VIEW 1: PURCHASE REQUESTS TABLE -->
-            <div class="table-view active" id="requestsTableView">
-                <div class="table-container">
-                    <table class="cust-table" id="requestsTable">
-                        <thead>
-                            <tr>
-                                <th>PR Code &amp; Item Name</th>
-                                <th>Requester</th>
-                                <th>Supplier / Store</th>
-                                <th>Amount</th>
-                                <th>DOA Route &amp; Status</th>
-                                <th style="text-align: right;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="requestsTableBody">
-                            <tr><td colspan="6" class="loading-state-text">Loading purchase requests...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- PERMANENT NUMBERED PAGINATION BAR (REQUESTS) -->
-                <div class="tx-pagination-bar" id="prPaginationBar">
-                    <span class="tx-page-info" id="prPageInfo">Showing 0 of 0 requests</span>
-                    <div class="tx-pager-buttons">
-                        <button type="button" class="pager-btn" id="prevPrBtn" title="Previous Page" disabled>
-                            <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
-                        </button>
-                        <div class="pager-numbers" id="prPagerNumbers">
-                            <button type="button" class="pager-num-btn active" disabled>1</button>
-                        </div>
-                        <button type="button" class="pager-btn" id="nextPrBtn" title="Next Page" disabled>
-                            <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW 2: VENDORS TABLE -->
-            <div class="table-view" id="vendorsTableView">
-                <div class="table-container">
-                    <table class="cust-table" id="vendorsTable">
-                        <thead>
-                            <tr>
-                                <th>Vendor Code &amp; Name</th>
-                                <th>Category / Goods Supplied</th>
-                                <th>Contact Details</th>
-                                <th>Status</th>
-                                <th>Total Sourced</th>
-                                <th style="text-align: right;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="vendorsTableBody">
-                            <tr><td colspan="6" class="loading-state-text">Loading vendors...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- PERMANENT NUMBERED PAGINATION BAR (VENDORS) -->
-                <div class="tx-pagination-bar" id="venPaginationBar">
-                    <span class="tx-page-info" id="venPageInfo">Showing 0 of 0 vendors</span>
-                    <div class="tx-pager-buttons">
-                        <button type="button" class="pager-btn" id="prevVenBtn" title="Previous Page" disabled>
-                            <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
-                        </button>
-                        <div class="pager-numbers" id="venPagerNumbers">
-                            <button type="button" class="pager-num-btn active" disabled>1</button>
-                        </div>
-                        <button type="button" class="pager-btn" id="nextVenBtn" title="Next Page" disabled>
-                            <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-</div>
-
-<!-- MODAL 1: ADD PURCHASE REQUEST (DOA ROUTING PREVIEW) -->
-<div class="modal-overlay" id="addRequestModal">
-    <div class="profile-modal" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <div class="modal-header-left">
-                <h3 class="modal-title">New Purchase Requisition</h3>
-                <p class="modal-subtitle">Auto-routes to Procurement, Finance, or CEO based on total cost.</p>
-            </div>
-            <button type="button" class="modal-close" onclick="closeModal('addRequestModal')">✕</button>
-        </div>
-
-        <form id="addRequestForm" class="modal-body">
-            <div class="form-grid">
-                <div class="form-group full">
-                    <label for="reqItemName">Raw Ingredient / Supply Description *</label>
-                    <input type="text" id="reqItemName" placeholder="Item or supply description" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="reqVendorName">Partner Vendor / Store *</label>
-                    <select id="reqVendorName" required>
-                        <option value="">-- Choose Vendor --</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="reqQty">Quantity *</label>
-                    <input type="number" id="reqQty" min="1" step="1" value="1" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="reqAmount">Estimated Total Amount (₱) *</label>
-                    <input type="number" step="0.5" id="reqAmount" placeholder="0.00" min="1" required>
-                </div>
-
-                <!-- LIVE DOA ROUTING PREVIEW BADGE -->
-                <div class="form-group full">
-                    <div class="routing-preview-box">
-                        <span class="routing-label">DOA Approval Routing Determination:</span>
-                        <strong id="previewCostDisplay" class="routing-total-val">₱0.00</strong>
-                        <div id="routingBadgePreview" class="badge-route route-procure">
-                            🟢 Direct Route: Procurement Officer (Direct Buy Authorized)
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal('addRequestModal')">Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fa-solid fa-plus"></i> Submit Requisition</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- MODAL 2: ADD VENDOR -->
-<div class="modal-overlay" id="addVendorModal">
-    <div class="profile-modal" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <div class="modal-header-left">
-                <h3 class="modal-title">Register Partner Vendor</h3>
-                <p class="modal-subtitle">Add verified ingredient supplier or packaging distributor to directory.</p>
-            </div>
-            <button type="button" class="modal-close" onclick="closeModal('addVendorModal')">✕</button>
-        </div>
-
-        <form id="addVendorForm" class="modal-body">
-            <div class="form-grid">
-                <div class="form-group full">
-                    <label for="addVendorName">Supplier / Vendor Name *</label>
-                    <input type="text" id="addVendorName" placeholder="Vendor name" required>
-                </div>
-
-                <div class="form-group full">
-                    <label for="addVendorCategory">Category / Supplies *</label>
-                    <input type="text" id="addVendorCategory" placeholder="What this vendor supplies" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="addVendorContact">Contact Details *</label>
-                    <input type="text" id="addVendorContact" placeholder="Email or phone number" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="addVendorStatus">Partnership Status *</label>
-                    <select id="addVendorStatus">
-                        <option value="Active" selected>Active Partner</option>
-                        <option value="Review">Under Review</option>
-                        <option value="Closed">Inactive</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal('addVendorModal')">Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fa-solid fa-plus"></i> Save Vendor</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- MODAL 3: EDIT VENDOR -->
-<div class="modal-overlay" id="editVendorModal">
-    <div class="profile-modal" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <div class="modal-header-left">
-                <h3 class="modal-title">Edit Vendor Details</h3>
-                <p class="modal-subtitle">Modify contact numbers, supplied categories, or status.</p>
-            </div>
-            <button type="button" class="modal-close" onclick="closeModal('editVendorModal')">✕</button>
-        </div>
-
-        <form id="editVendorForm" class="modal-body">
-            <input type="hidden" id="editVendorId">
-
-            <div class="form-grid">
-                <div class="form-group full">
-                    <label for="editVendorName">Supplier Name *</label>
-                    <input type="text" id="editVendorName" required>
-                </div>
-
-                <div class="form-group full">
-                    <label for="editVendorCategory">Category *</label>
-                    <input type="text" id="editVendorCategory" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="editVendorContact">Contact Information *</label>
-                    <input type="text" id="editVendorContact" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="editVendorStatus">Status *</label>
-                    <select id="editVendorStatus">
-                        <option value="Active">Active Partner</option>
-                        <option value="Review">Under Review</option>
-                        <option value="Closed">Inactive</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal('editVendorModal')">Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Update Vendor</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script src="../js/employeeAuth.js"></script>
-<script src="js/procurement.js"></script>
-    <script src="/shared/js/avatarUpload.js"></script>
-</body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Procurement &amp; Vendor Management</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="css/vendorManagement.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- STICKY SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand-section">
+            <div class="brand-logo-wrap">
+                <img src="/customer/images/logo.png" alt="Milky Marble Logo" class="brand-logo-img">
+            </div>
+            <div class="brand-title">Milky Marble</div>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="dashboard.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                </svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="procurement.html" class="nav-link active">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+                <span>Procurement</span>
+            </a>
+            <a href="inventorySection.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+                <span>Inventory Section</span>
+            </a>
+            <a href="stockControl.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3v18h18"></path>
+                    <path d="M18 17V9"></path>
+                    <path d="M13 17V5"></path>
+                    <path d="M8 17v-3"></path>
+                </svg>
+                <span>Stock Control</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <a href="../login.html" class="nav-link logout-btn">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Log out</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN SCROLLABLE CONTENT -->
+    <main class="main-content">
+        <!-- TOPBAR -->
+        <header class="topbar">
+            <div class="search-box">
+                <input type="text" id="procurementSearchInput" placeholder="Search purchase requests, suppliers, or items...">
+                <svg class="search-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+            </div>
+            
+            <div class="topbar-right">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <img id="userAvatar" src="/customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                    </div>
+                    <span id="userFullName" class="user-name">Loading...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- PAGE HEADER -->
+        <section class="page-header">
+            <div class="page-eyebrow">Procurement Desk &amp; Sourcing Operations</div>
+            <div class="header-row">
+                <div>
+                    <h1 class="page-title">Keep Purchasing Moving</h1>
+                    <p class="header-sub">Raise purchase requests and manage suppliers. Each request is routed by total cost.</p>
+                </div>
+                <button type="button" class="btn-primary" onclick="openModal('addRequestModal')">
+                    <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>New Purchase Request</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- MAIN TABLE PANEL WITH TABS -->
+        <section class="directory-card">
+            <div class="panel-header-bar">
+                <!-- Tabs: Requests vs Vendors -->
+                <div class="order-filter-tabs">
+                    <button type="button" class="tab-btn active" id="tabBtnRequests">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        </svg>
+                        <span>Purchase Requests</span>
+                        <span id="requestsCount" class="counter-badge">0</span>
+                    </button>
+                    <button type="button" class="tab-btn" id="tabBtnVendors">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                        <span>Vendor Directory</span>
+                        <span id="vendorsCount" class="counter-badge">0</span>
+                    </button>
+                </div>
+
+                <!-- Right Action / Filter Controls -->
+                <div class="filter-controls-group">
+                    <button type="button" class="btn-panel-add-vendor" id="btnAddVendorTrigger" onclick="openModal('addVendorModal')">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>Add Vendor</span>
+                    </button>
+
+                    <div class="custom-select-wrap">
+                        <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                        <select id="statusFilter">
+                            <option value="">All Statuses</option>
+                            <option value="APPROVED">Approved (Direct Buy)</option>
+                            <option value="PENDING_FINANCE">Pending Finance (₱301–₱500)</option>
+                            <option value="PENDING_CEO">Pending CEO (> ₱500)</option>
+                            <option value="PURCHASED">Purchased</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- THRESHOLD LEGEND PILLS (ZERO-EMOJI DOTS) -->
+            <div class="threshold-legend-row" id="doaLegendRow">
+                <span class="badge-route route-procure"><span class="badge-dot dot-procure"></span> ≤ ₱300: Procurement Direct Buy Authorized</span>
+                <span class="badge-route route-finance"><span class="badge-dot dot-finance"></span> ₱301–₱500: Finance Officer Clearance</span>
+                <span class="badge-route route-ceo"><span class="badge-dot dot-ceo"></span> &gt; ₱500: CEO Executive Approval</span>
+            </div>
+
+            <!-- VIEW 1: PURCHASE REQUESTS TABLE -->
+            <div class="table-view active" id="requestsTableView">
+                <div class="table-container">
+                    <table class="cust-table" id="requestsTable">
+                        <thead>
+                            <tr>
+                                <th>PR Code &amp; Item Name</th>
+                                <th>Requester</th>
+                                <th>Supplier / Store</th>
+                                <th>Amount</th>
+                                <th>DOA Route &amp; Status</th>
+                                <th style="text-align: right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="requestsTableBody">
+                            <tr><td colspan="6" class="loading-state-text">Loading purchase requests...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- NUMBERED PAGINATION BAR (REQUESTS) -->
+                <div class="tx-pagination-bar" id="prPaginationBar">
+                    <span class="tx-page-info" id="prPageInfo">Showing 0 of 0 requests</span>
+                    <div class="tx-pager-buttons">
+                        <button type="button" class="pager-btn" id="prevPrBtn" title="Previous Page" disabled>
+                            <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        <div class="pager-numbers" id="prPagerNumbers">
+                            <button type="button" class="pager-num-btn active" disabled>1</button>
+                        </div>
+                        <button type="button" class="pager-btn" id="nextPrBtn" title="Next Page" disabled>
+                            <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 2: VENDORS TABLE -->
+            <div class="table-view" id="vendorsTableView">
+                <div class="table-container">
+                    <table class="cust-table" id="vendorsTable">
+                        <thead>
+                            <tr>
+                                <th>Vendor Code &amp; Name</th>
+                                <th>Category / Goods Supplied</th>
+                                <th>Contact Details</th>
+                                <th>Status</th>
+                                <th>Total Sourced</th>
+                                <th style="text-align: right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vendorsTableBody">
+                            <tr><td colspan="6" class="loading-state-text">Loading vendors...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- NUMBERED PAGINATION BAR (VENDORS) -->
+                <div class="tx-pagination-bar" id="venPaginationBar">
+                    <span class="tx-page-info" id="venPageInfo">Showing 0 of 0 vendors</span>
+                    <div class="tx-pager-buttons">
+                        <button type="button" class="pager-btn" id="prevVenBtn" title="Previous Page" disabled>
+                            <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        <div class="pager-numbers" id="venPagerNumbers">
+                            <button type="button" class="pager-num-btn active" disabled>1</button>
+                        </div>
+                        <button type="button" class="pager-btn" id="nextVenBtn" title="Next Page" disabled>
+                            <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- MODAL 1: ADD PURCHASE REQUEST -->
+<div class="modal-overlay" id="addRequestModal">
+    <div class="profile-modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <h3 class="modal-title">New Purchase Requisition</h3>
+                <p class="modal-subtitle">Auto-routes to Procurement, Finance, or CEO based on total cost.</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('addRequestModal')">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <form id="addRequestForm" class="modal-body">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label for="reqItemName">Raw Ingredient / Supply Description *</label>
+                    <input type="text" id="reqItemName" placeholder="Item or supply description" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="reqVendorName">Partner Vendor / Store *</label>
+                    <select id="reqVendorName" required>
+                        <option value="">-- Choose Vendor --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="reqQty">Quantity *</label>
+                    <input type="number" id="reqQty" min="1" step="1" value="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="reqAmount">Estimated Total Amount (₱) *</label>
+                    <input type="number" step="0.5" id="reqAmount" placeholder="0.00" min="1" required>
+                </div>
+
+                <!-- LIVE DOA ROUTING PREVIEW BADGE -->
+                <div class="form-group full">
+                    <div class="routing-preview-box">
+                        <span class="routing-label">DOA Approval Routing Determination:</span>
+                        <strong id="previewCostDisplay" class="routing-total-val">₱0.00</strong>
+                        <div id="routingBadgePreview" class="badge-route route-procure">
+                            <span class="badge-dot dot-procure"></span> Direct Route: Procurement Officer (Direct Buy Authorized)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal('addRequestModal')">Cancel</button>
+                <button type="submit" class="btn-primary">
+                    <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Submit Requisition</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL 2: ADD VENDOR -->
+<div class="modal-overlay" id="addVendorModal">
+    <div class="profile-modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <h3 class="modal-title">Register Partner Vendor</h3>
+                <p class="modal-subtitle">Add verified ingredient supplier or packaging distributor to directory.</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('addVendorModal')">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <form id="addVendorForm" class="modal-body">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label for="addVendorName">Supplier / Vendor Name *</label>
+                    <input type="text" id="addVendorName" placeholder="Vendor name" required>
+                </div>
+
+                <div class="form-group full">
+                    <label for="addVendorCategory">Category / Supplies *</label>
+                    <input type="text" id="addVendorCategory" placeholder="What this vendor supplies" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="addVendorContact">Contact Details *</label>
+                    <input type="text" id="addVendorContact" placeholder="Email or phone number" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="addVendorStatus">Partnership Status *</label>
+                    <select id="addVendorStatus">
+                        <option value="Active" selected>Active Partner</option>
+                        <option value="Review">Under Review</option>
+                        <option value="Closed">Inactive</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal('addVendorModal')">Cancel</button>
+                <button type="submit" class="btn-primary">
+                    <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Save Vendor</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL 3: EDIT VENDOR -->
+<div class="modal-overlay" id="editVendorModal">
+    <div class="profile-modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <h3 class="modal-title">Edit Vendor Details</h3>
+                <p class="modal-subtitle">Modify contact numbers, supplied categories, or status.</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('editVendorModal')">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <form id="editVendorForm" class="modal-body">
+            <input type="hidden" id="editVendorId">
+
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label for="editVendorName">Supplier Name *</label>
+                    <input type="text" id="editVendorName" required>
+                </div>
+
+                <div class="form-group full">
+                    <label for="editVendorCategory">Category *</label>
+                    <input type="text" id="editVendorCategory" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="editVendorContact">Contact Information *</label>
+                    <input type="text" id="editVendorContact" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="editVendorStatus">Status *</label>
+                    <select id="editVendorStatus">
+                        <option value="Active">Active Partner</option>
+                        <option value="Review">Under Review</option>
+                        <option value="Closed">Inactive</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal('editVendorModal')">Cancel</button>
+                <button type="submit" class="btn-primary">
+                    <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>Update Vendor</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="../js/employeeAuth.js"></script>
+<script src="js/procurement.js"></script>
+<script src="/shared/js/avatarUpload.js"></script>
+</body>
 </html>

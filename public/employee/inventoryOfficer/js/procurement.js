@@ -10,16 +10,31 @@ const REQ_PAGE_SIZE = 5;
 let currentVenPage = 1;
 const VEN_PAGE_SIZE = 5;
 
-// POST JSON to the employee API (sends the x-user-id header via employeeFetch).
+// Global SweetAlert2 Configuration matching Master SOP Section 2.E
+const MMSwal = Swal.mixin({
+    customClass: {
+        popup: 'mm-swal-popup',
+        title: 'mm-swal-title',
+        confirmButton: 'mm-swal-confirm',
+        cancelButton: 'mm-swal-cancel'
+    },
+    buttonsStyling: false
+});
+
+// POST JSON to the employee API with user header forwarding
 async function apiPost(url, body) {
+    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    const headers = { 'Content-Type': 'application/json' };
+    if (userId) headers['x-user-id'] = userId;
+
     const opts = {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body)
     };
     const res = (typeof employeeFetch === 'function') ? await employeeFetch(url, opts) : await fetch(url, opts);
     let data = {};
-    try { data = await res.json(); } catch (e) { /* not JSON */ }
+    try { data = await res.json(); } catch (e) {}
     if (!res.ok || data.status === 'error') {
         throw new Error(data.message || ('Server responded with status ' + res.status));
     }
@@ -30,10 +45,11 @@ function formatPeso(n) {
     return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// Clean badge definitions adhering to Zero-Emoji Rule
 function routeBadge(route) {
-    if (route === 'ceo') return { cls: 'route-ceo', text: '🔴 CEO Clearance' };
-    if (route === 'finance') return { cls: 'route-finance', text: '🟠 Finance Approval' };
-    return { cls: 'route-procure', text: '🟢 Direct Buy' };
+    if (route === 'ceo') return { cls: 'route-ceo', dotCls: 'dot-ceo', text: 'CEO Clearance' };
+    if (route === 'finance') return { cls: 'route-finance', dotCls: 'dot-finance', text: 'Finance Approval' };
+    return { cls: 'route-procure', dotCls: 'dot-procure', text: 'Direct Buy' };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -47,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('procurementSearchInput')?.addEventListener('input', applyCurrentFilters);
     document.getElementById('statusFilter')?.addEventListener('change', applyCurrentFilters);
 
-    // Live DOA routing determination on Amount / Qty input in Modal
+    // Live DOA routing determination on Amount input in Modal
     const reqAmountInput = document.getElementById('reqAmount');
     if (reqAmountInput) {
         reqAmountInput.addEventListener('input', calculateModalThreshold);
@@ -100,13 +116,18 @@ async function fetchProcurementData() {
             response = await fetch('/api/procurement-officer/purchasing-vendor', { headers });
         }
 
-        if (!response.ok) throw new Error(await EmployeeUI.errorMessage(response));
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.message || 'Server error ' + response.status);
+        }
 
         const data = await response.json();
 
         // User profile
         const userFullNameEl = document.getElementById('userFullName');
-        if (userFullNameEl) userFullNameEl.textContent = (data.user && data.user.fullName) || '';
+        if (userFullNameEl) userFullNameEl.textContent = (data.user && data.user.fullName) || 'Procurement Officer';
+        const userAvatarEl = document.getElementById('userAvatar');
+        if (userAvatarEl && data.user?.avatarSrc) userAvatarEl.src = data.user.avatarSrc;
 
         allRequests = data.requests || [];
         allVendors = data.vendors || [];
@@ -115,8 +136,12 @@ async function fetchProcurementData() {
         populateVendorDropdowns(allVendors);
 
     } catch (error) {
-        console.error('Could not load live data from the server:', error);
-        if (window.EmployeeUI) { EmployeeUI.showError(error); EmployeeUI.failTables(); }
+        console.error('Could not load procurement data from server:', error);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'System Notice',
+            text: error.message || 'Could not load procurement directory.'
+        });
     }
 }
 
@@ -127,19 +152,19 @@ function calculateModalThreshold() {
     const badgeEl = document.getElementById('routingBadgePreview');
 
     if (displayEl) {
-        displayEl.textContent = '₱' + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        displayEl.textContent = '₱' + formatPeso(amount);
     }
 
     if (badgeEl) {
         if (amount <= 300) {
             badgeEl.className = 'badge-route route-procure';
-            badgeEl.textContent = '🟢 Direct Route: Procurement Officer (Direct Buy Authorized)';
+            badgeEl.innerHTML = '<span class="badge-dot dot-procure"></span> Direct Route: Procurement Officer (Direct Buy Authorized)';
         } else if (amount > 300 && amount <= 500) {
             badgeEl.className = 'badge-route route-finance';
-            badgeEl.textContent = '🟠 Escalation Route: Requires Financial Officer Clearance';
+            badgeEl.innerHTML = '<span class="badge-dot dot-finance"></span> Escalation Route: Requires Financial Officer Clearance';
         } else {
             badgeEl.className = 'badge-route route-ceo';
-            badgeEl.textContent = '🔴 Executive Route: Requires CEO Approval (High Capital Expense)';
+            badgeEl.innerHTML = '<span class="badge-dot dot-ceo"></span> Executive Route: Requires CEO Approval (High Capital Expense)';
         }
     }
 }
@@ -162,7 +187,7 @@ function applyCurrentFilters() {
         return true;
     });
 
-    // Vendors (the status dropdown is for purchase requests, so it does not filter these)
+    // Vendors
     filteredVendors = allVendors.filter(v => {
         if (q) {
             const vName = (v.vendor_name || '').toLowerCase();
@@ -228,15 +253,15 @@ function renderRequestsTable() {
                 </td>
                 <td><span style="font-weight: 700;">${escapeHtml(req.requester_name) || '—'}</span></td>
                 <td><span style="font-weight: 700;">${escapeHtml(req.vendor_name) || '—'}</span></td>
-                <td><strong style="color: var(--brown-soft); font-family: var(--font-family-heading); font-size: 13.5px;">₱ ${price}</strong></td>
+                <td><strong style="color: var(--brown-soft); font-family: var(--font-family-heading); font-size: 13.5px;">₱${price}</strong></td>
                 <td>
-                    <span class="badge-route ${badge.cls}">${badge.text}</span>
-                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Status: <strong>${escapeHtml(req.status)}</strong></div>
+                    <span class="badge-route ${badge.cls}"><span class="badge-dot ${badge.dotCls}"></span> ${badge.text}</span>
+                    <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 2px;">Status: <strong>${escapeHtml(req.status)}</strong></div>
                 </td>
                 <td style="text-align: right;">
                     ${canDirectBuy ? `
                         <button type="button" class="btn-buy-instant" onclick="executeDirectBuy(${Number(req.id)})">
-                            <i class="fa-solid fa-check"></i> Buy
+                            Buy Instant
                         </button>
                     ` : `
                         <button type="button" class="btn-view-status" onclick="showRequestStatus(${Number(req.id)})">
@@ -319,10 +344,10 @@ function renderVendorsTable() {
                 <td><span style="font-size: 12px; color: var(--text-dark);">${escapeHtml(v.category_desc) || '—'}</span></td>
                 <td><span style="font-size: 11.5px; color: var(--text-muted);">${escapeHtml(v.contact_email) || '—'}</span></td>
                 <td><span class="status-pill-vendor ${vClass}">${escapeHtml(vStatus)}</span></td>
-                <td><strong style="color: var(--brown-soft);">₱ ${totalSpent}</strong></td>
+                <td><strong style="color: var(--brown-soft);">₱${totalSpent}</strong></td>
                 <td style="text-align: right;">
                     <button type="button" class="btn-view-status" onclick="openEditVendor(${v.id})">
-                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                        Edit
                     </button>
                 </td>
             </tr>
@@ -353,25 +378,64 @@ function renderVenPagerButtons(totalPages, activePage) {
     });
 }
 
-// Direct Buy Action for ≤ ₱300
+// Direct Buy Action for ≤ ₱300 with SweetAlert2 confirmation
 async function executeDirectBuy(reqId) {
     const req = allRequests.find(r => r.id === reqId);
     if (!req) return;
 
-    if (!confirm(`Mark "${req.name}" (₱${formatPeso(req.total_price)}) as purchased?\nRequests of ₱300 or less are within your direct-buy authority.`)) return;
+    const res = await MMSwal.fire({
+        title: 'Authorize Direct Buy?',
+        html: `Mark <strong>"${escapeHtml(req.name)}"</strong> (₱${formatPeso(req.total_price)}) as purchased?<br><br><small style="color:var(--text-muted);">Requisitions of ₱300 or less fall within your direct purchase authority.</small>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Confirm Purchase',
+        cancelButtonText: 'Cancel'
+    });
+
+    if (!res.isConfirmed) return;
 
     try {
         await apiPost('/api/procurement-officer/mark-purchased', { expense_id: reqId });
         await fetchProcurementData();
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Purchase Recorded',
+            text: `"${req.name}" marked as purchased successfully.`
+        });
     } catch (error) {
-        alert('Could not complete the purchase: ' + error.message);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Purchase Failed',
+            text: error.message || 'Could not complete purchase action.'
+        });
     }
 }
 
+// Themed Route Inspector Dialog
 function showRequestStatus(reqId) {
     const req = allRequests.find(r => r.id === reqId);
     if (!req) return;
-    alert(`${req.pr_code} (₱${formatPeso(req.total_price)})\nRoute: ${routeBadge(req.route).text}\nStatus: ${req.status}`);
+
+    const b = routeBadge(req.route);
+    let routingNote = 'Authorized for instant petty cash purchase by the Procurement Officer.';
+    if (req.route === 'finance') routingNote = 'Escalated to the Finance Officer dashboard for fund allocation clearance.';
+    if (req.route === 'ceo') routingNote = 'High-capital requisition escalated directly to the CEO for executive approval.';
+
+    MMSwal.fire({
+        title: req.pr_code || 'Requisition Details',
+        html: `
+            <div style="text-align: left; font-size: 13px; line-height: 1.6; color: var(--text-dark);">
+                <div style="margin-bottom: 8px;"><strong>Item:</strong> ${escapeHtml(req.name)}</div>
+                <div style="margin-bottom: 8px;"><strong>Total Amount:</strong> ₱${formatPeso(req.total_price)}</div>
+                <div style="margin-bottom: 8px;"><strong>DOA Tier:</strong> <span class="badge-route ${b.cls}"><span class="badge-dot ${b.dotCls}"></span> ${b.text}</span></div>
+                <div style="margin-bottom: 8px;"><strong>Status:</strong> ${escapeHtml(req.status)}</div>
+                <div style="background: var(--bg-main); padding: 10px 12px; border-radius: 10px; margin-top: 10px; border-left: 3px solid var(--accent-pink);">
+                    ${routingNote}
+                </div>
+            </div>
+        `,
+        confirmButtonText: 'Close'
+    });
 }
 
 function populateVendorDropdowns(vendors) {
@@ -417,7 +481,11 @@ async function handleAddRequest(e) {
     const qty = parseInt(document.getElementById('reqQty').value || 1, 10);
 
     if (!item_name || isNaN(amount) || amount <= 0) {
-        alert('Please fill out all required fields.');
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Incomplete Input',
+            text: 'Please fill out all required fields.'
+        });
         return;
     }
 
@@ -437,10 +505,21 @@ async function handleAddRequest(e) {
         await fetchProcurementData();
 
         const route = result.request && result.request.route;
-        const routeText = route === 'ceo' ? 'Escalated to the CEO' : (route === 'finance' ? 'Endorsed to Finance' : 'Direct buy authorized');
-        alert(`Requisition for "${item_name}" (₱${formatPeso(amount)}) saved.\nRouting: ${routeText}`);
+        let routeText = 'Direct purchase authorized for Procurement';
+        if (route === 'finance') routeText = 'Escalated to Finance Officer';
+        if (route === 'ceo') routeText = 'Escalated to the CEO';
+
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Requisition Submitted',
+            text: `Requisition for "${item_name}" (₱${formatPeso(amount)}) saved.\n\nRouting: ${routeText}`
+        });
     } catch (error) {
-        alert('Could not save the requisition: ' + error.message);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Submission Failed',
+            text: error.message || 'Could not save the requisition.'
+        });
     } finally {
         if (submitBtn) submitBtn.disabled = false;
     }
@@ -461,9 +540,17 @@ async function handleAddVendor(e) {
         closeModal('addVendorModal');
         e.target.reset();
         await fetchProcurementData();
-        alert(`Vendor "${vendor_name}" saved.`);
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Vendor Registered',
+            text: `Vendor "${vendor_name}" has been registered successfully.`
+        });
     } catch (error) {
-        alert('Could not save the vendor: ' + error.message);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Registration Failed',
+            text: error.message || 'Could not save the vendor.'
+        });
     } finally {
         if (submitBtn) submitBtn.disabled = false;
     }
@@ -496,9 +583,17 @@ async function handleEditVendor(e) {
         await apiPost('/api/procurement-officer/edit-vendor', { vendor_id, vendor_name, category, contact, status });
         closeModal('editVendorModal');
         await fetchProcurementData();
-        alert(`Vendor "${vendor_name}" updated.`);
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Vendor Updated',
+            text: `Vendor "${vendor_name}" updated successfully.`
+        });
     } catch (error) {
-        alert('Could not update the vendor: ' + error.message);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Update Failed',
+            text: error.message || 'Could not update the vendor.'
+        });
     } finally {
         if (submitBtn) submitBtn.disabled = false;
     }
