@@ -281,7 +281,6 @@ async function generateDailyQualityReport(forceRefresh = false) {
 
   const todayStr = phDate(new Date());
 
-  // 1. Idempotency Check: I-load ang existing kung hindi pinipilit ang refresh
   if (!forceRefresh) {
     const { data: existingReport } = await supabase
       .from('daily_quality_reports')
@@ -294,7 +293,6 @@ async function generateDailyQualityReport(forceRefresh = false) {
     }
   }
 
-  // 2. Basahin ang pinakabagong reviews mula sa public.ratings
   const { data: reviews, error: reviewErr } = await supabase
     .from('ratings')
     .select('id, product_title, rating_score, experience_tags, review_text, created_at')
@@ -308,14 +306,12 @@ async function generateDailyQualityReport(forceRefresh = false) {
   const totalReviews = reviews.length;
   const avgScore = (reviews.reduce((sum, r) => sum + (parseInt(r.rating_score, 10) || 5), 0) / totalReviews).toFixed(1);
 
-  // Kalkulahin ang distribusyon
   const posReviews = reviews.filter(r => (parseInt(r.rating_score, 10) || 5) >= 4);
   const neutralOrNegReviews = reviews.filter(r => (parseInt(r.rating_score, 10) || 5) <= 3);
 
   const posPct = Math.round((posReviews.length / totalReviews) * 100);
   const issuePct = 100 - posPct;
 
-  // 3. I-extract ang anonymized direct quotes at bilangin ang mga reklamo
   const samplePraise = posReviews.find(r => r.review_text && r.review_text.trim().length > 5);
   const sampleIssue = neutralOrNegReviews.find(r => r.review_text && r.review_text.trim().length > 5);
 
@@ -348,7 +344,6 @@ async function generateDailyQualityReport(forceRefresh = false) {
     ]
   };
 
-  // 4. Gemini 2.5 Flash Synthesis (May bilang at porsyento)
   const apiKey = process.env.GEMINI_API_KEY;
   if (apiKey && GoogleGenAI) {
     try {
@@ -412,7 +407,6 @@ Respond ONLY with this exact JSON structure:
     }
   }
 
-  // 5. I-save sa daily_quality_reports
   const insertPayload = {
     report_date: todayStr,
     total_reviews_analyzed: totalReviews,
@@ -445,7 +439,6 @@ Respond ONLY with this exact JSON structure:
 // SALES OFFICER DASHBOARD API ROUTES
 // ==========================================================================
 
-// 1. Dashboard Overview Metrics (Solves 404 Endpoint Not Found)
 router.get('/sales-officer/dashboard', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -454,7 +447,6 @@ router.get('/sales-officer/dashboard', async (req, res) => {
     const todayStr = phDate(new Date());
     const todayStart = phDayStartISO(todayStr);
 
-    // Fetch today's orders & revenue
     const { data: todayOrdersData } = await supabase
       .from('orders')
       .select('id, total_amount, status, placed_at')
@@ -466,13 +458,11 @@ router.get('/sales-officer/dashboard', async (req, res) => {
       .filter(o => isSaleStatus(o.status))
       .reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
 
-    // Fetch pending approvals
     const { count: pendingOrders } = await supabase
       .from('orders')
       .select('id', { count: 'exact', head: true })
       .in('status', ORDER_REVIEW_STATUSES);
 
-    // Customer acquisition counts
     const { data: acqData } = await supabase.from('customers').select('created_at');
     const allCust = acqData || [];
 
@@ -484,7 +474,6 @@ router.get('/sales-officer/dashboard', async (req, res) => {
       last6Months: allCust.filter(c => new Date(c.created_at) >= monthsAgo(6)).length
     };
 
-    // Register Status Check mula sa system_settings
     const { data: regSetting } = await supabase
       .from('system_settings')
       .select('setting_value')
@@ -493,7 +482,6 @@ router.get('/sales-officer/dashboard', async (req, res) => {
 
     const registerStatus = regSetting?.setting_value === 'LOCKED' ? 'LOCKED' : 'OPEN';
 
-    // Recent 50 transactions with customer info
     const { data: recentOrders } = await supabase
       .from('orders')
       .select(`
@@ -538,7 +526,6 @@ router.get('/sales-officer/dashboard', async (req, res) => {
   }
 });
 
-// 2. Start Shift / Open Register endpoint
 router.post('/sales-officer/open-shift', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -571,7 +558,6 @@ router.post('/sales-officer/open-shift', async (req, res) => {
   }
 });
 
-// 3. Sales Officer Sentiment & Decision Support Endpoint
 router.get('/sales-officer/ai-sentiment', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -641,7 +627,6 @@ router.get('/sales-officer/ai-sentiment', async (req, res) => {
   }
 });
 
-// 4. On-Demand Trigger para sa Comprehensive AI Summary (Bypasses Idempotency Cache)
 router.post('/sales-officer/ai-sentiment/generate', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -666,7 +651,6 @@ router.post('/sales-officer/ai-sentiment/generate', async (req, res) => {
   }
 });
 
-// 5. Production Supervisor Kitchen Pulse
 router.get('/production-supervisor/kitchen-pulse', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -711,7 +695,6 @@ router.get('/production-supervisor/kitchen-pulse', async (req, res) => {
   }
 });
 
-// 6. X-Reading interim endpoint
 router.get('/sales-officer/x-reading', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -784,7 +767,6 @@ router.get('/sales-officer/x-reading', async (req, res) => {
   }
 });
 
-// 7. Z-Reading official end of shift cut-off
 router.post('/sales-officer/z-reading', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -859,7 +841,6 @@ router.post('/sales-officer/z-reading', async (req, res) => {
   }
 });
 
-// 8. Order confirmation desk
 router.get('/sales-officer/order-confirmation', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -924,7 +905,6 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
   }
 });
 
-// 9. Generic order status patch route
 router.patch('/orders/:id/status', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -948,7 +928,6 @@ router.patch('/orders/:id/status', async (req, res) => {
   }
 });
 
-// 10. Order monitoring desk
 router.get('/sales-officer/order-monitoring', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -999,7 +978,6 @@ router.get('/sales-officer/order-monitoring', async (req, res) => {
   }
 });
 
-// 11. Order completion & instant walk-in sale puncher
 router.post('/sales-officer/order-monitoring/update', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1068,7 +1046,6 @@ router.post('/sales-officer/order-monitoring/update', async (req, res) => {
   }
 });
 
-// 12. Customer records
 router.get('/sales-officer/customer-records', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1176,7 +1153,10 @@ router.get('/sales-officer/customer-records', async (req, res) => {
   }
 });
 
-// 13. Promotions desk
+// ==========================================================================
+// PROMOTIONS DESK API ROUTES
+// ==========================================================================
+
 router.get('/sales-officer/promotions', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1214,6 +1194,116 @@ router.get('/sales-officer/promotions', async (req, res) => {
     });
   } catch (error) {
     console.error('[sales-officer/promotions] error:', error.message);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// AI DECISION SUPPORT: AUTO-DRAFT OPTIMAL PROMOTION PROPOSAL
+router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: recentOrders } = await supabase
+      .from('orders')
+      .select('id, total_amount, placed_at, order_type, order_items(item_label, quantity)')
+      .gte('placed_at', sevenDaysAgo)
+      .not('status', 'in', NOT_SALES);
+
+    const ordersList = recentOrders || [];
+    const totalWeeklySales = ordersList.reduce((s, o) => s + (parseFloat(o.total_amount) || 0), 0);
+    const preordersCount = ordersList.filter(o => o.order_type === 'custom_build').length;
+    const presetsCount = ordersList.filter(o => o.order_type === 'preset').length;
+
+    let fallbackProposal = {
+      code: "BOOSTMARBLE10",
+      target_segment: "all",
+      discount_type: "percent",
+      discount_value: 10,
+      min_spend: 100,
+      usage_cap: 50,
+      pitch_note: "DSS Recommendation: Stimulate midday customer pre-orders and boost volume with a balanced 10% discount."
+    };
+
+    if (totalWeeklySales < 5000 || preordersCount < 10) {
+      fallbackProposal = {
+        code: "REVIVE15",
+        target_segment: "member",
+        discount_type: "percent",
+        discount_value: 15,
+        min_spend: 120,
+        usage_cap: 35,
+        pitch_note: "DSS Recovery Action: Low weekly pre-order volume detected. Recommending a 15% loyalty retention incentive."
+      };
+    }
+
+    let finalProposal = fallbackProposal;
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (apiKey && GoogleGenAI) {
+      try {
+        const ai = new GoogleGenAI({ apiKey });
+        const systemPrompt = `
+You are the Strategic Revenue & Commercial DSS Advisor for "Milky Marble Enterprise".
+Analyze the operational metrics for the past 7 days:
+- Gross Weekly Revenue: PHP ${totalWeeklySales.toFixed(2)}
+- Pre-Order Volume: ${preordersCount} orders
+- Walk-in Counter Preset Volume: ${presetsCount} orders
+
+Generate an optimal promotional scheme to submit to the CEO for approval.
+CRITICAL RULES:
+1. "code" must be catchy, relevant, and in UPPERCASE (e.g., JELLYBOOST10, SWEETPRE15, RECOVERY10).
+2. "target_segment" must be either "all" or "member".
+3. "discount_type" must be either "percent" or "fixed".
+4. "discount_value" must protect unit profitability: between 10 to 20 for percent, or 10 to 30 for fixed PHP.
+5. "min_spend" should be between 80 to 150 PHP to protect ticket size.
+6. "pitch_note" must provide a concise, sharp commercial rationale addressed to the CEO explaining why this campaign will drive revenue without eroding margins.
+
+Respond ONLY with this exact JSON format:
+{
+  "code": "<PROMO_CODE>",
+  "target_segment": "<all|member>",
+  "discount_type": "<percent|fixed>",
+  "discount_value": 15,
+  "min_spend": 100,
+  "usage_cap": 50,
+  "pitch_note": "<Concise rationale to CEO>"
+}`;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: systemPrompt,
+          config: {
+            responseMimeType: 'application/json'
+          }
+        });
+
+        const parsed = JSON.parse(response.text.trim());
+        if (parsed.code && parsed.discount_value) {
+          finalProposal = {
+            code: String(parsed.code).toUpperCase().trim(),
+            target_segment: parsed.target_segment || 'all',
+            discount_type: parsed.discount_type || 'percent',
+            discount_value: parseFloat(parsed.discount_value) || 10,
+            min_spend: parsed.min_spend !== null && parsed.min_spend !== undefined ? parseFloat(parsed.min_spend) : null,
+            usage_cap: parsed.usage_cap !== null && parsed.usage_cap !== undefined ? parseInt(parsed.usage_cap, 10) : null,
+            pitch_note: parsed.pitch_note || fallbackProposal.pitch_note
+          };
+        }
+      } catch (geminiErr) {
+        console.warn('[Gemini Promo Suggestion Warning - Used DSS Fallback]:', geminiErr.message);
+      }
+    }
+
+    return res.json({
+      status: 'success',
+      proposal: finalProposal
+    });
+
+  } catch (error) {
+    console.error('[/sales-officer/promotions/ai-suggest error]:', error.message);
     return res.status(500).json({ status: 'error', message: error.message });
   }
 });
@@ -1289,7 +1379,6 @@ router.post('/sales-officer/promotions/toggle', async (req, res) => {
   }
 });
 
-// 14. Sales reports & records audit endpoint
 router.get('/sales-officer/sales-reports', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1347,7 +1436,6 @@ router.get('/sales-officer/sales-reports', async (req, res) => {
   }
 });
 
-// 15. Sales targets & quota metrics endpoint
 router.get('/sales-officer/sales-target', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
