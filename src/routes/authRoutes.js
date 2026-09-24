@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const supabase = require('../config/supabase');
 const { sendPromoWelcomeEmail } = require('../services/mailServices');
+const { setStaffCookie } = require('../middleware/staffAuth');
 
 // This must match the client_id used by the Google Sign-In button in
 // public/customer/js/login.js and public/customer/js/signup.js. Override via
@@ -395,6 +396,9 @@ router.post('/employee-login', async (req, res) => {
       .from('users')
       .update({ last_login_at: new Date().toISOString() })
       .eq('id', account.id);
+
+    // Signed httpOnly cookie - the staff API routes check this (401 without it).
+    setStaffCookie(res, { id: account.id, type: account.user_type, roles: roleNames });
 
     let targetUrl = 'login.html';
     if (roleNames.includes('Sales Officer') || cleanUsername === 'salesofficer1') {

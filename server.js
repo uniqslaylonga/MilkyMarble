@@ -12,6 +12,7 @@ const authRoutes = require('./src/routes/authRoutes');
 const orderRoutes = require('./src/routes/orderRoutes');
 const paymentRoutes = require('./src/routes/paymentRoutes');
 const employeeRoutes = require('./src/routes/employeeRoutes');
+const { requireStaff, setStaffCookie, clearStaffCookie } = require('./src/middleware/staffAuth');
 
 let customerRoutes = null;
 try {
@@ -142,6 +143,22 @@ app.use(express.json({
   verify: (req, res, buf) => { req.rawBody = buf; }
 }));
 app.use(express.urlencoded({ limit: '15mb', extended: true }));
+
+// ==========================================
+// STAFF LOGIN GUARD (management + employee APIs)
+// Only these paths run the check (one cheap HMAC, no DB call), so customer
+// pages, images, CSS and JS are untouched.
+// ==========================================
+app.post('/api/staff/logout', (req, res) => {
+  clearStaffCookie(res);
+  return res.json({ status: 'success' });
+});
+app.use('/api/admin', requireStaff('admin', 'ceo'));
+app.use('/api/ceo', requireStaff('ceo'));
+app.use(
+  ['/api/sales-officer', '/api/finance-officer', '/api/procurement-officer', '/api/production-supervisor'],
+  requireStaff('employee', 'admin', 'ceo')
+);
 
 // ==========================================
 // 1. STATIC FILE SERVING & ROUTE ALIASES
@@ -1488,24 +1505,6 @@ app.post('/api/management/login', async (req, res) => {
       passwordMatch = (password === user.password_hash);
     }
 
-    // THE FIX: Auto-update password hashes for migrated accounts
-    if (!passwordMatch) {
-      // List of your default development passwords
-      const devPasswords = ['AdminRuth1!', 'password123', 'admin123', 'CEOGabriel1!'];
-      
-      if (devPasswords.includes(password)) {
-        passwordMatch = true;
-        if (bcrypt) {
-          const newHash = await bcrypt.hash(password, 10);
-          await supabase
-            .from('users')
-            .update({ password_hash: newHash })
-            .eq('id', user.id);
-          console.log(`[LOGIN FIX] Auto-updated password hash for ${cleanUsername}`);
-        }
-      }
-    }
-
     if (!passwordMatch) {
       return res.status(401).json({ status: 'error', message: 'Invalid username or password.' });
     }
@@ -1516,6 +1515,8 @@ app.post('/api/management/login', async (req, res) => {
     }
 
     const redirectUrl = role === 'ceo' ? 'ceo/dashboard.html' : 'admin/dashboard.html';
+
+    setStaffCookie(res, { id: user.id, type: role });
 
     return res.json({
       status: 'success',
