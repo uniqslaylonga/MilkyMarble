@@ -1,9 +1,9 @@
 let allCustomers = [];
 let filteredCustomers = [];
-let currentCustomerPage = 1;
-const CUSTOMERS_PAGE_SIZE = 5;
+let currentPage = 1;
+const PAGE_SIZE = 6;
 
-let acquisitionTimeframeData = {
+let acquisitionMetrics = {
     today: 0,
     week: 0,
     month: 0,
@@ -11,81 +11,89 @@ let acquisitionTimeframeData = {
     last6Months: 0
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    const acqSelect = document.getElementById('acquisitionPeriodSelect');
-    if (acqSelect) acqSelect.addEventListener('change', updateAcquisitionAnalyticsPanel);
+// Global SweetAlert2 Config matching Master SOP Section 2.E
+const MMSwal = Swal.mixin({
+    customClass: {
+        popup: 'mm-swal-popup',
+        title: 'mm-swal-title',
+        confirmButton: 'mm-swal-confirm',
+        cancelButton: 'mm-swal-cancel'
+    },
+    buttonsStyling: false
+});
 
+document.addEventListener('DOMContentLoaded', async () => {
+    bindEventListeners();
+    await loadCustomerData();
+});
+
+function bindEventListeners() {
     const sortSelect = document.getElementById('customerSortSelect');
-    if (sortSelect) sortSelect.addEventListener('change', applyDirectoryFilters);
+    if (sortSelect) sortSelect.addEventListener('change', applyFiltersAndSort);
 
     const dateFilter = document.getElementById('customerDateFilter');
-    const customDate = document.getElementById('customerCustomDate');
-
+    const customDateInput = document.getElementById('customerCustomDate');
     if (dateFilter) {
         dateFilter.addEventListener('change', (e) => {
             if (e.target.value === 'custom') {
-                customDate.style.display = 'inline-block';
-                if (!customDate.value) {
-                    customDate.value = SalesCommon.localDate(new Date());
-                }
+                customDateInput.style.display = 'inline-block';
+                if (!customDateInput.value) customDateInput.value = SalesCommon.localDate(new Date());
             } else {
-                customDate.style.display = 'none';
+                customDateInput.style.display = 'none';
             }
-            applyDirectoryFilters();
+            applyFiltersAndSort();
         });
     }
 
-    if (customDate) customDate.addEventListener('change', applyDirectoryFilters);
+    if (customDateInput) customDateInput.addEventListener('change', applyFiltersAndSort);
+
+    const acqSelect = document.getElementById('acquisitionPeriodSelect');
+    if (acqSelect) acqSelect.addEventListener('change', updateAcquisitionPanel);
 
     const prevBtn = document.getElementById('prevCustomerBtn');
     const nextBtn = document.getElementById('nextCustomerBtn');
 
     if (prevBtn) {
         prevBtn.addEventListener('click', () => {
-            if (currentCustomerPage > 1) {
-                currentCustomerPage--;
-                renderCustomerTable();
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
             }
         });
     }
 
     if (nextBtn) {
         nextBtn.addEventListener('click', () => {
-            const totalPages = Math.ceil(filteredCustomers.length / CUSTOMERS_PAGE_SIZE) || 1;
-            if (currentCustomerPage < totalPages) {
-                currentCustomerPage++;
-                renderCustomerTable();
+            const totalPages = Math.ceil(filteredCustomers.length / PAGE_SIZE) || 1;
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
             }
         });
     }
 
-    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    const modalClose = document.getElementById('modalCloseBtn');
     const modalOverlay = document.getElementById('profileModalOverlay');
-
-    if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
+    if (modalClose) modalClose.addEventListener('click', closeProfileModal);
     if (modalOverlay) {
         modalOverlay.addEventListener('click', (e) => {
-            if (e.target === modalOverlay) closeModal();
+            if (e.target === modalOverlay) closeProfileModal();
         });
     }
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeModal();
-    });
+}
 
-    fetchCustomerRecords();
-});
-
-// Load registered customer list
-async function fetchCustomerRecords() {
+async function loadCustomerData() {
     try {
         const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-        const headers = userId ? { 'x-user-id': userId } : {};
+        const headers = {};
+        if (userId) headers['x-user-id'] = userId;
 
         const response = await fetch('/api/sales-officer/customer-records', { headers });
         if (!response.ok) throw new Error(await SalesCommon.errorMessage(response));
 
         const data = await response.json();
 
+        // Topbar Employee Header
         if (data.user) {
             const userNameEl = document.getElementById('userName');
             const userAvatarEl = document.getElementById('userAvatar');
@@ -93,6 +101,7 @@ async function fetchCustomerRecords() {
             if (userAvatarEl && data.user.avatarSrc) userAvatarEl.src = data.user.avatarSrc;
         }
 
+        // Snapshot KPIs
         if (data.metrics) {
             document.getElementById('totalRegistered').textContent = Number(data.metrics.totalRegistered || 0).toLocaleString();
             document.getElementById('totalRegisteredGrowth').textContent = data.metrics.registeredGrowth || '+0% vs last month';
@@ -101,107 +110,112 @@ async function fetchCustomerRecords() {
             document.getElementById('repeatRate').textContent = data.metrics.repeatRate || '0%';
 
             if (data.metrics.acquisition) {
-                acquisitionTimeframeData = {
+                acquisitionMetrics = {
                     today: data.metrics.acquisition.today || 0,
                     week: data.metrics.acquisition.week || 0,
                     month: data.metrics.acquisition.month || 0,
                     last3Months: data.metrics.acquisition.last3Months || 0,
                     last6Months: data.metrics.acquisition.last6Months || 0
                 };
+                updateAcquisitionPanel();
             }
         }
 
-        allCustomers = (data.customers || []).filter(c => c.type === 'registered');
-        applyDirectoryFilters();
-        updateAcquisitionAnalyticsPanel();
+        allCustomers = data.customers || [];
+        applyFiltersAndSort();
 
-    } catch (error) {
-        console.error('Could not load customer records from server:', error);
-        SalesCommon.showError(error);
-        SalesCommon.failTables();
+    } catch (err) {
+        console.error('Customer data loading error:', err);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Registry Sync Error',
+            text: 'Unable to connect to customer registry. Please refresh.'
+        });
     }
 }
 
-function updateAcquisitionAnalyticsPanel() {
-    const select = document.getElementById('acquisitionPeriodSelect');
+function updateAcquisitionPanel() {
+    const selected = document.getElementById('acquisitionPeriodSelect')?.value || 'week';
     const countEl = document.getElementById('periodSignupsCount');
     const footerEl = document.getElementById('periodSignupsFooter');
     const avgEl = document.getElementById('dailyAvgAcquisition');
-    const paceTextEl = document.getElementById('acquisitionPaceText');
+    const paceEl = document.getElementById('acquisitionPaceText');
     const paceDescEl = document.getElementById('acquisitionPaceDesc');
 
-    const selected = select ? select.value : 'week';
-    const timeframeConfig = {
-        today: { days: 1, footer: "Registered today" },
-        week: { days: 7, footer: "Registered past 7 days" },
-        month: { days: 30, footer: "Registered current month" },
-        last3Months: { days: 90, footer: "Registered past 90 days" },
-        last6Months: { days: 180, footer: "Registered past 180 days" }
+    const daysMap = { today: 1, week: 7, month: 30, last3Months: 90, last6Months: 180 };
+    const labelMap = {
+        today: "Registered today",
+        week: "Registered this week",
+        month: "Registered this month",
+        last3Months: "Past 90 days total",
+        last6Months: "Past 180 days total"
     };
 
-    const config = timeframeConfig[selected] || timeframeConfig.week;
-    const count = Number(acquisitionTimeframeData[selected] || 0);
-    const dailyAvg = (count / config.days).toFixed(1);
+    const count = acquisitionMetrics[selected] || 0;
+    const days = daysMap[selected] || 7;
+    const dailyAvg = (count / days).toFixed(1);
 
     if (countEl) countEl.textContent = count.toLocaleString();
-    if (footerEl) footerEl.textContent = config.footer;
+    if (footerEl) footerEl.textContent = labelMap[selected] || 'Registered';
     if (avgEl) avgEl.textContent = dailyAvg;
 
-    if (paceTextEl && paceDescEl) {
-        if (dailyAvg >= 1.5) {
-            paceTextEl.textContent = 'Rapid Growth';
-            paceTextEl.className = 'growth-stat-number status-pace-good';
-            paceDescEl.textContent = 'High account sign-up velocity';
-        } else if (dailyAvg >= 0.5) {
-            paceTextEl.textContent = 'Steady';
-            paceTextEl.className = 'growth-stat-number status-pace-good';
-            paceDescEl.textContent = 'Consistent member acquisition';
+    if (paceEl && paceDescEl) {
+        if (dailyAvg >= 3.0) {
+            paceEl.textContent = 'High Velocity';
+            paceEl.className = 'growth-stat-number status-pace-good';
+            paceDescEl.textContent = 'Rapid expansion across customer base';
+        } else if (dailyAvg >= 1.0) {
+            paceEl.textContent = 'Steady';
+            paceEl.className = 'growth-stat-number status-pace-good';
+            paceDescEl.textContent = 'Consistent daily sign-ups';
         } else {
-            paceTextEl.textContent = 'Moderate';
-            paceTextEl.className = 'growth-stat-number';
-            paceDescEl.textContent = 'Standard registration rate';
+            paceEl.textContent = 'Moderate';
+            paceEl.className = 'growth-stat-number status-pace-warning';
+            paceDescEl.textContent = 'Recommend launching promo campaigns';
         }
     }
 }
 
-// Filter and sort directory
-function applyDirectoryFilters() {
-    const sortBy = document.getElementById('customerSortSelect')?.value || 'orders_desc';
-    const dateFilterVal = document.getElementById('customerDateFilter')?.value || 'all';
-    const customDateVal = document.getElementById('customerCustomDate')?.value;
+function applyFiltersAndSort() {
+    const sortVal = document.getElementById('customerSortSelect')?.value || 'orders_desc';
+    const filterVal = document.getElementById('customerDateFilter')?.value || 'all';
+    const customDate = document.getElementById('customerCustomDate')?.value;
 
     const now = new Date();
     const todayStr = SalesCommon.localDate(now);
-    const weekAgo = new Date(now);
-    weekAgo.setDate(now.getDate() - 7);
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     filteredCustomers = allCustomers.filter(c => {
-        if (dateFilterVal !== 'all' && c.last_order_at) {
-            const ordDate = new Date(c.last_order_at);
-            const ordDateStr = SalesCommon.localDate(c.last_order_at);
-            if (dateFilterVal === 'today' && ordDateStr !== todayStr) return false;
-            if (dateFilterVal === 'week' && ordDate < weekAgo) return false;
-            if (dateFilterVal === 'month' && ordDate < startOfMonth) return false;
-            if (dateFilterVal === 'custom' && ordDateStr !== customDateVal) return false;
-        }
+        if (filterVal === 'all') return true;
+        if (!c.last_order_at) return false;
+        const lastDate = new Date(c.last_order_at);
+        const lastDateStr = SalesCommon.localDate(c.last_order_at);
+
+        if (filterVal === 'today') return lastDateStr === todayStr;
+        if (filterVal === 'week') return lastDate >= weekAgo;
+        if (filterVal === 'month') return lastDate >= startOfMonth;
+        if (filterVal === 'custom') return lastDateStr === customDate;
         return true;
     });
 
     filteredCustomers.sort((a, b) => {
-        if (sortBy === 'name_asc') return (a.full_name || '').localeCompare(b.full_name || '');
-        if (sortBy === 'orders_desc') return (b.total_orders || 0) - (a.total_orders || 0);
-        if (sortBy === 'spent_desc') return (b.total_spent || 0) - (a.total_spent || 0);
-        if (sortBy === 'recent') return new Date(b.last_order_at || 0) - new Date(a.last_order_at || 0);
+        if (sortVal === 'name_asc') return (a.full_name || '').localeCompare(b.full_name || '');
+        if (sortVal === 'orders_desc') return (b.total_orders || 0) - (a.total_orders || 0);
+        if (sortVal === 'spent_desc') return (b.total_spent || 0) - (a.total_spent || 0);
+        if (sortVal === 'recent') {
+            const dA = a.last_order_at ? new Date(a.last_order_at).getTime() : 0;
+            const dB = b.last_order_at ? new Date(b.last_order_at).getTime() : 0;
+            return dB - dA;
+        }
         return 0;
     });
 
-    currentCustomerPage = 1;
-    renderCustomerTable();
+    currentPage = 1;
+    renderTable();
 }
 
-// Render paginated customer table
-function renderCustomerTable() {
+function renderTable() {
     const tbody = document.getElementById('customerTableBody');
     const pageInfo = document.getElementById('customerPageInfo');
     const prevBtn = document.getElementById('prevCustomerBtn');
@@ -210,170 +224,198 @@ function renderCustomerTable() {
     if (!tbody) return;
 
     if (filteredCustomers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="loading-state-text">No registered members found.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="6" class="loading-state-text">No registered members matched the filter criteria.</td></tr>`;
         if (pageInfo) pageInfo.textContent = 'Showing 0 of 0 members';
         if (prevBtn) prevBtn.disabled = true;
         if (nextBtn) nextBtn.disabled = true;
-        renderCustomerPagerButtons(1, 1);
+        renderPagination(1, 1);
         return;
     }
 
-    const totalPages = Math.ceil(filteredCustomers.length / CUSTOMERS_PAGE_SIZE) || 1;
-    const startIndex = (currentCustomerPage - 1) * CUSTOMERS_PAGE_SIZE;
-    const pageItems = filteredCustomers.slice(startIndex, startIndex + CUSTOMERS_PAGE_SIZE);
+    const totalPages = Math.ceil(filteredCustomers.length / PAGE_SIZE) || 1;
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    const items = filteredCustomers.slice(startIndex, startIndex + PAGE_SIZE);
 
     if (pageInfo) {
-        const startNum = startIndex + 1;
-        const endNum = Math.min(startIndex + CUSTOMERS_PAGE_SIZE, filteredCustomers.length);
-        pageInfo.textContent = `Showing ${startNum}-${endNum} of ${filteredCustomers.length} members`;
+        pageInfo.textContent = `Showing ${startIndex + 1}-${Math.min(startIndex + PAGE_SIZE, filteredCustomers.length)} of ${filteredCustomers.length} members`;
     }
-    if (prevBtn) prevBtn.disabled = currentCustomerPage <= 1;
-    if (nextBtn) nextBtn.disabled = currentCustomerPage >= totalPages;
+    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
 
-    renderCustomerPagerButtons(totalPages, currentCustomerPage);
+    renderPagination(totalPages, currentPage);
 
-    tbody.innerHTML = pageItems.map(cust => {
-        const orderCount = cust.total_orders || 0;
-        const totalSpent = Number(cust.total_spent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const avatar = cust.avatar ? cust.avatar : '/customer/images/account.png';
+    tbody.innerHTML = items.map(c => {
+        const orderCount = c.total_orders || 0;
+        const totalSpent = Number(c.total_spent || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const isRepeat = orderCount > 1;
+        const loyaltyClass = isRepeat ? 'badge-repeat' : 'badge-new';
+        const loyaltyText = isRepeat ? 'Repeat Member' : 'New Member';
+        const ratingsCount = c.total_ratings_count || (c.ratings ? c.ratings.length : 0);
 
         return `
             <tr>
                 <td>
-                    <div class="cust-cell">
-                        <div class="cust-avatar-sm">
-                            <img src="${avatar}" alt="${escapeHtml(cust.full_name)}" class="cust-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                    <div class="member-cell">
+                        <div class="user-avatar-sm">
+                            <img src="${c.avatar || '/customer/images/account.png'}" alt="Avatar" class="avatar-sm-img" onerror="this.src='/customer/images/account.png'">
                         </div>
-                        <div>
-                            <div class="cust-name-row">
-                                <span class="cust-name-text">${escapeHtml(cust.full_name)}</span>
-                                <span class="client-badge badge-member">Member</span>
+                        <div class="member-details">
+                            <strong class="member-name">${escapeHtml(c.full_name || 'Customer')}</strong>
+                            <div class="member-badge-row">
+                                <span class="loyalty-pill ${loyaltyClass}">${loyaltyText}</span>
+                                <span class="reviews-pill">${ratingsCount} Reviews</span>
                             </div>
                         </div>
                     </div>
                 </td>
                 <td>
-                    <div class="contact-text">${escapeHtml(cust.phone || 'N/A')}</div>
-                    <div class="email-sub">${escapeHtml(cust.email || 'No email provided')}</div>
+                    <div class="contact-cell">
+                        <span class="contact-email">${escapeHtml(c.email || 'No email')}</span>
+                        <span class="contact-phone">${escapeHtml(c.phone || 'No phone')}</span>
+                    </div>
                 </td>
-                <td><strong class="order-count">${orderCount} order(s)</strong></td>
-                <td><span class="spent-val">₱${totalSpent}</span></td>
-                <td><span class="method-pill">${escapeHtml(cust.preferred_payment || 'GCash')}</span></td>
+                <td><strong class="stat-number-cell">${orderCount}</strong></td>
+                <td><strong class="stat-number-cell">₱${totalSpent}</strong></td>
+                <td><span class="pay-method-tag">${escapeHtml(c.preferred_payment || 'Counter Cash')}</span></td>
                 <td style="text-align: center;">
-                    <button type="button" class="view-profile-btn" onclick="openProfileModal('${cust.id}')">View Summary</button>
+                    <button type="button" class="btn-view-profile" onclick="viewCustomerProfile(${c.id})">
+                        <svg class="action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        <span>View Profile</span>
+                    </button>
                 </td>
             </tr>
         `;
     }).join('');
 }
 
-// Smart sliding pagination controls
-function renderCustomerPagerButtons(totalPages, activePage) {
-    const pagerNumbers = document.getElementById('customerPagerNumbers');
-    if (!pagerNumbers) return;
+function renderPagination(totalPages, activePage) {
+    const pagerWrap = document.getElementById('customerPagerNumbers');
+    if (!pagerWrap) return;
 
     if (totalPages <= 1) {
-        pagerNumbers.innerHTML = `<button type="button" class="pager-num-btn active" data-page="1">1</button>`;
+        pagerWrap.innerHTML = `<button type="button" class="pager-num-btn active">1</button>`;
         return;
     }
 
-    const pages = [];
-    if (totalPages <= 7) {
-        for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-        if (activePage <= 4) {
-            pages.push(1, 2, 3, 4, 5, '...', totalPages);
-        } else if (activePage >= totalPages - 3) {
-            pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-        } else {
-            pages.push(1, '...', activePage - 1, activePage, activePage + 1, '...', totalPages);
-        }
-    }
-
     let html = '';
-    pages.forEach(p => {
-        if (p === '...') {
-            html += `<span class="pager-ellipsis">&hellip;</span>`;
-        } else {
-            const isActive = p === activePage ? 'active' : '';
-            html += `<button type="button" class="pager-num-btn ${isActive}" data-page="${p}">${p}</button>`;
-        }
-    });
-    pagerNumbers.innerHTML = html;
+    for (let i = 1; i <= totalPages; i++) {
+        const isActive = i === activePage ? 'active' : '';
+        html += `<button type="button" class="pager-num-btn ${isActive}" data-page="${i}">${i}</button>`;
+    }
+    pagerWrap.innerHTML = html;
 
-    pagerNumbers.querySelectorAll('.pager-num-btn').forEach(btn => {
+    pagerWrap.querySelectorAll('.pager-num-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const page = parseInt(e.currentTarget.getAttribute('data-page'), 10);
-            if (page && page !== currentCustomerPage) {
-                currentCustomerPage = page;
-                renderCustomerTable();
+            if (page && page !== currentPage) {
+                currentPage = page;
+                renderTable();
             }
         });
     });
 }
 
-function openProfileModal(customerId) {
-    const cust = allCustomers.find(c => String(c.id) === String(customerId));
-    if (!cust) {
-        SalesCommon.alert('Record Not Found', 'Could not locate customer details.', 'warning');
-        return;
-    }
+// Modal View Profile Logic (Updated with Lifetime Ratings & Review History)
+function viewCustomerProfile(customerId) {
+    const customer = allCustomers.find(c => c.id === customerId);
+    if (!customer) return;
 
-    document.getElementById('modalAvatar').src = cust.avatar || '/customer/images/account.png';
-    document.getElementById('modalName').textContent = cust.full_name;
-    document.getElementById('modalSub').textContent = `${cust.email || 'No email'} • ${cust.phone || 'No phone'}`;
-    
-    // Call and SMS actions with themed alerts if phone is missing
+    const overlay = document.getElementById('profileModalOverlay');
+    const avatar = document.getElementById('modalAvatar');
+    const name = document.getElementById('modalName');
+    const sub = document.getElementById('modalSub');
     const callBtn = document.getElementById('modalCallBtn');
     const smsBtn = document.getElementById('modalSmsBtn');
-
-    if (callBtn) {
-        callBtn.onclick = () => {
-            if (cust.phone) window.location.href = `tel:${cust.phone}`;
-            else SalesCommon.alert('No Phone Registered', 'This member does not have a contact number on file.', 'info');
-        };
-    }
-
-    if (smsBtn) {
-        smsBtn.onclick = () => {
-            if (cust.phone) window.location.href = `sms:${cust.phone}`;
-            else SalesCommon.alert('No Phone Registered', 'This member does not have a contact number on file.', 'info');
-        };
-    }
-
-    document.getElementById('modalAddress').textContent = cust.address || 'Counter Pick-Up Customer';
-
+    const address = document.getElementById('modalAddress');
     const paymentBox = document.getElementById('modalPaymentBox');
-    paymentBox.innerHTML = `<span class="method-pill">${escapeHtml(cust.preferred_payment || 'GCash')}</span>`;
-
+    const ratingsCountEl = document.getElementById('modalRatingsCount');
+    const ratingsListEl = document.getElementById('modalRatingsList');
     const historyList = document.getElementById('modalHistoryList');
-    if (cust.recent_orders && cust.recent_orders.length > 0) {
-        historyList.innerHTML = cust.recent_orders.map(ord => {
-            const dateFormatted = new Date(ord.placed_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-            const amount = Number(ord.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            return `
-                <div class="history-item">
-                    <div>
-                        <div class="history-id">${escapeHtml(ord.order_number)}</div>
-                        <div class="history-date">${dateFormatted} • ${ord.item_count || 1} item(s)</div>
-                    </div>
-                    <div class="history-price">₱${amount}</div>
-                </div>
-            `;
-        }).join('');
-    } else {
-        historyList.innerHTML = '<div class="history-item"><div>No past orders recorded.</div></div>';
+
+    if (avatar) avatar.src = customer.avatar || '/customer/images/account.png';
+    if (name) name.textContent = customer.full_name || 'Customer';
+    if (sub) sub.textContent = `${customer.email || 'No email'} • ${customer.phone || 'No phone'}`;
+
+    if (callBtn) callBtn.href = customer.phone ? `tel:${customer.phone}` : 'javascript:void(0)';
+    if (smsBtn) smsBtn.href = customer.phone ? `sms:${customer.phone}` : 'javascript:void(0)';
+    if (address) address.textContent = customer.address || 'Counter Pick-Up Customer (Official Store Pickup)';
+
+    if (paymentBox) {
+        paymentBox.innerHTML = `<span class="method-pill">${escapeHtml(customer.preferred_payment || 'Cash on Pick-Up')}</span>`;
     }
 
-    const modal = document.getElementById('profileModalOverlay');
-    modal.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    // Populate Lifetime Ratings & Reviews History
+    const userRatings = customer.ratings || [];
+    if (ratingsCountEl) ratingsCountEl.textContent = `${userRatings.length} Reviews`;
+
+    if (ratingsListEl) {
+        if (userRatings.length === 0) {
+            ratingsListEl.innerHTML = `<div class="no-reviews-box">No customer reviews submitted yet.</div>`;
+        } else {
+            ratingsListEl.innerHTML = userRatings.map(r => {
+                const score = parseInt(r.score, 10) || 5;
+                const starIcons = [1, 2, 3, 4, 5].map(idx => `
+                    <svg class="review-star-svg ${idx <= score ? 'filled' : 'empty'}" viewBox="0 0 24 24">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                `).join('');
+
+                const tagsHtml = (r.tags && r.tags.length > 0)
+                    ? `<div class="review-tags-wrap">${r.tags.map(t => `<span class="review-tag-pill">${escapeHtml(t)}</span>`).join('')}</div>`
+                    : '';
+
+                const commentHtml = r.comment
+                    ? `<p class="review-comment-text">"${escapeHtml(r.comment)}"</p>`
+                    : '<p class="review-comment-text" style="color:var(--text-muted); font-style:normal;">Rating submitted without comments.</p>';
+
+                return `
+                    <div class="customer-review-card">
+                        <div class="review-card-head">
+                            <span class="review-drink-name">${escapeHtml(r.product || 'Marble Drink')}</span>
+                            <span class="review-date-text">${r.date || 'Recent'}</span>
+                        </div>
+                        <div class="review-stars-group">
+                            ${starIcons}
+                        </div>
+                        ${tagsHtml}
+                        ${commentHtml}
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // Populate Recent Pre-Orders
+    const orders = customer.recent_orders || [];
+    if (historyList) {
+        if (orders.length === 0) {
+            historyList.innerHTML = `<div class="no-reviews-box">No orders recorded for this account.</div>`;
+        } else {
+            historyList.innerHTML = orders.map(ord => {
+                const dateStr = ord.placed_at ? new Date(ord.placed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent';
+                const amt = Number(ord.total_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                return `
+                    <div class="history-item">
+                        <div>
+                            <strong style="color:var(--brown-soft);">${escapeHtml(ord.order_number || 'MM-ORD')}</strong>
+                            <div style="font-size:11px;color:var(--text-muted);">${dateStr} • ${ord.item_count || 1} Item(s)</div>
+                        </div>
+                        <strong style="color:var(--brown-soft);">₱${amt}</strong>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    if (overlay) overlay.classList.add('open');
 }
 
-function closeModal() {
-    const modal = document.getElementById('profileModalOverlay');
-    if (modal) modal.classList.remove('open');
-    document.body.style.overflow = '';
+function closeProfileModal() {
+    const overlay = document.getElementById('profileModalOverlay');
+    if (overlay) overlay.classList.remove('open');
 }
 
 function escapeHtml(str) {

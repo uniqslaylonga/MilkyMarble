@@ -505,6 +505,39 @@ async function buildSalesDashboard(req, res) {
 
 router.get('/sales-officer/dashboard', buildSalesDashboard);
 
+// Start Shift / Open Register endpoint (Fixes 404 Error)
+router.post('/sales-officer/open-shift', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+
+    const openingFloat = parseFloat(req.body?.opening_float) || 1000.00;
+
+    const { error } = await supabase.from('system_settings').upsert([
+      {
+        setting_key: 'register_status',
+        setting_value: 'UNLOCKED',
+        description: 'Sales counter register lock state'
+      },
+      {
+        setting_key: 'opening_float',
+        setting_value: String(openingFloat),
+        description: 'Current opening cash float in drawer'
+      }
+    ], { onConflict: 'setting_key' });
+
+    if (error) throw error;
+
+    return res.json({
+      status: 'success',
+      message: 'Shift started and register unlocked successfully.',
+      opening_float: openingFloat
+    });
+  } catch (error) {
+    console.error('[sales-officer/open-shift] error:', error.message);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
 // Sales Officer Sentiment & Decision Support Endpoint (May Date Filter & History List)
 router.get('/sales-officer/ai-sentiment', async (req, res) => {
   try {
@@ -976,7 +1009,7 @@ router.post('/sales-officer/order-monitoring/update', async (req, res) => {
   }
 });
 
-// Customer records (Updated with Customer Lifetime Ratings History for Profile Modal)
+// Customer records (With Lifetime Ratings History)
 router.get('/sales-officer/customer-records', async (req, res) => {
   try {
     if (!supabase) return noDb(res);

@@ -85,7 +85,7 @@
                 </div>
                 <div class="topbar-right">
                     <div class="user-profile">
-                        <div class="user-avatar">
+                        <div class="user-avatar" id="userAvatarContainer">
                             <img id="userAvatar" src="/customer/images/account.png" alt="User Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
                         </div>
                         <span id="userName" class="user-name">Loading...</span>
@@ -239,11 +239,11 @@
             </section>
         </main>
 
-        <!-- Customer Summary Modal -->
+        <!-- Customer Summary & Review History Modal -->
         <div class="modal-overlay" id="profileModalOverlay">
             <div class="profile-modal">
                 <div class="modal-header">
-                    <h3 class="modal-title">Member Summary &amp; History</h3>
+                    <h3 class="modal-title">Member Profile &amp; Feedback Audit</h3>
                     <button class="modal-close" id="modalCloseBtn" title="Close">
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -273,6 +273,7 @@
                             </a>
                         </div>
                     </div>
+
                     <div class="modal-section">
                         <div class="modal-label">Default Pickup / Counter Note</div>
                         <div class="address-box">
@@ -280,17 +281,31 @@
                                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
                                 <circle cx="12" cy="10" r="3" />
                             </svg>
-                            <p id="modalAddress">Counter Pick-Up Customer</p>
+                            <p id="modalAddress">Counter Pick-Up Verified</p>
                         </div>
                     </div>
+
                     <div class="modal-section">
                         <div class="modal-label">Preferred Payment Method</div>
                         <div class="payment-badge-box" id="modalPaymentBox">
-                            <span class="method-pill">GCash</span>
+                            <span class="method-pill">Cash on Counter</span>
                         </div>
                     </div>
+
+                    <!-- Lifetime Customer Ratings & Feedback History -->
                     <div class="modal-section">
-                        <div class="modal-label">Recent Order History</div>
+                        <div class="modal-label-row">
+                            <span class="modal-label">Submitted Reviews &amp; Ratings</span>
+                            <span class="badge-review-count" id="modalRatingsCount">0 Reviews</span>
+                        </div>
+                        <div class="modal-ratings-list" id="modalRatingsList">
+                            <div class="no-reviews-box">No ratings logged for this member.</div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Orders -->
+                    <div class="modal-section">
+                        <div class="modal-label">Recent Pre-Orders &amp; Purchases</div>
                         <div class="modal-history-list" id="modalHistoryList">
                             <div class="history-item">
                                 <div>No past orders found.</div>
