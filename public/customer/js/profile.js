@@ -18,6 +18,9 @@ function sanitizeAvatarString(raw) {
     if (!raw || typeof raw !== 'string') return 'images/account.png';
     let cleaned = raw.trim();
 
+    // Old PHP-era paths: "/PHP/images/uploads/x.jpg" -> "/images/uploads/x.jpg"
+    cleaned = cleaned.replace(/^\/?PHP\//i, '/');
+
     // Tanggalin ang leading slash kung aksidenteng nalagay bago ang data URI
     if (cleaned.startsWith('/data:') || cleaned.startsWith('/data/')) {
         cleaned = cleaned.substring(1);
@@ -41,6 +44,10 @@ function sanitizeAvatarString(raw) {
     // Kung local file path
     if (cleaned.startsWith('/images/')) {
         return cleaned.substring(1);
+    }
+    // Any other root path (e.g. /uploads/x.jpg) is already a valid URL
+    if (cleaned.startsWith('/')) {
+        return cleaned;
     }
     if (!cleaned.startsWith('images/')) {
         return 'images/' + cleaned;
@@ -406,7 +413,10 @@ function setupProfileForm() {
         const phone = document.getElementById('phone').value.trim();
         const fileInput = document.getElementById('profileAvatarInput') || document.querySelector('input[type="file"]');
         const avatarRound = document.getElementById('avatarRoundPreview');
-        let avatarSrc = (avatarRound && !avatarRound.src.includes('account.png')) ? avatarRound.src : '';
+        // Only set when the user picks a NEW photo. Before, the current picture
+        // was re-sent on every save, and if it had failed to load (the page shows
+        // account.png instead) the placeholder overwrote the real photo.
+        let avatarSrc = '';
 
         if (!fullName) {
             ProfileSwal.fire({ icon: 'warning', title: 'Missing Field', text: 'Full name is required.' });
@@ -482,6 +492,12 @@ function setupProfileForm() {
             }
         }
 
+        // Storage upload skipped? Fall back to the preview of the picked photo.
+        if (!avatarSrc && fileInput && fileInput.files && fileInput.files[0] &&
+            avatarRound && avatarRound.src.startsWith('data:')) {
+            avatarSrc = avatarRound.src;
+        }
+
         // 2. I-save sa database gamit ang API endpoint
         try {
             const res = await fetch('/api/customer/profile', {
@@ -494,7 +510,8 @@ function setupProfileForm() {
                     full_name: fullName,
                     username: username,
                     phone_number: phone,
-                    avatar: sanitizeAvatarString(avatarSrc)
+                    // undefined = key is left out, so the saved photo is not touched
+                    avatar: avatarSrc ? sanitizeAvatarString(avatarSrc) : undefined
                 })
             });
             const data = await res.json();

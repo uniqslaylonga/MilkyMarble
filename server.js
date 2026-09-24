@@ -246,6 +246,19 @@ app.get('/', (req, res) => {
   res.redirect('/customer/index.html');
 });
 
+// Avatar paths from the database can be: full https URL, base64, a relative
+// path, or an old PHP-era path like "/PHP/images/uploads/x.jpg". Return one
+// clean value the browser can load. "account.png" counts as "no photo".
+function isPlaceholderAvatar(a) {
+  return !a || typeof a !== 'string' || /account\.png$/i.test(a.trim());
+}
+function normalizeAvatarPath(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  let a = raw.trim().replace(/^\/?PHP\//i, '/');
+  if (a.startsWith('http') || a.startsWith('data:image')) return a;
+  return a.startsWith('/') ? a : '/' + a;
+}
+
 function getCustomerId(req) {
   const val = req.headers['x-customer-id'] || req.query.customer_id || (req.body && req.body.customer_id);
   if (val && val !== 'null' && val !== 'undefined' && !String(val).startsWith('guest_')) {
@@ -797,11 +810,13 @@ app.get(['/api/customer/profile', '/api/customers/profile'], async (req, res) =>
       return res.status(404).json({ status: 'error', message: 'Account profile not found in database.' });
     }
 
-    let avatar = (userRecord && userRecord.avatar) || (customerRecord && customerRecord.avatar) || '';
-
-    if (avatar && !avatar.startsWith('http') && !avatar.startsWith('/') && !avatar.startsWith('data:image')) {
-      avatar = '/' + avatar;
-    }
+    // Prefer a real photo. If users.avatar only holds the default placeholder
+    // but customers.avatar has the real one, use the real one.
+    const userAvatar = userRecord && userRecord.avatar;
+    const custAvatar = customerRecord && customerRecord.avatar;
+    let avatar = !isPlaceholderAvatar(userAvatar) ? userAvatar
+      : (!isPlaceholderAvatar(custAvatar) ? custAvatar : (userAvatar || custAvatar || ''));
+    avatar = normalizeAvatarPath(avatar);
 
     const resolvedFullName = (userRecord && (userRecord.full_name || userRecord.name)) || (customerRecord && customerRecord.name) || '';
     const resolvedUsername = (userRecord && userRecord.username) || '';

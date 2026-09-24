@@ -17,13 +17,27 @@ document.addEventListener('DOMContentLoaded', () => { //[cite: 4]
     loadAccountSettings(); //[cite: 4]
 }); //[cite: 4]
 
+// Same avatar cleanup as profile.js / navbar.js, so all pages agree.
+function cleanAvatarUrl(raw) {
+    if (!raw || typeof raw !== 'string') return 'images/account.png';
+    let a = raw.trim().replace(/^\/?PHP\//i, '/');
+    if (a.startsWith('/data:') || a.startsWith('/data/')) a = a.substring(1);
+    if (a.startsWith('data/image')) a = 'data:image' + a.substring(10);
+    if (a.startsWith('data:') || a.startsWith('http://') || a.startsWith('https://')) return a;
+    if (a.startsWith('/')) return a;
+    return a.startsWith('images/') ? a : 'images/' + a;
+}
+
 // Kuhanin ang buong data ng user at customer preferences[cite: 4]
 async function loadAccountSettings() { //[cite: 4]
     try { //[cite: 4]
         const localUser = JSON.parse(localStorage.getItem('mm_user') || '{}');
-        const customerId = localUser.customer_id || 11;
+        // No hard-coded fallback id (it used to show customer #11's profile if
+        // the saved login had no customer_id). Without it the server reads the
+        // logged-in customer from the cookie.
+        const query = localUser.customer_id ? `?customer_id=${encodeURIComponent(localUser.customer_id)}` : '';
 
-        const res = await fetch(`/api/customer/profile?customer_id=${customerId}`); //[cite: 4]
+        const res = await fetch(`/api/customer/profile${query}`, { credentials: 'include' }); //[cite: 4]
 
         if (res.status === 401) { //[cite: 4]
             window.location.href = 'customerlogin.html?error=login_required'; //[cite: 4]
@@ -64,13 +78,15 @@ function populateSettingsUI(data) { //[cite: 4]
     document.getElementById('overviewEmail').textContent = email; //[cite: 4]
     document.getElementById('otpTargetEmail').textContent = email; //[cite: 4]
     
-    if (user.avatar) { //[cite: 4]
+    const rawAvatar = user.avatar || data.avatar; //[cite: 4]
+    if (rawAvatar) { //[cite: 4]
+        const avatarUrl = cleanAvatarUrl(rawAvatar);
         const overviewAvatarEl = document.getElementById('overviewAvatar');
-        overviewAvatarEl.src = user.avatar; //[cite: 4]
+        overviewAvatarEl.src = avatarUrl; //[cite: 4]
         overviewAvatarEl.onerror = () => { overviewAvatarEl.onerror = null; overviewAvatarEl.src = 'images/account.png'; };
         const navAvatar = document.querySelector('.nav-avatar-img-badge');
         if (navAvatar) {
-            navAvatar.src = user.avatar;
+            navAvatar.src = avatarUrl;
             navAvatar.onerror = () => { navAvatar.onerror = null; navAvatar.src = 'images/account.png'; };
         }
     }
