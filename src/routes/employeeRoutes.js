@@ -1198,7 +1198,7 @@ router.get('/sales-officer/promotions', async (req, res) => {
   }
 });
 
-// AI DECISION SUPPORT: AUTO-DRAFT OPTIMAL PROMOTION PROPOSAL (VERIFICATION TEST)
+// AI DECISION SUPPORT: AUTO-DRAFT OPTIMAL PROMOTION PROPOSAL (WITH ERROR REPORTER & REGENERATE SUPPORT)
 router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1206,7 +1206,7 @@ router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    // 1. Basahin ang weekly sales velocity mula sa orders
+    // 1. Basahin ang weekly sales velocity
     const { data: recentOrders } = await supabase
       .from('orders')
       .select('id, total_amount, placed_at, order_type, order_items(item_label, quantity)')
@@ -1218,19 +1218,18 @@ router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
     const preordersCount = ordersList.filter(o => o.order_type === 'custom_build').length;
     const presetsCount = ordersList.filter(o => o.order_type === 'preset').length;
 
-    // 2. Bagong Fallback (Aesthetic at campus-friendly sakaling offline ang AI)
-    let fallbackProposal = {
-      code: "SIPANDCHILL10",
-      target_segment: "all",
-      discount_type: "percent",
-      discount_value: 10,
-      min_spend: 100,
-      usage_cap: 50,
-      pitch_note: "DSS Recommendation: Stimulate midday campus walk-ins and boost preorder volume with a fresh 10% treat."
-    };
-
-    if (totalWeeklySales < 5000 || preordersCount < 10) {
-      fallbackProposal = {
+    // Creative pool ng fallbacks para hindi pare-pareho kapag offline
+    const fallbackPool = [
+      {
+        code: "SIPANDCHILL10",
+        target_segment: "all",
+        discount_type: "percent",
+        discount_value: 10,
+        min_spend: 100,
+        usage_cap: 50,
+        pitch_note: "DSS Recommendation: Stimulate midday campus walk-ins and boost preorder volume with a fresh 10% treat."
+      },
+      {
         code: "DESERVEKO15",
         target_segment: "member",
         discount_type: "percent",
@@ -1238,38 +1237,51 @@ router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
         min_spend: 120,
         usage_cap: 35,
         pitch_note: "DSS Retention Action: 15% reward perk for loyal campus customers to stimulate off-peak preorder demand."
-      };
-    }
+      },
+      {
+        code: "BREAKTIME10",
+        target_segment: "all",
+        discount_type: "percent",
+        discount_value: 10,
+        min_spend: 80,
+        usage_cap: 40,
+        pitch_note: "DSS Incentive: Quick 10% breaktime promo to capture student rushes between vacant hours."
+      }
+    ];
 
+    let fallbackProposal = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
     let finalProposal = fallbackProposal;
     let isAiGenerated = false;
+    let apiErrorMessage = null;
 
-    // 3. Gemini 2.5 Flash Synthesis (May secret "AI_" verification marker)
+    // 2. Gemini Synthesis
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey && GoogleGenAI) {
       try {
         const ai = new GoogleGenAI({ apiKey });
+        const randomSalt = Math.floor(Math.random() * 10000);
+        
         const systemPrompt = `
-You are the Gen-Z & Campus Marketing Director for "Milky Marble Enterprise" (a trendy pastel jelly drink brand popular among college students).
-Review the latest 7-day operational performance:
-- Total Sales: PHP ${totalWeeklySales.toFixed(2)}
-- Pre-Order Volume: ${preordersCount} cups
-- Walk-in Counter Preset Volume: ${presetsCount} cups
+You are the Creative Gen-Z Campus Marketing Director for "Milky Marble Enterprise" (a trendy pastel jelly drink brand popular among college students).
+Session ID: ${randomSalt} (Generate a completely fresh and unique angle each time).
 
-TASK: Create a clever, trendy promo campaign that students will actually line up for.
+Operational Performance (Past 7 Days):
+- Revenue: PHP ${totalWeeklySales.toFixed(2)}
+- Pre-Order Volume: ${preordersCount} orders
+- Walk-in Counter Volume: ${presetsCount} orders
 
-STRICT VERIFICATION & NAMING RULES:
-1. "code": MUST START WITH "AI_" followed by a witty, trendy, campus-themed phrase in UPPERCASE (e.g., AI_DESERVEKO15, AI_BREAKTIME10, AI_HAPONCHILL15, AI_SIPANDCHILL10, AI_TUESDAYSIP10, AI_THURSDAYRUSH15, AI_JELLYFEELS10). NEVER generate corporate or boring words like "REVIVE" or "RECOVERY".
-2. "target_segment": Choose either "all" (for campus walk-ins) or "member" (for loyal student app users).
+Generate a trendy, non-boring promotional campaign:
+1. "code": MUST START WITH "AI_" followed by a witty, trendy, campus-themed phrase in UPPERCASE (e.g., AI_DESERVEKO15, AI_BREAKTIME10, AI_HAPONCHILL15, AI_SIPANDCHILL10, AI_TUESDAYSIP10, AI_THURSDAYRUSH15, AI_JELLYFEELS10). NEVER use corporate words tulad ng "REVIVE" or "RECOVERY".
+2. "target_segment": "all" or "member".
 3. "discount_type": "percent" or "fixed".
-4. "discount_value": Keep between 10 to 15 (if percent) or 10 to 25 (if fixed PHP) to protect cafe margins.
-5. "min_spend": Between 80 to 120 PHP to keep ticket size healthy.
+4. "discount_value": Between 10 to 15 (if percent) or 10 to 25 (if fixed PHP).
+5. "min_spend": Between 80 to 120 PHP.
 6. "usage_cap": 30 to 60 redemptions.
-7. "pitch_note": A sharp, convincing 1-2 sentence rationale addressed to the CEO explaining why students will jump on this promo without eroding drink profits.
+7. "pitch_note": A sharp 1-2 sentence commercial rationale addressed to the CEO explaining why this will excite students without hurting margins.
 
 Respond ONLY with this exact JSON format:
 {
-  "code": "<AI_PROMO_CODE>",
+  "code": "<AI_CODE>",
   "target_segment": "<all|member>",
   "discount_type": "<percent|fixed>",
   "discount_value": 15,
@@ -1278,17 +1290,27 @@ Respond ONLY with this exact JSON format:
   "pitch_note": "<Rationale to CEO>"
 }`;
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: systemPrompt,
-          config: {
-            responseMimeType: 'application/json'
-          }
-        });
+        let response;
+        try {
+          response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: systemPrompt,
+            config: { responseMimeType: 'application/json' }
+          });
+        } catch (modelErr) {
+          console.warn('[Gemini 2.5 failed, retrying with gemini-1.5-flash]:', modelErr.message);
+          response = await ai.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: systemPrompt,
+            config: { responseMimeType: 'application/json' }
+          });
+        }
 
-        console.log('[PROMO AI SYNTHESIS SUCCESS]:', response.text);
+        let rawText = response.text || '';
+        if (typeof rawText === 'function') rawText = rawText();
+        rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
 
-        const parsed = JSON.parse(response.text.trim());
+        const parsed = JSON.parse(rawText);
         if (parsed.code && parsed.discount_value) {
           finalProposal = {
             code: String(parsed.code).toUpperCase().trim(),
@@ -1302,16 +1324,19 @@ Respond ONLY with this exact JSON format:
           isAiGenerated = true;
         }
       } catch (geminiErr) {
-        console.warn('[Gemini Promo Suggestion Warning - Fallback triggered]:', geminiErr.message);
+        console.error('[Gemini Promo Suggestion Error]:', geminiErr.message);
+        apiErrorMessage = geminiErr.message;
       }
     } else {
-      console.warn('[Gemini Key or SDK missing - using fallback]');
+      if (!apiKey) apiErrorMessage = "GEMINI_API_KEY environment variable is missing on server.";
+      if (!GoogleGenAI) apiErrorMessage = "@google/genai SDK failed to load.";
     }
 
     return res.json({
       status: 'success',
       proposal: finalProposal,
-      is_ai_live: isAiGenerated
+      is_ai_live: isAiGenerated,
+      api_error: apiErrorMessage
     });
 
   } catch (error) {

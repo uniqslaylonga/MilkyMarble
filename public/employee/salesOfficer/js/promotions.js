@@ -4,6 +4,17 @@ let activeStatusTab = 'all';
 let currentPromoPage = 1;
 const PROMO_PAGE_SIZE = 6;
 
+// Global SweetAlert2 Config matching Master SOP Section 2.E
+const MMSwal = Swal.mixin({
+    customClass: {
+        popup: 'mm-swal-popup',
+        title: 'mm-swal-title',
+        confirmButton: 'mm-swal-confirm',
+        cancelButton: 'mm-swal-cancel'
+    },
+    buttonsStyling: false
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     const discountTypeSelect = document.getElementById('inputDiscountType');
     const discountValueLabel = document.getElementById('discountValueLabel');
@@ -108,7 +119,11 @@ async function fetchPromotionsData() {
 
     } catch (error) {
         console.error('Could not load promotions from server:', error);
-        SalesCommon.showError(error);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'System Notice',
+            text: 'Could not load promotions data from server.'
+        });
         SalesCommon.failTables();
     }
 }
@@ -285,14 +300,14 @@ function renderPromoPagerButtons(totalPages, activePage) {
     });
 }
 
-// On-Demand AI Promo Proposal Generator (DSS Action)
+// On-Demand AI Promo Proposal Generator na may "↻ Generate Another" feature
 async function generateAiPromoProposal() {
     const btn = document.getElementById('btnAiDraftPromo');
     if (btn) btn.disabled = true;
 
-    Swal.fire({
+    MMSwal.fire({
         title: 'Synthesizing Promo Scheme...',
-        html: 'Gemini AI is reviewing weekly sales velocity, volume trends, and product retention...',
+        html: 'Gemini AI is analyzing sales velocity, volume trends, and student rush hours...',
         allowOutsideClick: false,
         didOpen: () => {
             Swal.showLoading();
@@ -341,29 +356,56 @@ async function generateAiPromoProposal() {
         if (usageCapInput) usageCapInput.value = p.usage_cap !== null && p.usage_cap !== undefined ? p.usage_cap : '';
         if (noteTextarea) noteTextarea.value = p.pitch_note || '';
 
-        Swal.fire({
+        // Status indicator at diagnostic badge
+        let statusBadge = data.is_ai_live
+            ? `<span style="font-size: 11px; background: rgba(46, 125, 50, 0.12); color: #2E7D32; padding: 2px 8px; border-radius: 6px; font-weight: 800;">✓ Live Gemini API</span>`
+            : `<span style="font-size: 11px; background: rgba(201, 48, 44, 0.12); color: #C9302C; padding: 2px 8px; border-radius: 6px; font-weight: 800;">⚠ Rule-Based Fallback</span>`;
+
+        let errorNotice = '';
+        if (data.api_error) {
+            errorNotice = `
+              <div style="background: rgba(201, 48, 44, 0.08); border-left: 3px solid #C9302C; padding: 6px 10px; border-radius: 6px; margin-top: 8px; font-size: 11px; color: #8C2320;">
+                <strong>Debug Info:</strong> ${escapeHtml(data.api_error)}
+              </div>
+            `;
+        }
+
+        // Modal na may "Use This Proposal" at "↻ Generate Another"
+        const swalResult = await MMSwal.fire({
             icon: 'success',
             title: 'AI Draft Ready!',
             html: `
               <div style="text-align: left; font-size: 12.5px; line-height: 1.5; color: var(--text-dark);">
-                <p>Gemini has populated optimal campaign variables based on current sales velocity:</p>
-                <div style="background: var(--bg-main); padding: 10px 14px; border-radius: 10px; margin: 10px 0; border-left: 3.5px solid var(--accent-pink);">
-                  <strong>Code:</strong> ${p.code}<br>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <span>Strategic campaign variables populated:</span>
+                  ${statusBadge}
+                </div>
+
+                <div style="background: var(--bg-main); padding: 10px 14px; border-radius: 10px; margin: 8px 0; border-left: 3.5px solid var(--accent-pink);">
+                  <strong>Code:</strong> ${escapeHtml(p.code)}<br>
                   <strong>Discount:</strong> ${p.discount_value}${p.discount_type === 'percent' ? '%' : ' PHP'} OFF<br>
                   <strong>Target:</strong> ${p.target_segment === 'member' ? 'Members Only' : 'General Public'}<br>
                   <strong>Strategy:</strong> <em>${escapeHtml(p.pitch_note)}</em>
                 </div>
-                <small style="color: var(--text-muted);">You may adjust any values before submitting to the CEO.</small>
+                ${errorNotice}
+                <small style="color: var(--text-muted); display: block; margin-top: 6px;">Ayaw mo ba ng pitch na ito? Pindutin ang <strong>↻ Generate Another</strong> para gumawa si AI ng bagong pakulo.</small>
               </div>
             `,
-            confirmButtonText: 'Review Proposal'
+            showCancelButton: true,
+            confirmButtonText: 'Use This Proposal',
+            cancelButtonText: '↻ Generate Another'
         });
+
+        // Kapag pinindot ang "Generate Another", muling tawagin ang generator
+        if (swalResult.dismiss === Swal.DismissReason.cancel) {
+            await generateAiPromoProposal();
+        }
 
     } catch (err) {
         console.error('AI Suggestion error:', err);
-        Swal.fire({
+        MMSwal.fire({
             icon: 'warning',
-            title: 'Auto-Draft Warning',
+            title: 'Auto-Draft Notice',
             text: err.message
         });
     } finally {
@@ -406,10 +448,18 @@ async function handlePitchFormSubmit(e) {
         closePromoModal();
         form.reset();
         await fetchPromotionsData();
-        SalesCommon.alert('Promotion Pitched', `Promotion proposal for "${code}" submitted. It is now waiting for CEO approval.`, 'success');
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Promotion Pitched',
+            text: `Promotion proposal for "${code}" submitted. It is now waiting for CEO approval.`
+        });
     } catch (err) {
         console.error('Pitch submission failed:', err);
-        SalesCommon.alert('Pitch Failed', err.message || 'Could not submit the promotion.', 'warning');
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Pitch Failed',
+            text: err.message || 'Could not submit the promotion.'
+        });
     }
 }
 
