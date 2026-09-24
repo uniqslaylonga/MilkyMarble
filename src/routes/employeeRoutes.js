@@ -1198,7 +1198,7 @@ router.get('/sales-officer/promotions', async (req, res) => {
   }
 });
 
-// AI DECISION SUPPORT: AUTO-DRAFT OPTIMAL PROMOTION PROPOSAL
+// AI DECISION SUPPORT: AUTO-DRAFT OPTIMAL PROMOTION PROPOSAL (VERIFICATION TEST)
 router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1206,6 +1206,7 @@ router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
+    // 1. Basahin ang weekly sales velocity mula sa orders
     const { data: recentOrders } = await supabase
       .from('orders')
       .select('id, total_amount, placed_at, order_type, order_items(item_label, quantity)')
@@ -1217,59 +1218,64 @@ router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
     const preordersCount = ordersList.filter(o => o.order_type === 'custom_build').length;
     const presetsCount = ordersList.filter(o => o.order_type === 'preset').length;
 
+    // 2. Bagong Fallback (Aesthetic at campus-friendly sakaling offline ang AI)
     let fallbackProposal = {
-      code: "BOOSTMARBLE10",
+      code: "SIPANDCHILL10",
       target_segment: "all",
       discount_type: "percent",
       discount_value: 10,
       min_spend: 100,
       usage_cap: 50,
-      pitch_note: "DSS Recommendation: Stimulate midday customer pre-orders and boost volume with a balanced 10% discount."
+      pitch_note: "DSS Recommendation: Stimulate midday campus walk-ins and boost preorder volume with a fresh 10% treat."
     };
 
     if (totalWeeklySales < 5000 || preordersCount < 10) {
       fallbackProposal = {
-        code: "REVIVE15",
+        code: "DESERVEKO15",
         target_segment: "member",
         discount_type: "percent",
         discount_value: 15,
         min_spend: 120,
         usage_cap: 35,
-        pitch_note: "DSS Recovery Action: Low weekly pre-order volume detected. Recommending a 15% loyalty retention incentive."
+        pitch_note: "DSS Retention Action: 15% reward perk for loyal campus customers to stimulate off-peak preorder demand."
       };
     }
 
     let finalProposal = fallbackProposal;
+    let isAiGenerated = false;
 
+    // 3. Gemini 2.5 Flash Synthesis (May secret "AI_" verification marker)
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey && GoogleGenAI) {
       try {
         const ai = new GoogleGenAI({ apiKey });
         const systemPrompt = `
-You are the Strategic Revenue & Commercial DSS Advisor for "Milky Marble Enterprise".
-Analyze the operational metrics for the past 7 days:
-- Gross Weekly Revenue: PHP ${totalWeeklySales.toFixed(2)}
-- Pre-Order Volume: ${preordersCount} orders
-- Walk-in Counter Preset Volume: ${presetsCount} orders
+You are the Gen-Z & Campus Marketing Director for "Milky Marble Enterprise" (a trendy pastel jelly drink brand popular among college students).
+Review the latest 7-day operational performance:
+- Total Sales: PHP ${totalWeeklySales.toFixed(2)}
+- Pre-Order Volume: ${preordersCount} cups
+- Walk-in Counter Preset Volume: ${presetsCount} cups
 
-Generate an optimal promotional scheme to submit to the CEO for approval.
-CRITICAL RULES:
-1. "code" must be catchy, relevant, and in UPPERCASE (e.g., JELLYBOOST10, SWEETPRE15, RECOVERY10).
-2. "target_segment" must be either "all" or "member".
-3. "discount_type" must be either "percent" or "fixed".
-4. "discount_value" must protect unit profitability: between 10 to 20 for percent, or 10 to 30 for fixed PHP.
-5. "min_spend" should be between 80 to 150 PHP to protect ticket size.
-6. "pitch_note" must provide a concise, sharp commercial rationale addressed to the CEO explaining why this campaign will drive revenue without eroding margins.
+TASK: Create a clever, trendy promo campaign that students will actually line up for.
+
+STRICT VERIFICATION & NAMING RULES:
+1. "code": MUST START WITH "AI_" followed by a witty, trendy, campus-themed phrase in UPPERCASE (e.g., AI_DESERVEKO15, AI_BREAKTIME10, AI_HAPONCHILL15, AI_SIPANDCHILL10, AI_TUESDAYSIP10, AI_THURSDAYRUSH15, AI_JELLYFEELS10). NEVER generate corporate or boring words like "REVIVE" or "RECOVERY".
+2. "target_segment": Choose either "all" (for campus walk-ins) or "member" (for loyal student app users).
+3. "discount_type": "percent" or "fixed".
+4. "discount_value": Keep between 10 to 15 (if percent) or 10 to 25 (if fixed PHP) to protect cafe margins.
+5. "min_spend": Between 80 to 120 PHP to keep ticket size healthy.
+6. "usage_cap": 30 to 60 redemptions.
+7. "pitch_note": A sharp, convincing 1-2 sentence rationale addressed to the CEO explaining why students will jump on this promo without eroding drink profits.
 
 Respond ONLY with this exact JSON format:
 {
-  "code": "<PROMO_CODE>",
+  "code": "<AI_PROMO_CODE>",
   "target_segment": "<all|member>",
   "discount_type": "<percent|fixed>",
   "discount_value": 15,
   "min_spend": 100,
   "usage_cap": 50,
-  "pitch_note": "<Concise rationale to CEO>"
+  "pitch_note": "<Rationale to CEO>"
 }`;
 
         const response = await ai.models.generateContent({
@@ -1279,6 +1285,8 @@ Respond ONLY with this exact JSON format:
             responseMimeType: 'application/json'
           }
         });
+
+        console.log('[PROMO AI SYNTHESIS SUCCESS]:', response.text);
 
         const parsed = JSON.parse(response.text.trim());
         if (parsed.code && parsed.discount_value) {
@@ -1291,15 +1299,19 @@ Respond ONLY with this exact JSON format:
             usage_cap: parsed.usage_cap !== null && parsed.usage_cap !== undefined ? parseInt(parsed.usage_cap, 10) : null,
             pitch_note: parsed.pitch_note || fallbackProposal.pitch_note
           };
+          isAiGenerated = true;
         }
       } catch (geminiErr) {
-        console.warn('[Gemini Promo Suggestion Warning - Used DSS Fallback]:', geminiErr.message);
+        console.warn('[Gemini Promo Suggestion Warning - Fallback triggered]:', geminiErr.message);
       }
+    } else {
+      console.warn('[Gemini Key or SDK missing - using fallback]');
     }
 
     return res.json({
       status: 'success',
-      proposal: finalProposal
+      proposal: finalProposal,
+      is_ai_live: isAiGenerated
     });
 
   } catch (error) {
