@@ -868,6 +868,15 @@ window.openTermsModal = function(event) {
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
   }
+  // The sheet intentionally stops short of the screen bottom (see the
+  // max-height calc in orderSummary.css) so its own action buttons are
+  // never squeezed under the fixed mobile bottom nav. But that nav sits at
+  // z-index 999999, still under the modal's z-index, so it was showing
+  // through, fully lit, in that reserved gap on small/short phones (e.g.
+  // 360x700) instead of the dimmed backdrop  looking like a layout bug.
+  // Hide it for as long as the terms modal is open.
+  const bottomNav = document.getElementById('mobileBottomNav');
+  if (bottomNav) bottomNav.style.display = 'none';
 };
 
 window.closeTermsModal = function(event) {
@@ -878,6 +887,8 @@ window.closeTermsModal = function(event) {
   const modal = document.getElementById('termsConditionsModal');
   if (modal) modal.classList.remove('active');
   document.body.style.overflow = '';
+  const bottomNav = document.getElementById('mobileBottomNav');
+  if (bottomNav) bottomNav.style.display = '';
 };
 
 window.acceptTermsAndClose = function() {

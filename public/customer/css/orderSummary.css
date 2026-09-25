@@ -998,8 +998,11 @@ body {
     .terms-modal-card {
         max-width: 100% !important;
         width: 100% !important;
-        max-height: calc(88vh - 58px - env(safe-area-inset-bottom, 0px)) !important;
-        max-height: calc(88dvh - 58px - env(safe-area-inset-bottom, 0px)) !important;
+        /* The mobile bottom nav is hidden for as long as this modal is open
+           (see openTermsModal/closeTermsModal in orderSummary.js), so the
+           sheet no longer needs to reserve 58px of clearance for it. */
+        max-height: calc(88vh - env(safe-area-inset-bottom, 0px)) !important;
+        max-height: calc(88dvh - env(safe-area-inset-bottom, 0px)) !important;
         border-radius: 22px 22px 0 0 !important;
         margin: 0 !important;
     }
@@ -1094,7 +1097,7 @@ body {
    spacing further so more of the list is visible at once. */
 @media (max-width: 400px) and (max-height: 720px) {
     .terms-modal-card {
-        max-height: calc(94dvh - 58px - env(safe-area-inset-bottom, 0px)) !important;
+        max-height: calc(94dvh - env(safe-area-inset-bottom, 0px)) !important;
     }
 
     .terms-modal-header {
