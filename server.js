@@ -260,15 +260,21 @@ function normalizeAvatarPath(raw) {
 }
 
 function getCustomerId(req) {
-  const val = req.headers['x-customer-id'] || req.query.customer_id || (req.body && req.body.customer_id);
-  if (val && val !== 'null' && val !== 'undefined' && !String(val).startsWith('guest_')) {
-    const parsed = parseInt(val, 10);
-    if (!isNaN(parsed)) return parsed;
-  }
-
+  // The logged-in session cookie is the trustworthy source of truth and
+  // must win over anything the client puts in the query/body/headers --
+  // otherwise any signed-in user could pass a different customer_id and
+  // read or modify another customer's cart/orders/profile (IDOR).
   const cookieVal = req.cookies?.customer_id || req.cookies?.user_id;
   if (cookieVal && cookieVal !== 'null' && cookieVal !== 'undefined') {
     const parsed = parseInt(cookieVal, 10);
+    if (!isNaN(parsed)) return parsed;
+  }
+
+  // No session cookie present (e.g. a true guest) -- fall back to whatever
+  // the client sent, which is fine here because there's no session to spoof.
+  const val = req.headers['x-customer-id'] || req.query.customer_id || (req.body && req.body.customer_id);
+  if (val && val !== 'null' && val !== 'undefined' && !String(val).startsWith('guest_')) {
+    const parsed = parseInt(val, 10);
     if (!isNaN(parsed)) return parsed;
   }
 

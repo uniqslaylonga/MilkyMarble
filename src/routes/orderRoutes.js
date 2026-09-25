@@ -29,22 +29,44 @@ async function resolveRecipient(customer, guestName, guestEmail) {
 }
 
 // Dynamic Resolver: Hinahanap ang customer base sa verified user_id, email, o customer_id
+//
+// SECURITY: the login cookies (user_id / customer_id) are the only values
+// here the client cannot forge, so they MUST be checked first and win over
+// anything sent in the body/query/headers. Previously the client-supplied
+// user_id/customer_id/email were checked first, which meant anyone could
+// place -- or attribute loyalty points from -- an order under a different
+// customer's account just by sending a different id/email (IDOR).
 async function resolveCustomer(req) {
   if (!supabase) return null;
 
-  const userId = req.body?.user_id || req.query?.user_id || req.cookies?.user_id;
-  const email = req.body?.recipient_email || req.body?.guest_email || req.query?.email;
-  const customerId = req.body?.customer_id || req.query?.customer_id || req.headers['x-customer-id'] || req.cookies?.customer_id;
+  const cookieUserId = req.cookies?.user_id;
+  const cookieCustomerId = req.cookies?.customer_id;
 
-  // 1. Unahing hanapin gamit ang user_id para laging tumpak sa naka-login
-  if (userId && !isNaN(parseInt(userId, 10))) {
+  // 1. Naka-login na session (cookie) -- laging ito ang priyoridad.
+  if (cookieUserId && !isNaN(parseInt(cookieUserId, 10))) {
     const { data } = await supabase
       .from('customers')
       .select('id, user_id, loyalty_points')
-      .eq('user_id', parseInt(userId, 10))
+      .eq('user_id', parseInt(cookieUserId, 10))
       .maybeSingle();
     if (data) return data;
   }
+
+  if (cookieCustomerId && !isNaN(parseInt(cookieCustomerId, 10))) {
+    const { data } = await supabase
+      .from('customers')
+      .select('id, user_id, loyalty_points')
+      .eq('id', parseInt(cookieCustomerId, 10))
+      .maybeSingle();
+    if (data) return data;
+  }
+
+  // No session cookie present -- this is a genuine guest checkout, so it's
+  // safe to fall back to whatever the client sent (there's no session to
+  // spoof). This is what lets a guest's email auto-link to an existing
+  // loyalty account.
+  const email = req.body?.recipient_email || req.body?.guest_email || req.query?.email;
+  const customerId = req.body?.customer_id || req.query?.customer_id || req.headers['x-customer-id'];
 
   // 2. Kung may email, hanapin via users table
   if (email) {
