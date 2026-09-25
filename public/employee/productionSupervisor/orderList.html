@@ -168,11 +168,21 @@
                         <p class="section-sub-text">Click any order to open mixing recipe in Order Production workstation.</p>
                     </div>
 
-                    <!-- Filter Tabs -->
-                    <div class="order-filter-tabs">
-                        <button type="button" class="tab-btn active" data-filter="all">All Orders</button>
-                        <button type="button" class="tab-btn" data-filter="preorder">Pre-Orders (Custom)</button>
-                        <button type="button" class="tab-btn" data-filter="preset">Walk-in Presets</button>
+                    <div class="header-right-group">
+                        <div class="search-wrapper">
+                            <svg class="search-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="7" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            <input type="text" id="orderQueueSearchInput" class="search-input-sm" placeholder="Search orders..." />
+                        </div>
+
+                        <!-- Filter Tabs -->
+                        <div class="order-filter-tabs">
+                            <button type="button" class="tab-btn active" data-filter="all">All Orders</button>
+                            <button type="button" class="tab-btn" data-filter="preorder">Pre-Orders (Custom)</button>
+                            <button type="button" class="tab-btn" data-filter="preset">Walk-in Presets</button>
+                        </div>
                     </div>
                 </div>
 

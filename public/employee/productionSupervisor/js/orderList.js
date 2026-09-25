@@ -6,10 +6,21 @@ const ORDERS_PAGE_SIZE = 5;
 let currentFilterTab = 'all';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Search listener
+    // Search listener (synced between topbar search and orders-queue search)
     const searchInput = document.getElementById('orderSearchInput');
+    const queueSearchInput = document.getElementById('orderQueueSearchInput');
+
     if (searchInput) {
-        searchInput.addEventListener('input', applyOrderFilters);
+        searchInput.addEventListener('input', () => {
+            if (queueSearchInput) queueSearchInput.value = searchInput.value;
+            applyOrderFilters();
+        });
+    }
+    if (queueSearchInput) {
+        queueSearchInput.addEventListener('input', () => {
+            if (searchInput) searchInput.value = queueSearchInput.value;
+            applyOrderFilters();
+        });
     }
 
     // Filter tabs
@@ -186,13 +197,17 @@ function renderOrdersTable() {
     }).join('');
 }
 
-// Pagination controls
+// Pagination controls (windowed to 3 pages at a time)
 function renderOrderPagerButtons(totalPages, activePage) {
     const pagerNumbers = document.getElementById('orderPagerNumbers');
     if (!pagerNumbers) return;
 
+    const GROUP_SIZE = 3;
+    const groupStart = Math.floor((activePage - 1) / GROUP_SIZE) * GROUP_SIZE + 1;
+    const groupEnd = Math.min(groupStart + GROUP_SIZE - 1, totalPages);
+
     let html = '';
-    for (let i = 1; i <= totalPages; i++) {
+    for (let i = groupStart; i <= groupEnd; i++) {
         const isActive = i === activePage ? 'active' : '';
         html += `<button type="button" class="pager-num-btn ${isActive}" data-page="${i}">${i}</button>`;
     }

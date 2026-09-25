@@ -44,10 +44,15 @@
   padding: 0;
 }
 
-html, body {
+html {
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
+}
+
+body {
+  width: 100%;
+  max-width: 100%;
 }
 
 body {
@@ -65,7 +70,6 @@ body {
   max-width: 100vw;
   min-height: 100vh;
   align-items: start;
-  overflow-x: hidden;
 }
 
 /* ===== STICKY SIDEBAR ===== */
@@ -315,7 +319,7 @@ body {
   font-size: 13px;
   font-weight: 800;
   color: var(--brown-soft);
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   text-transform: uppercase;
 }
 
@@ -391,6 +395,7 @@ body {
   font-family: var(--font-family-heading);
   font-size: 16px;
   font-weight: 800;
+  letter-spacing: 1px;
   color: var(--brown-soft);
 }
 
@@ -422,6 +427,7 @@ body {
   font-family: var(--font-family-heading);
   font-size: 22px;
   font-weight: 800;
+  letter-spacing: 1px;
   color: var(--text-dark);
   margin: 2px 0;
 }
@@ -565,6 +571,7 @@ body {
   font-family: var(--font-family-heading);
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: .7px;
   color: var(--brown-soft);
   background: var(--card-white);
   padding: 4px 10px;
@@ -576,6 +583,7 @@ body {
   font-family: var(--font-family-heading);
   font-size: 16px;
   font-weight: 700;
+  letter-spacing: 0.7px;
   color: var(--text-dark);
   margin-top: 10px;
 }
@@ -657,6 +665,7 @@ body {
   font-family: var(--font-family-heading);
   font-size: 17px;
   font-weight: 700;
+  letter-spacing: 0.7px;
   color: var(--text-dark);
 }
 
@@ -760,6 +769,7 @@ body {
   font-family: var(--font-family-heading);
   font-size: 13.5px;
   font-weight: 700;
+  letter-spacing: 0.7px;
   color: #4a3434;
 }
 

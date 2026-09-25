@@ -450,7 +450,17 @@ body {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 14px;
+  gap: 16px;
   flex-wrap: wrap;
+}
+
+.panel-header-bar > div:first-child {
+  min-width: 0;
+}
+
+.header-right-group {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
@@ -478,6 +488,49 @@ body {
 .tab-btn.active {
   background: var(--accent-pink);
   color: #fff;
+}
+
+.search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--card-white);
+  border: 1.5px solid var(--accent-pink);
+  border-radius: 12px;
+  padding: 6px 12px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.search-wrapper:focus-within {
+  border-color: var(--accent-pink-soft);
+  box-shadow: 0 0 0 3px rgba(246, 146, 153, 0.18);
+}
+
+.search-icon-svg {
+  width: 14px;
+  height: 14px;
+  stroke: var(--accent-pink);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  flex-shrink: 0;
+}
+
+.search-input-sm {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-family-body);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brown-soft);
+  width: 170px;
+}
+
+.search-input-sm::placeholder {
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 .table-container {
@@ -566,6 +619,7 @@ body {
 .shelf-tag-badge {
   font-family: var(--font-family-heading);
   font-size: 11.5px;
+  letter-spacing: 0.5px;
   color: var(--brown-soft);
   background: var(--card-white);
   padding: 3px 8px;
@@ -630,7 +684,7 @@ body {
   padding-top: 14px;
   margin-top: 10px;
   border-top: 1.5px solid var(--border-soft);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 10px;
 }
 
