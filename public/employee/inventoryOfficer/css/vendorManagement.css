@@ -16,7 +16,7 @@
   src: url('/customer/images/KawaiiRT-Mona.ttf') format('woff2');
   font-weight: normal;
   font-style: normal;
-  font-display: swap;
+  display: swap;
 }
 
 :root {
@@ -569,6 +569,24 @@ body {
   opacity: 0.88;
 }
 
+/* Punto 1: Receiving Audit Button */
+.btn-receive-audit {
+  background-color: var(--accent-pink);
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.btn-receive-audit:hover {
+  background-color: var(--accent-pink-soft);
+}
+
 .btn-view-status {
   background-color: var(--card-white);
   border: 1px solid var(--accent-pink);
@@ -797,7 +815,8 @@ body {
 }
 
 .form-group input,
-.form-group select {
+.form-group select,
+.form-group textarea {
   background-color: var(--bg-main);
   border: 1px solid var(--border-soft);
   border-radius: 10px;
@@ -827,6 +846,48 @@ body {
   font-family: var(--font-family-heading);
   font-size: 20px;
   color: #4a3434;
+}
+
+/* Punto 1: Delivery Variance & Inspection Box Styles */
+.readonly-display-box {
+  background: #FFF5F4;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--brown-soft);
+}
+
+.variance-feedback-box {
+  background: #FFF5F4;
+  border: 1.5px solid var(--border-soft);
+  border-left: 4px solid #2E7D32;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.variance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.variance-ok {
+  color: #2E7D32;
+}
+
+.variance-shortage {
+  color: #C9302C;
+}
+
+.variance-excess {
+  color: #EAA342;
 }
 
 .modal-actions {

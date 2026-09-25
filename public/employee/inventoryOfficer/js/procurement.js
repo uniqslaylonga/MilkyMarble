@@ -74,6 +74,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addVendorForm')?.addEventListener('submit', handleAddVendor);
     document.getElementById('editVendorForm')?.addEventListener('submit', handleEditVendor);
 
+    // Delivery Receiving Inspection & Variance calculation (Punto 1)
+    const usableInput = document.getElementById('usableReceivedUnits');
+    if (usableInput) {
+        usableInput.addEventListener('input', updateDeliveryVarianceCalculation);
+    }
+    document.getElementById('receiveDeliveryForm')?.addEventListener('submit', handleReceiveDeliverySubmit);
+
     // Requests Pagination buttons
     document.getElementById('prevPrBtn')?.addEventListener('click', () => {
         if (currentReqPage > 1) {
@@ -208,7 +215,7 @@ function applyCurrentFilters() {
     renderVendorsTable();
 }
 
-// Render Requests Table with Permanent Pager
+// Render Requests Table with Permanent Pager & Punto 1 Receiving Audit Trigger
 function renderRequestsTable() {
     const tbody = document.getElementById('requestsTableBody');
     const pageInfo = document.getElementById('prPageInfo');
@@ -243,7 +250,31 @@ function renderRequestsTable() {
     tbody.innerHTML = pageItems.map(req => {
         const badge = routeBadge(req.route);
         const price = formatPeso(req.total_price);
-        const canDirectBuy = req.route === 'procure' && req.status !== 'PURCHASED';
+        const statusUpper = String(req.status || '').toUpperCase();
+
+        const canDirectBuy = req.route === 'procure' && statusUpper !== 'PURCHASED' && statusUpper !== 'RECEIVED';
+        const isReadyToReceive = statusUpper === 'PURCHASED' || statusUpper === 'APPROVED';
+
+        let actionButtonHtml = '';
+        if (canDirectBuy) {
+            actionButtonHtml = `
+                <button type="button" class="btn-buy-instant" onclick="executeDirectBuy(${Number(req.id)})">
+                    Buy Instant
+                </button>
+            `;
+        } else if (isReadyToReceive && statusUpper !== 'RECEIVED') {
+            actionButtonHtml = `
+                <button type="button" class="btn-receive-audit" onclick="openReceiveDeliveryModal(${Number(req.id)})">
+                    Receive &amp; Audit
+                </button>
+            `;
+        } else {
+            actionButtonHtml = `
+                <button type="button" class="btn-view-status" onclick="showRequestStatus(${Number(req.id)})">
+                    View Status
+                </button>
+            `;
+        }
 
         return `
             <tr>
@@ -252,26 +283,136 @@ function renderRequestsTable() {
                     <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(req.pr_code)}</div>
                 </td>
                 <td><span style="font-weight: 700;">${escapeHtml(req.requester_name) || '—'}</span></td>
-                <td><span style="font-weight: 700;">${escapeHtml(req.vendor_name) || '—'}</span></td>
+                <td><span style="font-weight: 700;">${escapeHtml(req.vendor_name) || 'Local Store'}</span></td>
                 <td><strong style="color: var(--brown-soft); font-family: var(--font-family-heading); font-size: 13.5px;">₱${price}</strong></td>
                 <td>
                     <span class="badge-route ${badge.cls}"><span class="badge-dot ${badge.dotCls}"></span> ${badge.text}</span>
                     <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 2px;">Status: <strong>${escapeHtml(req.status)}</strong></div>
                 </td>
                 <td style="text-align: right;">
-                    ${canDirectBuy ? `
-                        <button type="button" class="btn-buy-instant" onclick="executeDirectBuy(${Number(req.id)})">
-                            Buy Instant
-                        </button>
-                    ` : `
-                        <button type="button" class="btn-view-status" onclick="showRequestStatus(${Number(req.id)})">
-                            View Status
-                        </button>
-                    `}
+                    ${actionButtonHtml}
                 </td>
             </tr>
         `;
     }).join('');
+}
+
+// Punto 1: Open Delivery Inspection & Audit Modal
+function openReceiveDeliveryModal(prId) {
+    const pr = allRequests.find(r => r.id === prId);
+    if (!pr) return;
+
+    document.getElementById('receivePrId').value = pr.id;
+    document.getElementById('receiveItemRawName').value = pr.name;
+
+    // Parse expected quantity from string if present (e.g., "Tapioca Pearls (5x)")
+    let expectedQty = 1;
+    const match = pr.name.match(/\(([0-9.]+)x\)/i);
+    if (match) {
+        expectedQty = parseFloat(match[1]);
+    }
+
+    document.getElementById('expectedUnitsCount').value = expectedQty;
+    document.getElementById('usableReceivedUnits').value = expectedQty;
+    document.getElementById('receiveManifestDisplay').textContent = `${pr.pr_code} — ${pr.name} (Supplier: ${pr.vendor_name || 'Local Store'})`;
+
+    updateDeliveryVarianceCalculation();
+    openModal('receiveDeliveryModal');
+}
+
+// Punto 1: Live Delivery Variance Calculation
+function updateDeliveryVarianceCalculation() {
+    const expected = parseFloat(document.getElementById('expectedUnitsCount')?.value || 0);
+    const usable = parseFloat(document.getElementById('usableReceivedUnits')?.value || 0);
+    const variance = expected - usable;
+
+    const varianceTextEl = document.getElementById('calculatedVarianceText');
+    const explanationEl = document.getElementById('varianceExplanation');
+    const noticeBox = document.getElementById('varianceNoticeBox');
+
+    if (!varianceTextEl || !explanationEl) return;
+
+    if (variance === 0) {
+        varianceTextEl.className = 'variance-ok';
+        varianceTextEl.textContent = '0 discrepancy (100% matched)';
+        explanationEl.textContent = 'All expected goods accounted for. Full quantity will be entered into stock.';
+        if (noticeBox) noticeBox.style.borderLeftColor = '#2E7D32';
+    } else if (variance > 0) {
+        varianceTextEl.className = 'variance-shortage';
+        varianceTextEl.textContent = `Shortage: -${variance} unit(s) missing or damaged`;
+        explanationEl.textContent = `Audit Alert: Only the ${usable} usable units will be added to inventory. ${variance} unit(s) logged as delivery loss for accounting.`;
+        if (noticeBox) noticeBox.style.borderLeftColor = '#C9302C';
+    } else {
+        varianceTextEl.className = 'variance-excess';
+        varianceTextEl.textContent = `Surplus: +${Math.abs(variance)} extra units`;
+        explanationEl.textContent = 'Extra stock received. Will be credited to on-hand inventory.';
+        if (noticeBox) noticeBox.style.borderLeftColor = '#EAA342';
+    }
+}
+
+// Punto 1: Handle Receiving & Stock Inflow Submission
+async function handleReceiveDeliverySubmit(e) {
+    e.preventDefault();
+
+    const prId = document.getElementById('receivePrId').value;
+    const itemName = document.getElementById('receiveItemRawName').value.replace(/\s*\([0-9.]+x\)/i, '').trim();
+    const expectedQty = parseFloat(document.getElementById('expectedUnitsCount').value || 0);
+    const usableQty = parseFloat(document.getElementById('usableReceivedUnits').value || 0);
+    const department = document.getElementById('destinationCategory').value;
+    const unit = document.getElementById('destinationUnit').value;
+    const notes = document.getElementById('receivingAuditNotes').value.trim();
+
+    const variance = expectedQty - usableQty;
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+        // 1. Add ONLY usable units to inventory_items
+        if (usableQty > 0) {
+            await apiPost('/api/procurement-officer/add-stock', {
+                name: itemName,
+                department: department === 'packaging' ? 'Packaging' : (department === 'equipment' ? 'Equipment' : 'Ingredients'),
+                quantity: usableQty,
+                unit: unit,
+                reorder_level: 10
+            });
+        }
+
+        // 2. Mark expense as received with physical inspection audit note
+        const auditLogNote = `Physical Receiving Audit: Expected ${expectedQty}, Received Usable: ${usableQty}, Variance: ${variance}. Notes: ${notes || 'Standard acceptance.'}`;
+        await apiPost('/api/procurement-officer/mark-purchased', {
+            expense_id: prId,
+            status: 'RECEIVED',
+            audit_note: auditLogNote
+        });
+
+        closeModal('receiveDeliveryModal');
+        e.target.reset();
+        await fetchProcurementData();
+
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Stock Verified & Inflowed',
+            html: `
+                <div style="text-align: left; font-size: 13px; line-height: 1.6;">
+                    <strong>Item:</strong> ${escapeHtml(itemName)}<br>
+                    <strong>Added to Warehouse:</strong> +${usableQty} ${unit}<br>
+                    <strong>Discrepancy / Loss:</strong> ${variance} unit(s)<br>
+                    <small style="color:var(--text-muted); display:block; margin-top:8px;">Inventory count and audit trail successfully updated.</small>
+                </div>
+            `
+        });
+
+    } catch (error) {
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Receiving Failed',
+            text: error.message || 'Could not verify delivery.'
+        });
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
 }
 
 // Requests Numbered Pager
@@ -400,7 +541,7 @@ async function executeDirectBuy(reqId) {
         MMSwal.fire({
             icon: 'success',
             title: 'Purchase Recorded',
-            text: `"${req.name}" marked as purchased successfully.`
+            text: `"${req.name}" marked as purchased. You can now receive and audit items once delivered.`
         });
     } catch (error) {
         MMSwal.fire({
@@ -438,12 +579,21 @@ function showRequestStatus(reqId) {
     });
 }
 
+// Punto 3: Populate Hybrid Supplier datalist
 function populateVendorDropdowns(vendors) {
-    const select = document.getElementById('reqVendorName');
-    if (!select) return;
+    const datalist = document.getElementById('vendorDatalist');
+    if (!datalist) return;
 
-    select.innerHTML = '<option value="">-- Choose Partner Vendor --</option>' + 
-        vendors.map(v => `<option value="${escapeHtml(v.vendor_name)}">${escapeHtml(v.vendor_name)}</option>`).join('');
+    if (!vendors || vendors.length === 0) {
+        datalist.innerHTML = `
+            <option value="Puregold Monumento"></option>
+            <option value="Ever Supermarket Caloocan"></option>
+            <option value="Local Public Market / Talipapa"></option>
+        `;
+        return;
+    }
+
+    datalist.innerHTML = vendors.map(v => `<option value="${escapeHtml(v.vendor_name)}"></option>`).join('');
 }
 
 function switchTab(tab) {
@@ -477,7 +627,7 @@ async function handleAddRequest(e) {
     e.preventDefault();
     const item_name = document.getElementById('reqItemName').value.trim();
     const amount = parseFloat(document.getElementById('reqAmount').value);
-    const vendor_name = document.getElementById('reqVendorName').value;
+    const vendor_name = document.getElementById('reqVendorName').value.trim();
     const qty = parseInt(document.getElementById('reqQty').value || 1, 10);
 
     if (!item_name || isNaN(amount) || amount <= 0) {

@@ -4,16 +4,31 @@ let allLowStockAlerts = [];
 let currentMovPage = 1;
 const MOV_PAGE_SIZE = 5;
 
-// POST JSON to the employee API (sends the x-user-id header via employeeFetch).
+// Global SweetAlert2 Configuration matching Master SOP Section 2.E
+const MMSwal = Swal.mixin({
+    customClass: {
+        popup: 'mm-swal-popup',
+        title: 'mm-swal-title',
+        confirmButton: 'mm-swal-confirm',
+        cancelButton: 'mm-swal-cancel'
+    },
+    buttonsStyling: false
+});
+
+// POST JSON to the employee API with user header forwarding
 async function apiPost(url, body) {
+    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    const headers = { 'Content-Type': 'application/json' };
+    if (userId) headers['x-user-id'] = userId;
+
     const opts = {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body)
     };
     const res = (typeof employeeFetch === 'function') ? await employeeFetch(url, opts) : await fetch(url, opts);
     let data = {};
-    try { data = await res.json(); } catch (e) { /* not JSON */ }
+    try { data = await res.json(); } catch (e) {}
     if (!res.ok || data.status === 'error') {
         throw new Error(data.message || ('Server responded with status ' + res.status));
     }
@@ -60,30 +75,41 @@ async function fetchStockControlData() {
             response = await fetch('/api/procurement-officer/stock-control', { headers });
         }
 
-        if (!response.ok) throw new Error(await EmployeeUI.errorMessage(response));
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.message || 'Server error ' + response.status);
+        }
 
         const data = await response.json();
 
         // User Profile
-        setText('userFullName', (data.user && data.user.fullName) || '');
+        setText('userFullName', (data.user && data.user.fullName) || 'Inventory Officer');
+        const userAvatarEl = document.getElementById('userAvatar');
+        if (userAvatarEl && data.user?.avatarSrc) userAvatarEl.src = data.user.avatarSrc;
 
-        // KPI cards - straight from the server; nothing is filled in if it is missing
+        // KPI cards
         const m = data.metrics || {};
         const pad2 = n => String(Number(n) || 0).padStart(2, '0');
         setText('directBuyCount', pad2(m.directBuyCount));
         setText('escalatedCount', pad2(m.escalatedCount));
         setText('itemsMonitored', pad2(m.itemsMonitored));
-        setText('reservedStocks', (m.reservedStocks === null || m.reservedStocks === undefined) ? '—' : Number(m.reservedStocks).toLocaleString());
 
         allMovementLogs = data.movementLogs || [];
         allLowStockAlerts = data.lowStockItems || [];
+
+        // Punto 2: Update Card 4 with actual Critical Breaches count
+        setText('criticalBreachesCount', pad2(allLowStockAlerts.length));
 
         applyMovementFilters();
         renderLowStockAlerts(allLowStockAlerts);
 
     } catch (error) {
-        console.error('Could not load live data from the server:', error);
-        if (window.EmployeeUI) { EmployeeUI.showError(error); EmployeeUI.failTables(); }
+        console.error('Could not load stock control data from server:', error);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'System Notice',
+            text: error.message || 'Failed to retrieve stock control logs.'
+        });
     }
 }
 
@@ -108,7 +134,7 @@ function applyMovementFilters() {
     renderMovementLogs();
 }
 
-// Render Movements with Permanent Numbered Pager
+// Render Movements with Pure Inline SVGs (No Font Awesome)
 function renderMovementLogs() {
     const container = document.getElementById('movementList');
     const pageInfo = document.getElementById('movPageInfo');
@@ -145,32 +171,53 @@ function renderMovementLogs() {
         const qty = parseFloat(log.quantity_changed || 0);
         const unit = log.unit ? ' ' + log.unit : '';
 
-        let iconClass = 'fa-sliders';
         let boxClass = 'box-adjust';
         let changeSign = `±${qty}${unit}`;
         let changeClass = 'adj';
+        let svgIconHtml = `
+            <svg class="mov-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="4" y1="21" x2="4" y2="14"></line>
+                <line x1="4" y1="10" x2="4" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12" y2="3"></line>
+                <line x1="20" y1="21" x2="20" y2="16"></line>
+                <line x1="20" y1="12" x2="20" y2="3"></line>
+                <line x1="1" y1="14" x2="7" y2="14"></line>
+                <line x1="9" y1="8" x2="15" y2="8"></line>
+                <line x1="17" y1="16" x2="23" y2="16"></line>
+            </svg>
+        `;
 
         if (type === 'ADD') {
-            iconClass = 'fa-plus';
             boxClass = 'box-plus';
             changeSign = `+${qty}${unit}`;
             changeClass = 'pos';
+            svgIconHtml = `
+                <svg class="mov-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            `;
         } else if (type === 'DEDUCT') {
-            iconClass = 'fa-minus';
             boxClass = 'box-minus';
             changeSign = `-${qty}${unit}`;
             changeClass = 'neg';
+            svgIconHtml = `
+                <svg class="mov-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            `;
         }
 
         return `
             <div class="movement-item">
                 <div class="mov-leading">
                     <div class="mov-icon-box ${boxClass}">
-                        <i class="fa-solid ${iconClass}"></i>
+                        ${svgIconHtml}
                     </div>
                     <div>
                         <div class="mov-name">${escapeHtml(log.item_name)}</div>
-                        <div class="mov-code">${escapeHtml(log.employee_name) || '—'}</div>
+                        <div class="mov-code">${escapeHtml(log.employee_name) || 'Staff'}</div>
                     </div>
                 </div>
 
@@ -211,14 +258,14 @@ function renderMovPagerButtons(totalPages, activePage) {
     });
 }
 
-// Render Low Stock Alerts with DOA Routing
+// Render Low Stock Alerts
 function renderLowStockAlerts(alerts) {
     const container = document.getElementById('alertsList');
     const alertsBadge = document.getElementById('alertsCountBadge');
     if (!container) return;
 
     if (!alerts || alerts.length === 0) {
-        container.innerHTML = '<div class="loading-state-text">All items are sufficiently stocked above reorder points!</div>';
+        container.innerHTML = '<div class="loading-state-text">All materials and packaging are adequately stocked above safety points.</div>';
         if (alertsBadge) alertsBadge.textContent = '0 items';
         return;
     }
@@ -258,19 +305,28 @@ function renderLowStockAlerts(alerts) {
     }).join('');
 }
 
-// Pitch a reorder: creates a real purchase request. There is no stored unit
-// price, so the officer enters the estimated total and DOA routing follows it.
+// Quick Reorder Trigger using themed SweetAlert2 Dialog
 async function quickHandleAlert(itemId) {
     const alertItem = allLowStockAlerts.find(a => a.id === itemId);
     if (!alertItem) return;
 
-    const input = prompt(`Estimated total cost (₱) to reorder "${alertItem.name}":`);
-    if (input === null) return;
-    const amount = parseFloat(input);
-    if (!(amount > 0)) {
-        alert('Please enter a valid amount greater than 0.');
-        return;
-    }
+    const { value: amountStr } = await MMSwal.fire({
+        title: `Pitch Reorder: ${alertItem.name}`,
+        input: 'number',
+        inputLabel: 'Estimated Total Requisition Amount (₱)',
+        inputPlaceholder: 'Enter total estimated cost...',
+        showCancelButton: true,
+        confirmButtonText: 'Submit Requisition',
+        cancelButtonText: 'Cancel',
+        inputValidator: (val) => {
+            if (!val || parseFloat(val) <= 0) {
+                return 'Please enter a valid amount greater than 0.';
+            }
+        }
+    });
+
+    if (!amountStr) return;
+    const amount = parseFloat(amountStr);
 
     try {
         const result = await apiPost('/api/procurement-officer/add-request', {
@@ -278,12 +334,26 @@ async function quickHandleAlert(itemId) {
             store_name: '',
             amount
         });
+
         const route = result.request && result.request.route;
-        const routeText = route === 'ceo' ? 'Escalated to the CEO' : (route === 'finance' ? 'Endorsed to Finance' : 'Direct buy authorized');
-        alert(`Requisition for "${alertItem.name}" (₱${amount.toFixed(2)}) saved.\nRouting: ${routeText}`);
+        let routeText = 'Direct purchase authorized for Procurement';
+        if (route === 'finance') routeText = 'Escalated to Finance Officer';
+        if (route === 'ceo') routeText = 'Escalated to the CEO';
+
+        await MMSwal.fire({
+            icon: 'success',
+            title: 'Requisition Created',
+            text: `Requisition for "${alertItem.name}" (₱${amount.toFixed(2)}) submitted.\n\nRouting: ${routeText}`
+        });
+
         window.location.href = 'procurement.html';
+
     } catch (error) {
-        alert('Could not save the requisition: ' + error.message);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Requisition Failed',
+            text: error.message || 'Could not submit requisition.'
+        });
     }
 }
 

@@ -4,6 +4,17 @@ let filteredItems = [];
 let currentInvPage = 1;
 const INV_PAGE_SIZE = 6;
 
+// Global SweetAlert2 Configuration matching Master SOP Section 2.E
+const MMSwal = Swal.mixin({
+    customClass: {
+        popup: 'mm-swal-popup',
+        title: 'mm-swal-title',
+        confirmButton: 'mm-swal-confirm',
+        cancelButton: 'mm-swal-cancel'
+    },
+    buttonsStyling: false
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     fetchInventorySectionData();
 
@@ -51,16 +62,20 @@ function categoryTitle(item) {
     return c === 'packaging' ? 'Packaging' : (c === 'equipment' ? 'Equipment' : 'Ingredients');
 }
 
-// POST JSON to the employee API (sends the x-user-id header via employeeFetch).
+// POST JSON to the employee API with user header forwarding
 async function apiPost(url, body) {
+    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    const headers = { 'Content-Type': 'application/json' };
+    if (userId) headers['x-user-id'] = userId;
+
     const opts = {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body)
     };
     const res = (typeof employeeFetch === 'function') ? await employeeFetch(url, opts) : await fetch(url, opts);
     let data = {};
-    try { data = await res.json(); } catch (e) { /* not JSON */ }
+    try { data = await res.json(); } catch (e) {}
     if (!res.ok || data.status === 'error') {
         throw new Error(data.message || ('Server responded with status ' + res.status));
     }
@@ -78,21 +93,29 @@ async function fetchInventorySectionData() {
             response = await fetch('/api/procurement-officer/inventory-section', { headers });
         }
 
-        if (!response.ok) throw new Error(await EmployeeUI.errorMessage(response));
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.message || 'Server error ' + response.status);
+        }
 
         const data = await response.json();
 
         // User Profile
         const userFullNameEl = document.getElementById('userFullName');
-        if (userFullNameEl) userFullNameEl.textContent = (data.user && data.user.fullName) || '';
+        if (userFullNameEl) userFullNameEl.textContent = (data.user && data.user.fullName) || 'Inventory Officer';
+        const userAvatarEl = document.getElementById('userAvatar');
+        if (userAvatarEl && data.user?.avatarSrc) userAvatarEl.src = data.user.avatarSrc;
 
         allItems = data.items || [];
-
         applyInventoryFilters();
 
     } catch (error) {
-        console.error('Could not load live data from the server:', error);
-        if (window.EmployeeUI) { EmployeeUI.showError(error); EmployeeUI.failTables(); }
+        console.error('Could not load inventory section data:', error);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'System Notice',
+            text: error.message || 'Failed to load inventory items.'
+        });
     }
 }
 
@@ -120,7 +143,7 @@ function applyInventoryFilters() {
         return true;
     });
 
-    // Badge counts (real, by category)
+    // Real badge counts
     document.getElementById('totalCount').textContent = allItems.length;
     document.getElementById('ingCount').textContent = allItems.filter(i => categoryOf(i) === 'ingredients').length;
     document.getElementById('pkgCount').textContent = allItems.filter(i => categoryOf(i) === 'packaging').length;
@@ -138,7 +161,7 @@ function filterCategory(cat, btn) {
     applyInventoryFilters();
 }
 
-// Render Inventory Table with Permanent Numbered Pager
+// Render Inventory Table with Permanent Numbered Pager (Reserved Column Removed per Punto 2)
 function renderInventoryTable() {
     const tbody = document.getElementById('inventoryTableBody');
     const pageInfo = document.getElementById('inventoryPageInfo');
@@ -148,7 +171,7 @@ function renderInventoryTable() {
     if (!tbody) return;
 
     if (filteredItems.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="loading-state-text">No inventory items found matching your criteria.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="loading-state-text">No inventory items found matching your criteria.</td></tr>';
         if (pageInfo) pageInfo.textContent = 'Showing 0 of 0 items';
         if (prevBtn) prevBtn.disabled = true;
         if (nextBtn) nextBtn.disabled = true;
@@ -176,9 +199,6 @@ function renderInventoryTable() {
         const reorder = parseFloat(item.reorder_point || 0);
         const isLow = reorder > 0 && onHand <= reorder;
 
-        // Reserved stock / SKU only exist if the table has those columns.
-        const hasReserved = item.reserved_qty !== undefined && item.reserved_qty !== null;
-        const reservedText = hasReserved ? `${parseFloat(item.reserved_qty) || 0} ${escapeHtml(unit)}` : '—';
         const skuLine = item.sku_code
             ? `<div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(item.sku_code)}</div>`
             : '';
@@ -195,9 +215,6 @@ function renderInventoryTable() {
                     ${isLow ? '<span class="low-badge">Low Buffer</span>' : ''}
                 </td>
                 <td>
-                    <span style="font-size: 12px; font-weight: 700; color: var(--brown-soft);">${reservedText}</span>
-                </td>
-                <td>
                     <span style="font-size: 12px; font-weight: 700; color: var(--text-muted);">
                         ${reorder} ${escapeHtml(unit)}
                     </span>
@@ -205,15 +222,20 @@ function renderInventoryTable() {
                 <td>
                     ${isLow ? `
                         <button type="button" class="btn-restock-trigger" onclick="quickRestockItem(${Number(item.id)})">
-                            <i class="fa-solid fa-cart-plus"></i> Pitch Restock
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <circle cx="9" cy="21" r="1"></circle>
+                                <circle cx="20" cy="21" r="1"></circle>
+                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                            </svg>
+                            <span>Pitch Restock</span>
                         </button>
                     ` : `
-                        <span style="font-size: 12px; color: var(--text-muted);">Adequate</span>
+                        <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Adequate</span>
                     `}
                 </td>
                 <td style="text-align: right;">
                     <button type="button" class="btn-adjust-link" onclick="openAdjustStockById(${Number(item.id)})">
-                        <i class="fa-solid fa-sliders"></i> Adjust
+                        Adjust
                     </button>
                 </td>
             </tr>
@@ -244,19 +266,28 @@ function renderInvPagerButtons(totalPages, activePage) {
     });
 }
 
-// Pitch a restock: creates a real purchase request. There is no stored unit
-// price, so the officer enters the estimated total and DOA routing follows it.
+// Quick restock prompt using themed SweetAlert2
 async function quickRestockItem(itemId) {
     const item = allItems.find(i => i.id === itemId);
     if (!item) return;
 
-    const input = prompt(`Estimated total cost (₱) to restock "${item.name}":`);
-    if (input === null) return;
-    const amount = parseFloat(input);
-    if (!(amount > 0)) {
-        alert('Please enter a valid amount greater than 0.');
-        return;
-    }
+    const { value: amountStr } = await MMSwal.fire({
+        title: `Pitch Restock: ${item.name}`,
+        input: 'number',
+        inputLabel: 'Estimated Total Cost (₱)',
+        inputPlaceholder: 'Enter total estimated expense...',
+        showCancelButton: true,
+        confirmButtonText: 'Submit Restock Pitch',
+        cancelButtonText: 'Cancel',
+        inputValidator: (val) => {
+            if (!val || parseFloat(val) <= 0) {
+                return 'Please enter a valid amount greater than 0.';
+            }
+        }
+    });
+
+    if (!amountStr) return;
+    const amount = parseFloat(amountStr);
 
     try {
         const result = await apiPost('/api/procurement-officer/add-request', {
@@ -264,15 +295,27 @@ async function quickRestockItem(itemId) {
             store_name: '',
             amount
         });
+
         const route = result.request && result.request.route;
-        const routeText = route === 'ceo' ? 'Escalated to the CEO' : (route === 'finance' ? 'Endorsed to Finance' : 'Direct buy authorized');
-        alert(`Restock requisition for "${item.name}" (₱${amount.toFixed(2)}) saved.\nRouting: ${routeText}`);
+        let routeText = 'Direct purchase authorized for Procurement';
+        if (route === 'finance') routeText = 'Escalated to Finance Officer';
+        if (route === 'ceo') routeText = 'Escalated to the CEO';
+
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Restock Requisition Sent',
+            text: `Restock requisition for "${item.name}" (₱${amount.toFixed(2)}) submitted.\n\nRouting: ${routeText}`
+        });
     } catch (error) {
-        alert('Could not save the requisition: ' + error.message);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Requisition Failed',
+            text: error.message || 'Could not submit restock request.'
+        });
     }
 }
 
-
+// Add New Stock Item Submission
 async function handleAddStock(e) {
     e.preventDefault();
     const name = document.getElementById('addName').value.trim();
@@ -282,7 +325,11 @@ async function handleAddStock(e) {
     const reorder_level = parseFloat(document.getElementById('addReorderLevel').value);
 
     if (!name || isNaN(quantity) || isNaN(reorder_level)) {
-        alert('Please fill out the item name, quantity and reorder threshold.');
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Incomplete Input',
+            text: 'Please fill out the item name, quantity, and reorder threshold.'
+        });
         return;
     }
 
@@ -294,8 +341,18 @@ async function handleAddStock(e) {
         closeModal('addStockModal');
         e.target.reset();
         await fetchInventorySectionData();
+
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Stock Registered',
+            text: `"${name}" (${quantity} ${unit}) registered into inventory.`
+        });
     } catch (error) {
-        alert('Could not add the stock item: ' + error.message);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Registration Failed',
+            text: error.message || 'Could not add the stock item.'
+        });
     } finally {
         if (submitBtn) submitBtn.disabled = false;
     }
@@ -316,6 +373,7 @@ function openAdjustStockById(itemId) {
     openModal('adjustStockModal');
 }
 
+// Adjust Stock Submission
 async function handleAdjustStock(e) {
     e.preventDefault();
     const item_id = parseInt(document.getElementById('adjustItemId').value, 10);
@@ -326,7 +384,11 @@ async function handleAdjustStock(e) {
     const unit = document.getElementById('adjustItemUnit').value;
 
     if (!item_id || !name || isNaN(quantity)) {
-        alert('Please fill out the item name and on-hand count.');
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Incomplete Input',
+            text: 'Please fill out the item name and on-hand count.'
+        });
         return;
     }
 
@@ -337,26 +399,56 @@ async function handleAdjustStock(e) {
         await apiPost('/api/procurement-officer/adjust-stock', { item_id, name, department, quantity, unit, reorder_level });
         closeModal('adjustStockModal');
         await fetchInventorySectionData();
+
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Stock Adjusted',
+            text: `Updated on-hand count for "${name}" to ${quantity} ${unit}.`
+        });
     } catch (error) {
-        alert('Could not save the adjustment: ' + error.message);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Adjustment Failed',
+            text: error.message || 'Could not save the adjustment.'
+        });
     } finally {
         if (submitBtn) submitBtn.disabled = false;
     }
 }
 
+// Delete Stock Item with SweetAlert2 Confirmation
 async function handleDeleteFromModal() {
     const item_id = parseInt(document.getElementById('deleteItemId').value, 10);
     const item = allItems.find(i => i.id === item_id);
     if (!item) return;
 
-    if (!confirm(`Permanently remove "${item.name}" from inventory?`)) return;
+    const res = await MMSwal.fire({
+        title: 'Delete Item from Inventory?',
+        html: `Permanently remove <strong>"${escapeHtml(item.name)}"</strong> from central warehouse records?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete',
+        cancelButtonText: 'Cancel'
+    });
+
+    if (!res.isConfirmed) return;
 
     try {
         await apiPost('/api/procurement-officer/delete-stock', { item_id });
         closeModal('adjustStockModal');
         await fetchInventorySectionData();
+
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Item Deleted',
+            text: `"${item.name}" was removed from inventory.`
+        });
     } catch (error) {
-        alert('Could not remove the item: ' + error.message);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Delete Failed',
+            text: error.message || 'Could not remove the item.'
+        });
     }
 }
 

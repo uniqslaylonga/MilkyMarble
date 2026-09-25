@@ -1,300 +1,371 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Milky Marble — Inventory Section & Stock Levels</title>
-    <link rel="icon" type="image/png" href="/customer/images/logo.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="css/inventorySection.css">
-</head>
-<body>
-
-<div class="app-container">
-    <!-- STICKY SIDEBAR (CONSISTENT SA LAHAT NG MODULES) -->
-    <aside class="sidebar">
-        <div class="brand-section">
-            <div class="brand-logo-wrap">
-                <img src="/customer/images/logo.png" alt="Milky Marble" class="brand-logo-img">
-            </div>
-            <div class="brand-title">Milky Marble</div>
-        </div>
-
-        <nav class="nav-menu">
-            <a href="dashboard.html" class="nav-link">
-                <i class="fa-solid fa-table-cells-large nav-fa"></i>
-                <span>Dashboard</span>
-            </a>
-            <a href="procurement.html" class="nav-link">
-                <i class="fa-solid fa-cart-shopping nav-fa"></i>
-                <span>Procurement</span>
-            </a>
-            <a href="inventorySection.html" class="nav-link active">
-                <i class="fa-solid fa-box-archive nav-fa"></i>
-                <span>Inventory Section</span>
-            </a>
-            <a href="stockControl.html" class="nav-link">
-                <i class="fa-solid fa-warehouse nav-fa"></i>
-                <span>Stock Control</span>
-            </a>
-        </nav>
-
-        <div class="sidebar-bottom">
-            <a href="../login.html" class="nav-link logout-btn">
-                <i class="fa-solid fa-arrow-right-from-bracket nav-fa"></i>
-                <span>Log out</span>
-            </a>
-        </div>
-    </aside>
-
-    <!-- MAIN CONTENT -->
-    <main class="main-content">
-        <!-- TOPBAR -->
-        <header class="topbar">
-            <div class="search-box">
-                <input type="text" id="inventorySearchInput" placeholder="Search items, ingredients, cups, or SKUs...">
-                <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            </div>
-            
-            <div class="topbar-right">
-                <button class="notif-btn" title="Alerts"><i class="fa-regular fa-bell"></i></button>
-                <div class="user-profile">
-                    <div class="user-avatar">
-                        <img id="userAvatar" src="/customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
-                    </div>
-                    <span id="userFullName" class="user-name"></span>
-                </div>
-            </div>
-        </header>
-
-        <!-- PAGE HEADER -->
-        <section class="page-header">
-            <div class="page-eyebrow">Warehouse &amp; Central Storage</div>
-            <div class="header-row">
-                <div>
-                    <h1 class="page-title">What's on hand?</h1>
-                    <p class="header-sub">Track on-hand raw materials, packaging, and equipment against their reorder points.</p>
-                </div>
-                <div class="header-btns">
-                    <a href="stockControl.html" class="btn-secondary-head">
-                        <i class="fa-solid fa-shield-halved"></i> Stock Thresholds
-                    </a>
-                    <button type="button" class="btn-primary" onclick="openModal('addStockModal')">
-                        <i class="fa-solid fa-plus"></i> Add New Stock
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- CATEGORY FILTER TABS -->
-        <div class="category-tabs-bar">
-            <button type="button" class="cat-tab-btn active" id="tabCatAll">
-                <i class="fa-solid fa-clipboard-list"></i>
-                <span>All Categories</span>
-                <span id="totalCount" class="tab-badge">0</span>
-            </button>
-            <button type="button" class="cat-tab-btn" id="tabCatIngredients">
-                <i class="fa-solid fa-leaf"></i>
-                <span>Ingredients</span>
-                <span id="ingCount" class="tab-badge">0</span>
-            </button>
-            <button type="button" class="cat-tab-btn" id="tabCatPackaging">
-                <i class="fa-solid fa-box-open"></i>
-                <span>Packaging</span>
-                <span id="pkgCount" class="tab-badge">0</span>
-            </button>
-            <button type="button" class="cat-tab-btn" id="tabCatEquipment">
-                <i class="fa-solid fa-blender"></i>
-                <span>Equipment</span>
-                <span id="eqpCount" class="tab-badge">0</span>
-            </button>
-        </div>
-
-        <!-- MAIN TABLE PANEL -->
-        <section class="directory-card" style="margin-top: 18px;">
-            <div class="panel-header-bar">
-                <div class="panel-info">
-                    <h2 class="section-title">Stock Levels &amp; Buffer Monitor</h2>
-                    <p class="section-sub-text"><span id="visibleCount">0</span> items currently matching filters</p>
-                </div>
-
-                <div class="filter-controls-group">
-                    <div class="custom-select-wrap">
-                        <i class="fa-solid fa-filter filter-icon"></i>
-                        <select id="statusFilter">
-                            <option value="">All Stock Levels</option>
-                            <option value="low">Critical Low Stock Only</option>
-                            <option value="normal">Adequate Supply (Normal)</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TABLE CONTAINER -->
-            <div class="table-container">
-                <table class="cust-table" id="inventoryTable">
-                    <thead>
-                        <tr>
-                            <th>Item Code &amp; Description</th>
-                            <th>Category</th>
-                            <th>Available On Hand</th>
-                            <th>Reserved</th>
-                            <th>Reorder Point</th>
-                            <th>Status</th>
-                            <th style="text-align: right;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="inventoryTableBody">
-                        <tr>
-                            <td colspan="7" class="loading-state-text">Loading inventory items...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- PERMANENT NUMBERED PAGINATION BAR -->
-            <div class="tx-pagination-bar" id="inventoryPaginationBar">
-                <span class="tx-page-info" id="inventoryPageInfo">Showing 0 of 0 items</span>
-                <div class="tx-pager-buttons">
-                    <button type="button" class="pager-btn" id="prevInvBtn" title="Previous Page" disabled>
-                        <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
-                    </button>
-                    <div class="pager-numbers" id="invPagerNumbers">
-                        <button type="button" class="pager-num-btn active" disabled>1</button>
-                    </div>
-                    <button type="button" class="pager-btn" id="nextInvBtn" title="Next Page" disabled>
-                        <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
-                    </button>
-                </div>
-            </div>
-        </section>
-    </main>
-</div>
-
-<!-- MODAL 1: ADD NEW STOCK -->
-<div class="modal-overlay" id="addStockModal">
-    <div class="profile-modal" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <div class="modal-header-left">
-                <h3 class="modal-title">Register Warehouse Stock</h3>
-                <p class="modal-subtitle">Add raw ingredients, cups, or equipment into system inventory.</p>
-            </div>
-            <button type="button" class="modal-close" onclick="closeModal('addStockModal')">✕</button>
-        </div>
-
-        <form id="addStockForm" class="modal-body">
-            <div class="form-grid">
-                <div class="form-group full">
-                    <label for="addName">Item Name &amp; Description *</label>
-                    <input type="text" id="addName" placeholder="Item name" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="addDepartment">Classification *</label>
-                    <select id="addDepartment" required>
-                        <option value="Ingredients" selected>Ingredients (Tea, Boba, Dairy)</option>
-                        <option value="Packaging">Packaging (Cups, Film, Straws)</option>
-                        <option value="Equipment">Equipment (Blender, Sealer)</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="addUnit">Unit of Measure *</label>
-                    <select id="addUnit" required>
-                        <option value="kg">kg (Kilograms)</option>
-                        <option value="grams">grams</option>
-                        <option value="liters">liters (L)</option>
-                        <option value="pcs">pcs (Pieces)</option>
-                        <option value="boxes">boxes</option>
-                        <option value="rolls">rolls</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="addQuantity">Initial On Hand Quantity *</label>
-                    <input type="number" step="0.01" id="addQuantity" placeholder="0" min="0" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="addReorderLevel">Safety Reorder Threshold *</label>
-                    <input type="number" step="0.01" id="addReorderLevel" placeholder="0" min="0" required>
-                </div>
-            </div>
-
-            <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal('addStockModal')">Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fa-solid fa-plus"></i> Add Stock Item</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- MODAL 2: ADJUST STOCK / REORDER RESTOCK MODAL (DOA MATRIX) -->
-<div class="modal-overlay" id="adjustStockModal">
-    <div class="profile-modal" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <div class="modal-header-left">
-                <h3 class="modal-title">Adjust Stock</h3>
-                <p class="modal-subtitle">Update the counts for this item.</p>
-            </div>
-            <button type="button" class="modal-close" onclick="closeModal('adjustStockModal')">✕</button>
-        </div>
-
-        <form id="adjustStockForm" class="modal-body">
-            <input type="hidden" id="adjustItemId">
-            <input type="hidden" id="deleteItemId">
-
-            <div class="form-grid">
-                <div class="form-group full">
-                    <label for="adjustItemName">Item Name *</label>
-                    <input type="text" id="adjustItemName" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="adjustItemDept">Classification *</label>
-                    <select id="adjustItemDept" required>
-                        <option value="Ingredients">Ingredients</option>
-                        <option value="Packaging">Packaging</option>
-                        <option value="Equipment">Equipment</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="adjustItemUnit">Unit of Measure *</label>
-                    <select id="adjustItemUnit" required>
-                        <option value="kg">kg</option>
-                        <option value="grams">grams</option>
-                        <option value="liters">liters</option>
-                        <option value="pcs">pcs</option>
-                        <option value="boxes">boxes</option>
-                        <option value="rolls">rolls</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="adjustItemQty">Actual On-Hand Count *</label>
-                    <input type="number" step="0.01" id="adjustItemQty" min="0" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="adjustItemReorder">Safety Reorder Point *</label>
-                    <input type="number" step="0.01" id="adjustItemReorder" min="0" required>
-                </div>
-            </div>
-
-            <div class="modal-actions">
-                <button type="button" class="btn-danger-link" onclick="handleDeleteFromModal()">
-                    <i class="fa-regular fa-trash-can"></i> Delete Item
-                </button>
-                <button type="button" class="btn-secondary" onclick="closeModal('adjustStockModal')">Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Save Adjustments</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script src="../js/employeeAuth.js"></script>
-<script src="js/inventorySection.js"></script>
-    <script src="/shared/js/avatarUpload.js"></script>
-</body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Inventory Section &amp; Stock Levels</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="css/inventorySection.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- STICKY SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand-section">
+            <div class="brand-logo-wrap">
+                <img src="/customer/images/logo.png" alt="Milky Marble Logo" class="brand-logo-img">
+            </div>
+            <div class="brand-title">Milky Marble</div>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="dashboard.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                </svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="procurement.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+                <span>Procurement</span>
+            </a>
+            <a href="inventorySection.html" class="nav-link active">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+                <span>Inventory Section</span>
+            </a>
+            <a href="stockControl.html" class="nav-link">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3v18h18"></path>
+                    <path d="M18 17V9"></path>
+                    <path d="M13 17V5"></path>
+                    <path d="M8 17v-3"></path>
+                </svg>
+                <span>Stock Control</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <a href="../login.html" class="nav-link logout-btn">
+                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Log out</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <!-- TOPBAR -->
+        <header class="topbar">
+            <div class="search-box">
+                <input type="text" id="inventorySearchInput" placeholder="Search items, ingredients, cups, or SKUs...">
+                <svg class="search-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+            </div>
+            
+            <div class="topbar-right">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <img id="userAvatar" src="/customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                    </div>
+                    <span id="userFullName" class="user-name">Loading...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- PAGE HEADER -->
+        <section class="page-header">
+            <div class="page-eyebrow">Warehouse &amp; Central Storage</div>
+            <div class="header-row">
+                <div>
+                    <h1 class="page-title">What's on hand?</h1>
+                    <p class="header-sub">Track on-hand raw materials, packaging, and equipment against their reorder points.</p>
+                </div>
+                <div class="header-btns">
+                    <a href="stockControl.html" class="btn-secondary-head">
+                        <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                        <span>Stock Thresholds</span>
+                    </a>
+                    <button type="button" class="btn-primary" onclick="openModal('addStockModal')">
+                        <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>Add New Stock</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- CATEGORY FILTER TABS -->
+        <div class="category-tabs-bar">
+            <button type="button" class="cat-tab-btn active" id="tabCatAll">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                </svg>
+                <span>All Categories</span>
+                <span id="totalCount" class="tab-badge">0</span>
+            </button>
+            <button type="button" class="cat-tab-btn" id="tabCatIngredients">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path>
+                    <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path>
+                </svg>
+                <span>Ingredients</span>
+                <span id="ingCount" class="tab-badge">0</span>
+            </button>
+            <button type="button" class="cat-tab-btn" id="tabCatPackaging">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                    <rect x="1" y="3" width="22" height="5"></rect>
+                    <line x1="10" y1="12" x2="14" y2="12"></line>
+                </svg>
+                <span>Packaging</span>
+                <span id="pkgCount" class="tab-badge">0</span>
+            </button>
+            <button type="button" class="cat-tab-btn" id="tabCatEquipment">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                </svg>
+                <span>Equipment</span>
+                <span id="eqpCount" class="tab-badge">0</span>
+            </button>
+        </div>
+
+        <!-- MAIN TABLE PANEL -->
+        <section class="directory-card" style="margin-top: 18px;">
+            <div class="panel-header-bar">
+                <div class="panel-info">
+                    <h2 class="section-title">Stock Levels &amp; Buffer Monitor</h2>
+                    <p class="section-sub-text"><span id="visibleCount">0</span> items currently matching filters</p>
+                </div>
+
+                <div class="filter-controls-group">
+                    <div class="custom-select-wrap">
+                        <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                        <select id="statusFilter">
+                            <option value="">All Stock Levels</option>
+                            <option value="low">Critical Low Stock Only</option>
+                            <option value="normal">Adequate Supply (Normal)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABLE CONTAINER (Reserved Column Removed per Punto 2) -->
+            <div class="table-container">
+                <table class="cust-table" id="inventoryTable">
+                    <thead>
+                        <tr>
+                            <th>Item Code &amp; Description</th>
+                            <th>Category</th>
+                            <th>Available On Hand</th>
+                            <th>Reorder Point</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                        <tr>
+                            <td colspan="6" class="loading-state-text">Loading inventory items...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- PERMANENT NUMBERED PAGINATION BAR -->
+            <div class="tx-pagination-bar" id="inventoryPaginationBar">
+                <span class="tx-page-info" id="inventoryPageInfo">Showing 0 of 0 items</span>
+                <div class="tx-pager-buttons">
+                    <button type="button" class="pager-btn" id="prevInvBtn" title="Previous Page" disabled>
+                        <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <div class="pager-numbers" id="invPagerNumbers">
+                        <button type="button" class="pager-num-btn active" disabled>1</button>
+                    </div>
+                    <button type="button" class="pager-btn" id="nextInvBtn" title="Next Page" disabled>
+                        <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- MODAL 1: ADD NEW STOCK -->
+<div class="modal-overlay" id="addStockModal">
+    <div class="profile-modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <h3 class="modal-title">Register Warehouse Stock</h3>
+                <p class="modal-subtitle">Add raw ingredients, cups, or equipment into system inventory.</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('addStockModal')">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <form id="addStockForm" class="modal-body">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label for="addName">Item Name &amp; Description *</label>
+                    <input type="text" id="addName" placeholder="e.g. Buko Pandan Powder, 12oz Plastic Cups" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="addDepartment">Classification *</label>
+                    <select id="addDepartment" required>
+                        <option value="Ingredients" selected>Ingredients (Tea, Boba, Dairy)</option>
+                        <option value="Packaging">Packaging (Cups, Film, Straws)</option>
+                        <option value="Equipment">Equipment (Blender, Sealer)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="addUnit">Unit of Measure *</label>
+                    <select id="addUnit" required>
+                        <option value="grams" selected>grams</option>
+                        <option value="kg">kg (Kilograms)</option>
+                        <option value="pcs">pcs (Pieces)</option>
+                        <option value="packs">packs</option>
+                        <option value="cans">cans</option>
+                        <option value="bags">bags</option>
+                        <option value="liters">liters (L)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="addQuantity">Initial On Hand Quantity *</label>
+                    <input type="number" step="0.01" id="addQuantity" placeholder="0" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="addReorderLevel">Safety Reorder Threshold *</label>
+                    <input type="number" step="0.01" id="addReorderLevel" placeholder="0" min="0" required>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal('addStockModal')">Cancel</button>
+                <button type="submit" class="btn-primary">
+                    <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Add Stock Item</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL 2: ADJUST STOCK -->
+<div class="modal-overlay" id="adjustStockModal">
+    <div class="profile-modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <h3 class="modal-title">Adjust Stock</h3>
+                <p class="modal-subtitle">Update physical counts or safety thresholds for this item.</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('adjustStockModal')">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <form id="adjustStockForm" class="modal-body">
+            <input type="hidden" id="adjustItemId">
+            <input type="hidden" id="deleteItemId">
+
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label for="adjustItemName">Item Name *</label>
+                    <input type="text" id="adjustItemName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="adjustItemDept">Classification *</label>
+                    <select id="adjustItemDept" required>
+                        <option value="Ingredients">Ingredients</option>
+                        <option value="Packaging">Packaging</option>
+                        <option value="Equipment">Equipment</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="adjustItemUnit">Unit of Measure *</label>
+                    <select id="adjustItemUnit" required>
+                        <option value="grams">grams</option>
+                        <option value="kg">kg</option>
+                        <option value="pcs">pcs</option>
+                        <option value="packs">packs</option>
+                        <option value="cans">cans</option>
+                        <option value="bags">bags</option>
+                        <option value="liters">liters</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="adjustItemQty">Actual On-Hand Count *</label>
+                    <input type="number" step="0.01" id="adjustItemQty" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="adjustItemReorder">Safety Reorder Point *</label>
+                    <input type="number" step="0.01" id="adjustItemReorder" min="0" required>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-danger-link" onclick="handleDeleteFromModal()">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    <span>Delete Item</span>
+                </button>
+                <button type="button" class="btn-secondary" onclick="closeModal('adjustStockModal')">Cancel</button>
+                <button type="submit" class="btn-primary">
+                    <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>Save Adjustments</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="../js/employeeAuth.js"></script>
+<script src="js/inventorySection.js"></script>
+<script src="/shared/js/avatarUpload.js"></script>
+</body>
 </html>

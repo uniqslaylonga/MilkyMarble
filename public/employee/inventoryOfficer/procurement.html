@@ -97,7 +97,7 @@
             <div class="header-row">
                 <div>
                     <h1 class="page-title">Keep Purchasing Moving</h1>
-                    <p class="header-sub">Raise purchase requests and manage suppliers. Each request is routed by total cost.</p>
+                    <p class="header-sub">Raise purchase requests, inspect incoming deliveries against expected quantities, and manage suppliers.</p>
                 </div>
                 <button type="button" class="btn-primary" onclick="openModal('addRequestModal')">
                     <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -148,16 +148,17 @@
                         </svg>
                         <select id="statusFilter">
                             <option value="">All Statuses</option>
-                            <option value="APPROVED">Approved (Direct Buy)</option>
+                            <option value="APPROVED">Approved (Direct Buy / Awaiting Receiving)</option>
                             <option value="PENDING_FINANCE">Pending Finance (₱301–₱500)</option>
                             <option value="PENDING_CEO">Pending CEO (> ₱500)</option>
-                            <option value="PURCHASED">Purchased</option>
+                            <option value="PURCHASED">Purchased (Awaiting Inspection)</option>
+                            <option value="RECEIVED">Received &amp; Stock Inflowed</option>
                         </select>
                     </div>
                 </div>
             </div>
 
-            <!-- THRESHOLD LEGEND PILLS (ZERO-EMOJI DOTS) -->
+            <!-- THRESHOLD LEGEND PILLS (CLEAN ZERO-EMOJI DOTS) -->
             <div class="threshold-legend-row" id="doaLegendRow">
                 <span class="badge-route route-procure"><span class="badge-dot dot-procure"></span> ≤ ₱300: Procurement Direct Buy Authorized</span>
                 <span class="badge-route route-finance"><span class="badge-dot dot-finance"></span> ₱301–₱500: Finance Officer Clearance</span>
@@ -184,7 +185,7 @@
                     </table>
                 </div>
 
-                <!-- NUMBERED PAGINATION BAR (REQUESTS) -->
+                <!-- PERMANENT NUMBERED PAGINATION BAR (REQUESTS) -->
                 <div class="tx-pagination-bar" id="prPaginationBar">
                     <span class="tx-page-info" id="prPageInfo">Showing 0 of 0 requests</span>
                     <div class="tx-pager-buttons">
@@ -221,7 +222,7 @@
                     </table>
                 </div>
 
-                <!-- NUMBERED PAGINATION BAR (VENDORS) -->
+                <!-- PERMANENT NUMBERED PAGINATION BAR (VENDORS) -->
                 <div class="tx-pagination-bar" id="venPaginationBar">
                     <span class="tx-page-info" id="venPageInfo">Showing 0 of 0 vendors</span>
                     <div class="tx-pager-buttons">
@@ -241,7 +242,7 @@
     </main>
 </div>
 
-<!-- MODAL 1: ADD PURCHASE REQUEST -->
+<!-- MODAL 1: ADD PURCHASE REQUEST (HYBRID SUPPLIER VIA DATALIST) -->
 <div class="modal-overlay" id="addRequestModal">
     <div class="profile-modal" onclick="event.stopPropagation()">
         <div class="modal-header">
@@ -261,14 +262,16 @@
             <div class="form-grid">
                 <div class="form-group full">
                     <label for="reqItemName">Raw Ingredient / Supply Description *</label>
-                    <input type="text" id="reqItemName" placeholder="Item or supply description" required>
+                    <input type="text" id="reqItemName" placeholder="e.g. Raw Tapioca Pearls (1kg), Evaporated Milk" required>
                 </div>
 
-                <div class="form-group">
-                    <label for="reqVendorName">Partner Vendor / Store *</label>
-                    <select id="reqVendorName" required>
-                        <option value="">-- Choose Vendor --</option>
-                    </select>
+                <!-- Punto 3: Hybrid Input with Datalist Suggestions -->
+                <div class="form-group full">
+                    <label for="reqVendorName">Partner Vendor / Store (Pick or Type Custom Store) *</label>
+                    <input type="text" id="reqVendorName" list="vendorDatalist" placeholder="Choose partner vendor or type local market/sari-sari..." required>
+                    <datalist id="vendorDatalist">
+                        <!-- Populated dynamically via JS -->
+                    </datalist>
                 </div>
 
                 <div class="form-group">
@@ -307,7 +310,93 @@
     </div>
 </div>
 
-<!-- MODAL 2: ADD VENDOR -->
+<!-- MODAL 2: PHYSICAL RECEIVING & DELIVERY VARIANCE AUDIT (Punto 1) -->
+<div class="modal-overlay" id="receiveDeliveryModal">
+    <div class="profile-modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <h3 class="modal-title">Receive &amp; Audit Delivery</h3>
+                <p class="modal-subtitle">Inspect delivered stock against purchase order. Only verified usable units enter warehouse inventory.</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('receiveDeliveryModal')">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <form id="receiveDeliveryForm" class="modal-body">
+            <input type="hidden" id="receivePrId">
+            <input type="hidden" id="receiveItemRawName">
+
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Item / Requisition Manifest</label>
+                    <div class="readonly-display-box" id="receiveManifestDisplay">Loading manifest...</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="expectedUnitsCount">Expected Units Ordered</label>
+                    <input type="number" id="expectedUnitsCount" readonly style="opacity: 0.85; background: #FFF5F4;">
+                </div>
+
+                <div class="form-group">
+                    <label for="usableReceivedUnits">Usable Units Received *</label>
+                    <input type="number" id="usableReceivedUnits" min="0" step="0.1" required>
+                </div>
+
+                <div class="form-group full">
+                    <div class="variance-feedback-box" id="varianceNoticeBox">
+                        <div class="variance-row">
+                            <span>Variance / Discrepancy:</span>
+                            <strong id="calculatedVarianceText" class="variance-ok">0 discrepancy</strong>
+                        </div>
+                        <small id="varianceExplanation" style="color: var(--text-muted);">All expected goods accounted for.</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="destinationCategory">Inventory Department *</label>
+                    <select id="destinationCategory" required>
+                        <option value="raw_material" selected>Raw Material / Ingredient</option>
+                        <option value="packaging">Packaging (Cups, Lids, Straws)</option>
+                        <option value="equipment">Equipment &amp; Utensils</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="destinationUnit">Unit of Measure *</label>
+                    <select id="destinationUnit" required>
+                        <option value="grams" selected>grams</option>
+                        <option value="pcs">pcs</option>
+                        <option value="packs">packs</option>
+                        <option value="cans">cans</option>
+                        <option value="bags">bags</option>
+                        <option value="kg">kg</option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label for="receivingAuditNotes">Physical Inspection &amp; Audit Notes</label>
+                    <textarea id="receivingAuditNotes" rows="2" placeholder="e.g. Inspected packaging seal; full quantity accepted into dry warehouse stock..."></textarea>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal('receiveDeliveryModal')">Cancel</button>
+                <button type="submit" class="btn-primary">
+                    <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>Verify &amp; Add to Inventory</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL 3: ADD VENDOR -->
 <div class="modal-overlay" id="addVendorModal">
     <div class="profile-modal" onclick="event.stopPropagation()">
         <div class="modal-header">
@@ -364,7 +453,7 @@
     </div>
 </div>
 
-<!-- MODAL 3: EDIT VENDOR -->
+<!-- MODAL 4: EDIT VENDOR -->
 <div class="modal-overlay" id="editVendorModal">
     <div class="profile-modal" onclick="event.stopPropagation()">
         <div class="modal-header">

@@ -98,7 +98,7 @@
                             <span class="shift-subtag">DOA Matrix Active (≤ ₱300 Direct Buy)</span>
                         </div>
                         <h1 class="welcome-title" id="welcomeTitle">Glad to have you here!</h1>
-                        <p class="welcome-sub">Manage purchase requisitions, vendor records, and warehouse reorder points.</p>
+                        <p class="welcome-sub">Manage purchase requisitions, physical stock inspection &amp; variance audits, and warehouse safety levels.</p>
                     </div>
                     <div class="banner-action-col">
                         <button type="button" class="btn-primary" onclick="openModal('addRequestModal')">
@@ -188,7 +188,7 @@
                         </div>
                     </div>
 
-                    <!-- THRESHOLD LEGEND PILLS (CLEAN SVGS - NO EMOJIS) -->
+                    <!-- THRESHOLD LEGEND PILLS -->
                     <div class="threshold-legend-row">
                         <span class="badge-route route-procure"><span class="badge-dot dot-procure"></span> ≤ ₱300: Procurement Direct Approval</span>
                         <span class="badge-route route-finance"><span class="badge-dot dot-finance"></span> ₱301–₱500: Finance Endorsement</span>
@@ -262,7 +262,7 @@
                 <div class="panel-header-bar">
                     <div>
                         <h2 class="section-title">Warehouse Inventory Summary</h2>
-                        <p class="section-sub-text">Stock levels monitored for raw tea, boba, and packaging.</p>
+                        <p class="section-sub-text">Stock levels monitored for raw materials, packaging, and equipment.</p>
                     </div>
                     <a href="inventorySection.html" class="view-link">
                         <span>Open Full Inventory</span>
@@ -327,7 +327,7 @@
         </main>
     </div>
 
-    <!-- MODAL: ADD PURCHASE REQUEST -->
+    <!-- MODAL 1: ADD PURCHASE REQUEST (HYBRID SUPPLIER VIA DATALIST) -->
     <div class="modal-overlay" id="addRequestModal">
         <div class="profile-modal" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -347,12 +347,16 @@
                 <div class="form-grid">
                     <div class="form-group full">
                         <label for="itemName">Item Name / Description *</label>
-                        <input type="text" id="itemName" placeholder="e.g. Raw Tapioca Pearls (1kg), Fresh Milk" required>
+                        <input type="text" id="itemName" placeholder="e.g. Raw Tapioca Pearls (1kg), Condensed Milk" required>
                     </div>
 
-                    <div class="form-group">
-                        <label for="storeName">Preferred Supplier / Vendor *</label>
-                        <input type="text" id="storeName" placeholder="e.g. Puregold Monumento" required>
+                    <!-- Punto 3: Hybrid Supplier Input (Dropdown Suggestions + Free Typing) -->
+                    <div class="form-group full">
+                        <label for="storeName">Supplier / Store (Select or Type Local Store) *</label>
+                        <input type="text" id="storeName" list="vendorDatalist" placeholder="Select registered vendor or type local sari-sari/market..." required>
+                        <datalist id="vendorDatalist">
+                            <!-- Populated dynamically via JS -->
+                        </datalist>
                     </div>
 
                     <div class="form-group">
@@ -385,6 +389,92 @@
                             <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
                         <span>Submit Requisition</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: PHYSICAL RECEIVING & DELIVERY VARIANCE AUDIT (Punto 1) -->
+    <div class="modal-overlay" id="receiveDeliveryModal">
+        <div class="profile-modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <h3 class="modal-title">Receive &amp; Audit Delivery</h3>
+                    <p class="modal-subtitle">Inspect delivered goods against purchase order. Only usable stock will be added to inventory.</p>
+                </div>
+                <button type="button" class="modal-close" onclick="closeModal('receiveDeliveryModal')">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="receiveDeliveryForm" class="modal-body">
+                <input type="hidden" id="receivePrId">
+                <input type="hidden" id="receiveItemRawName">
+
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Item / Requisition Manifest</label>
+                        <div class="readonly-display-box" id="receiveManifestDisplay">Loading manifest...</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expectedUnitsCount">Expected Units Ordered</label>
+                        <input type="number" id="expectedUnitsCount" readonly style="opacity: 0.8; background: #FFF5F4;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="usableReceivedUnits">Usable Units Received *</label>
+                        <input type="number" id="usableReceivedUnits" min="0" step="0.1" required>
+                    </div>
+
+                    <div class="form-group full">
+                        <div class="variance-feedback-box" id="varianceNoticeBox">
+                            <div class="variance-row">
+                                <span>Variance / Discrepancy:</span>
+                                <strong id="calculatedVarianceText" class="variance-ok">0 units discrepancy</strong>
+                            </div>
+                            <small id="varianceExplanation" style="color: var(--text-muted);">All expected items accounted for.</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="destinationCategory">Inventory Department *</label>
+                        <select id="destinationCategory" required>
+                            <option value="raw_material" selected>Raw Material / Ingredient</option>
+                            <option value="packaging">Packaging (Cups, Lids, Straws)</option>
+                            <option value="equipment">Equipment &amp; Utensils</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="destinationUnit">Unit of Measure *</label>
+                        <select id="destinationUnit" required>
+                            <option value="grams" selected>grams</option>
+                            <option value="pcs">pcs</option>
+                            <option value="packs">packs</option>
+                            <option value="cans">cans</option>
+                            <option value="bags">bags</option>
+                            <option value="kg">kg</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group full">
+                        <label for="receivingAuditNotes">Inspection &amp; Audit Notes</label>
+                        <textarea id="receivingAuditNotes" rows="2" placeholder="e.g. 1 unit damaged in transit; 9 usable units accepted into chiller shelf A..."></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('receiveDeliveryModal')">Cancel</button>
+                    <button type="submit" class="btn-primary">
+                        <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>Verify &amp; Add to Inventory</span>
                     </button>
                 </div>
             </form>
