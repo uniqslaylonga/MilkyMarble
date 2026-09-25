@@ -220,6 +220,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// TWA / Digital Asset Links: Express's static middleware ignores dotfiles
+// (and dot-prefixed folders like .well-known) by default for security, so
+// without this explicit route /.well-known/assetlinks.json would 404 and
+// the Android app could never be verified as the site's "owner" -- it
+// would keep showing a browser URL bar instead of running fullscreen.
+app.get('/.well-known/assetlinks.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.sendFile(path.join(__dirname, 'public', '.well-known', 'assetlinks.json'));
+});
+
 app.use(express.static(path.join(__dirname, 'public'), staticOpts));
 app.use('/customer', express.static(path.join(__dirname, 'public/customer'), staticOpts));
 app.use('/images', express.static(path.join(__dirname, 'public/images'), staticOpts));
