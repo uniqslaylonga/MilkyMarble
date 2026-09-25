@@ -10,7 +10,7 @@
 // TWA show a small offline fallback instead of a broken white screen.
 
 const OFFLINE_URL = '/offline.html';
-const PRECACHE = 'mm-shell-v1';
+const PRECACHE = 'mm-shell-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

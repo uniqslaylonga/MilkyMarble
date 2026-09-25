@@ -246,7 +246,7 @@ window.openOrderDetailsModal = function(orderOrId) {
           <div class="status-cup-item-row">
             <div class="status-cup-thumb" style="--thumb-accent: ${assets.accent_color};">
               ${assets.is_custom ? `
-                <div class="orders-composite-thumb" style="width: 44px; height: 56px; position:relative;">
+                <div class="orders-composite-thumb" style="width: 50px; height: 58px; position:relative;">
                   <img src="${assets.flavor_img}" class="cart-layer-flavor" alt="Flavor" onerror="this.style.display='none'">
                   ${assets.toppings_img ? `<img src="${assets.toppings_img}" class="cart-layer-toppings" alt="Toppings" onerror="this.style.display='none'">` : ''}
                   <img src="${assets.cup_img}" class="cart-layer-cup" alt="Cup">
@@ -391,7 +391,7 @@ async function loadCustomerNotifications() {
         <article class="notification-item-card ${isRead ? 'is-read' : ''}" onclick="markSingleNotifRead('${order.id}')">
           <div class="notif-thumb-wrapper" style="--thumb-accent: ${assets.accent_color};">
             ${assets.is_custom ? `
-              <div class="orders-composite-thumb" style="width: 52px; height: 68px;">
+              <div class="orders-composite-thumb" style="width: 74px; height: 86px;">
                 <img src="${assets.flavor_img}" class="cart-layer-flavor" alt="Flavor" onerror="this.style.display='none'">
                 ${assets.toppings_img ? `<img src="${assets.toppings_img}" class="cart-layer-toppings" alt="Toppings" onerror="this.style.display='none'">` : ''}
                 <img src="${assets.cup_img}" class="cart-layer-cup" alt="Cup">

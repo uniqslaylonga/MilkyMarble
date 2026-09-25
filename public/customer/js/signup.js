@@ -267,7 +267,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Initialize Google OAuth client
-  if (typeof google !== 'undefined') {
+  // The GSI script tag uses async/defer, so it may not have finished loading
+  // yet when this code runs. Poll until it's ready instead of checking once.
+  function initGoogleSignIn() {
+    if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+      setTimeout(initGoogleSignIn, 100);
+      return;
+    }
+
     google.accounts.id.initialize({
       client_id: "1077352091553-6d77b0rtu3km8r1har7ra3lsmbf5en35.apps.googleusercontent.com",
       callback: handleGoogleCredentialResponse,
@@ -285,6 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
   }
+  initGoogleSignIn();
 
   const btnGoogleLogin = document.getElementById('btnGoogleLogin');
   if (btnGoogleLogin) {

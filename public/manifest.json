@@ -2,7 +2,7 @@
   "name": "Milky Marble",
   "short_name": "Milky Marble",
   "description": "Order milk tea, jelly cups, and custom builds from Milky Marble.",
-  "start_url": "/customer/home.html?source=twa",
+  "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

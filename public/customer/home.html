@@ -378,11 +378,12 @@
   <!-- ORDER SUMMARY CHECKOUT MODAL -->
   <div class="product-modal-backdrop" id="orderSummaryModal" style="z-index: 1000001;" onclick="closeOrderSummaryModal(event)">
     <div class="product-modal-container order-summary-card" onclick="event.stopPropagation()">
-      <button type="button" class="modal-close-btn" onclick="closeOrderSummaryModal()" title="Close summary">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-
-      <h2 class="summary-main-title">Order Summary</h2>
+      <div class="summary-sticky-header">
+        <h2 class="summary-main-title">Order Summary</h2>
+        <button type="button" class="modal-close-btn" onclick="closeOrderSummaryModal()" title="Close summary">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
 
       <!-- Recipient Details Block -->
       <div class="summary-section-block">
@@ -485,6 +486,20 @@
         </div>
       </div>
 
+      <!-- TERMS & CONDITIONS AGREEMENT -->
+      <div class="summary-section-block terms-agree-section">
+        <label class="terms-agree-label" style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#594A42; cursor:pointer;">
+          <input type="checkbox" id="agreeTermsCheckbox" style="margin-top:2px; width:16px; height:16px; flex-shrink:0; cursor:pointer;" onchange="validateTermsAgreement(this)">
+          <span>
+            I have read and agree to the
+            <a href="#" onclick="openTermsModal(event)" style="color:#E27D80; font-weight:600; text-decoration:underline;">Terms &amp; Conditions</a>.
+          </span>
+        </label>
+        <span id="termsRequiredMsg" style="display: none; color: #d32f2f; font-size: 12px; font-weight: 600; margin-top: 6px;">
+          Please agree to the Terms &amp; Conditions before placing your order.
+        </span>
+      </div>
+
       <div class="summary-action-box">
         <button type="button" class="btn-place-order" id="btnPlaceOrderSubmit" onclick="confirmPlaceOrder()">Place Order</button>
       </div>
@@ -515,6 +530,330 @@
 
       <div class="recipient-modal-actions" style="margin-top: 12px;">
         <button type="button" class="btn-recipient-cancel" onclick="closeRecipientModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TERMS & CONDITIONS MODAL -->
+  <div class="product-modal-backdrop" id="termsConditionsModal" onclick="closeTermsModal(event)">
+    <div class="product-modal-container terms-modal-card" onclick="event.stopPropagation()">
+      <div class="terms-modal-header">
+        <div class="terms-modal-header-top">
+          <span class="terms-modal-badge"><i class="fa-solid fa-file-contract"></i></span>
+          <button type="button" class="modal-close-btn terms-modal-close" onclick="closeTermsModal()" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <h2 class="terms-modal-title">Terms &amp; Conditions</h2>
+        <p class="terms-modal-updated"><i class="fa-regular fa-clock"></i> Last Updated: August 2026</p>
+      </div>
+
+      <div class="terms-modal-body">
+        <p class="terms-modal-intro">
+          Please read these Terms &amp; Conditions carefully before using the Milky Marble website.
+          By accessing the website, creating an account, placing an order, making a payment, or
+          otherwise using the platform, you acknowledge that you have read and agreed to these
+          Terms &amp; Conditions.
+        </p>
+
+        <div class="terms-accordion">
+        <div class="terms-item">
+          <button type="button" class="terms-header">
+            <h2>1. Educational and Demonstration Platform</h2>
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="#7C4F38" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="terms-content">
+            <p>
+              Milky Marble is an academic and educational store environment developed for
+              demonstration, software testing, system evaluation, and technical assessment.
+            </p>
+            <p>
+              The platform is intended for University of Caloocan City students in Congressional
+              Campus. Some products, listings, and content presented on the platform may be
+              mockup or demonstration content.
+            </p>
+          </div>
+        </div>
+
+        <div class="terms-item">
+          <button type="button" class="terms-header">
+            <h2>2. Products and Online Ordering</h2>
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="#7C4F38" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="terms-content">
+            <p>The website allows users to:</p>
+            <ul>
+              <li>Browse available products</li>
+              <li>Customize eligible products</li>
+              <li>Add products to a cart</li>
+              <li>Place orders</li>
+              <li>Make payments through the available payment method</li>
+              <li>Monitor order status</li>
+              <li>View pickup information</li>
+              <li>Save product builds</li>
+              <li>Rate products</li>
+              <li>Manage their account</li>
+            </ul>
+            <p>
+              The available products, customization options, prices, ordering periods, and stock
+              quantities are controlled by the system and business administrators.
+            </p>
+            <p>Customers may only order valid products and valid customization combinations.</p>
+          </div>
+        </div>
+
+        <div class="terms-item">
+          <button type="button" class="terms-header">
+            <h2>3. Pre-Orders and Ready Stock</h2>
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="#7C4F38" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="terms-content">
+            <p>Milky Marble uses both pre-orders and limited ready stock.</p>
+            <p>
+              For ready-stock orders, the system checks the available inventory before confirming
+              the requested quantity.
+            </p>
+            <p>
+              For pre-orders, the order creates a production requirement. Products that have not
+              yet been produced will not be incorrectly deducted from finished-product inventory.
+            </p>
+          </div>
+        </div>
+
+        <div class="terms-item">
+          <button type="button" class="terms-header">
+            <h2>4. Payment</h2>
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="#7C4F38" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="terms-content">
+            <p>The website provides a payment facility, including QR-based payment.</p>
+            <p>
+              Payment status must reach the required verification stage before an order proceeds
+              to controlled fulfillment.
+            </p>
+            <p>
+              The exact payment verification process may depend on the payment integration
+              implemented by the system.
+            </p>
+          </div>
+        </div>
+
+        <div class="terms-item">
+          <button type="button" class="terms-header">
+            <h2>5. Pickup</h2>
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="#7C4F38" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="terms-content">
+            <p>
+              Milky Marble orders are fulfilled through pickup rather than physical delivery.
+            </p>
+            <p>
+              Customers are responsible for following the designated pickup schedule and
+              collecting their completed order during the applicable pickup period.
+            </p>
+            <p>
+              The system validates pickup dates and times against the available business
+              schedule.
+            </p>
+          </div>
+        </div>
+
+        <div class="terms-item">
+          <button type="button" class="terms-header">
+            <h2>6. Order Status</h2>
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="#7C4F38" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="terms-content">
+            <p>Orders may progress through the following statuses:</p>
+            <p class="terms-flow">
+              Pending Payment → Paid/Payment Verified → Confirmed → Preparing/In Production →
+              Ready for Pickup → Picked Up → Completed.
+            </p>
+            <p>
+              An order may not proceed to controlled fulfillment until the required payment
+              verification has been completed.
+            </p>
+          </div>
+        </div>
+
+        <div class="terms-item">
+          <button type="button" class="terms-header">
+            <h2>7. User Responsibility</h2>
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="#7C4F38" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="terms-content">
+            <ul>
+              <li>Provide accurate information when placing an order.</li>
+              <li>Submit valid order quantities.</li>
+              <li>Select valid customization options.</li>
+              <li>Use only their own account.</li>
+              <li>Review their order before checkout.</li>
+              <li>Follow the pickup schedule.</li>
+              <li>Use the payment system responsibly.</li>
+              <li>Acknowledge the educational/demonstration nature of the platform.</li>
+            </ul>
+            <p>Users are responsible for transactions they initiate on the platform.</p>
+          </div>
+        </div>
+
+        <div class="terms-item">
+          <button type="button" class="terms-header">
+            <h2>8. Account and Data Access</h2>
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="#7C4F38" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="terms-content">
+            <p>
+              Customers may only view and manage their own account information and order
+              history.
+            </p>
+            <p>
+              Employee access is controlled through role-based access control (RBAC). Employees
+              are permitted to access only the modules and actions assigned to their role.
+            </p>
+          </div>
+        </div>
+
+        <div class="terms-item">
+          <button type="button" class="terms-header">
+            <h2>9. Intellectual Property</h2>
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="#7C4F38" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="terms-content">
+            <p>
+              Product images, logos, brand names, website content, designs, and other materials
+              used on the platform may be subject to intellectual-property rights.
+            </p>
+            <p>
+              Where third-party materials are used in mock product listings, they are intended
+              for educational and demonstration purposes consistent with the platform's stated
+              use.
+            </p>
+          </div>
+        </div>
+
+        <div class="terms-item">
+          <button type="button" class="terms-header">
+            <h2>10. Disclaimer</h2>
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="#7C4F38" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="terms-content">
+            <p>
+              Because the platform is designed as an educational and demonstration environment,
+              Milky Marble does not guarantee that all demonstration products, features, payment
+              interactions, or system functions represent a commercial retail service.
+            </p>
+            <p>
+              The Terms &amp; Conditions document also provides disclaimers concerning
+              warranties and limitations of liability related to reliance on mock products and
+              payment interactions.
+            </p>
+          </div>
+        </div>
+
+        <div class="terms-item">
+          <button type="button" class="terms-header">
+            <h2>11. Limitation of Liability</h2>
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="#7C4F38" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="terms-content">
+            <p>
+              To the extent permitted by applicable law, the developers, administrators,
+              educators, and institution shall not be responsible for indirect, incidental, or
+              financial losses resulting from the user's interaction with the demonstration
+              platform.
+            </p>
+            <p>
+              Users acknowledge the educational purpose of the system and assume responsibility
+              for transactions they initiate.
+            </p>
+          </div>
+        </div>
+
+        <div class="terms-item">
+          <button type="button" class="terms-header">
+            <h2>12. System Security and Audit</h2>
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="#7C4F38" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="terms-content">
+            <p>
+              Milky Marble uses controlled access and audit mechanisms to protect system
+              operations.
+            </p>
+            <p>
+              Major approvals, inventory changes, and financial transactions should be recorded
+              and auditable. Completed financial and sales transactions should not be freely
+              overwritten; corrections should use controlled adjustment or refund mechanisms.
+            </p>
+          </div>
+        </div>
+
+        <div class="terms-item">
+          <button type="button" class="terms-header">
+            <h2>13. Changes to These Terms</h2>
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="#7C4F38" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="terms-content">
+            <p>
+              Milky Marble reserves the right to update these Terms &amp; Conditions when
+              changes are made to the system, business rules, payment process, ordering process,
+              or applicable policies.
+            </p>
+            <p>Updated terms will apply after they are published on the website.</p>
+          </div>
+        </div>
+
+        <div class="terms-item">
+          <button type="button" class="terms-header">
+            <h2>14. Acceptance</h2>
+            <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="#7C4F38" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="terms-content">
+            <p>
+              By using the Milky Marble website, placing an order, or proceeding through
+              checkout, the user acknowledges and accepts these Terms &amp; Conditions.
+            </p>
+            <p>
+              The existing Terms &amp; Conditions document specifically recognizes electronic
+              acceptance through checkout or consumption.
+            </p>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <div class="terms-modal-actions">
+        <button type="button" class="btn-terms-decline" onclick="closeTermsModal()">Decline</button>
+        <button type="button" class="btn-terms-accept" onclick="acceptTermsAndClose()">
+          <i class="fa-solid fa-check"></i> Accept
+        </button>
       </div>
     </div>
   </div>

@@ -585,7 +585,7 @@ window.openOrderDetailsModal = function(orderOrId) {
         <div class="status-cup-item-row">
           <div class="status-cup-thumb" style="--thumb-accent: ${assets.accent_color};">
             ${assets.is_custom ? `
-              <div class="orders-composite-thumb" style="width: 44px; height: 56px;">
+              <div class="orders-composite-thumb" style="width: 48px; height: 56px;">
                 <img src="${assets.flavor_img}" class="cart-layer-flavor" alt="Flavor" onerror="this.style.display='none'">
                 ${assets.toppings_img ? `<img src="${assets.toppings_img}" class="cart-layer-toppings" alt="Toppings" onerror="this.style.display='none'">` : ''}
                 <img src="${assets.cup_img}" class="cart-layer-cup" alt="Cup">
