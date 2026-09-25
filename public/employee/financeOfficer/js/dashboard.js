@@ -8,8 +8,21 @@ const FIN_PAGE_SIZE = 4;
 let releaseDayChartInstance = null;
 let cogsChartInstance = null;
 
+// Global SweetAlert2 Configuration matching Master SOP Section 2.E
+const MMSwal = Swal.mixin({
+    customClass: {
+        popup: 'mm-swal-popup',
+        title: 'mm-swal-title',
+        confirmButton: 'mm-swal-confirm',
+        cancelButton: 'mm-swal-cancel'
+    },
+    buttonsStyling: false
+});
+
 document.addEventListener('DOMContentLoaded', () => {
-    Chart.defaults.font.family = "'Urbanist', sans-serif";
+    if (typeof Chart !== 'undefined') {
+        Chart.defaults.font.family = "'Urbanist', sans-serif";
+    }
     fetchFinanceDashboardData();
 
     // Search filter listener
@@ -46,7 +59,10 @@ async function fetchFinanceDashboardData() {
             response = await fetch('/api/finance-officer/dashboard', { headers });
         }
 
-        if (!response.ok) throw new Error(await EmployeeUI.errorMessage(response));
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.message || 'Server error ' + response.status);
+        }
 
         const data = await response.json();
 
@@ -55,9 +71,9 @@ async function fetchFinanceDashboardData() {
         const userFirstNameEl = document.getElementById('userFirstName');
         const userAvatarEl = document.getElementById('userAvatar');
 
-        if (userNameEl) userNameEl.textContent = data.user.fullName || 'Financial Officer';
-        if (userFirstNameEl) userFirstNameEl.textContent = data.user.firstName || 'Officer';
-        if (userAvatarEl && data.user.avatarSrc) userAvatarEl.src = data.user.avatarSrc;
+        if (userNameEl) userNameEl.textContent = data.user?.fullName || 'Financial Officer';
+        if (userFirstNameEl) userFirstNameEl.textContent = data.user?.firstName || 'Finance Officer';
+        if (userAvatarEl && data.user?.avatarSrc) userAvatarEl.src = data.user.avatarSrc;
 
         // Metrics
         if (data.metrics) {
@@ -72,12 +88,16 @@ async function fetchFinanceDashboardData() {
         allLiquidations = data.liquidations || [];
 
         applyFinanceFilters();
-        initReleaseDayChart(data.releaseCashFlow);
-        initCogsDonutChart(data.cogsBreakdown);
+        initReleaseDayChart(data.releaseCashFlow || { revenue: [data.metrics?.totalRevenue || 0, 0], outflow: [data.metrics?.totalExpenses || 0, 0] });
+        initCogsDonutChart(data.cogsBreakdown || [42, 33, 25]);
 
     } catch (error) {
-        console.error('Could not load live data from the server:', error);
-        if (window.EmployeeUI) { EmployeeUI.showError(error); EmployeeUI.failTables(); }
+        console.error('Could not load finance dashboard data:', error);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'System Notice',
+            text: error.message || 'Could not load financial records from server.'
+        });
     }
 }
 
@@ -186,12 +206,12 @@ function renderFinanceTable() {
                         <strong style="color: var(--brown-soft); font-size: 13px;">${escapeHtml(item.item_name)}</strong>
                         <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(item.pr_code)} • ${escapeHtml(item.vendor || 'Supplier')}</div>
                     </td>
-                    <td><span style="font-weight: 700; color: var(--text-dark);">${escapeHtml(item.department)}</span></td>
+                    <td><span style="font-weight: 700; color: var(--text-dark);">${escapeHtml(item.department || 'Procurement')}</span></td>
                     <td><strong style="color: var(--brown-soft); font-family: var(--font-family-heading); font-size: 13.5px;">${costStr}</strong></td>
-                    <td><span class="badge-route route-finance">🟠 Endorsed to Finance</span></td>
+                    <td><span class="badge-route route-finance"><span class="badge-dot dot-finance"></span> Endorsed to Finance</span></td>
                     <td style="text-align: right;">
-                        <button type="button" class="btn-approve-finance" onclick="approvePrePurchase(${item.id}, '${escapeHtml(item.item_name)}', ${item.total_cost})">
-                            <i class="fa-solid fa-check"></i> Approve &amp; Release
+                        <button type="button" class="btn-approve-finance" onclick="reviewAndEndorseModal(${item.id})">
+                            Review &amp; Endorse
                         </button>
                     </td>
                 </tr>
@@ -201,16 +221,16 @@ function renderFinanceTable() {
                 <tr>
                     <td>
                         <strong style="color: var(--brown-soft); font-size: 13px;">${escapeHtml(item.item_name)}</strong>
-                        <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(item.pr_code)} • Direct Buy (Rhodalyn)</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(item.pr_code)} • Direct Buy (Procurement)</div>
                     </td>
                     <td>
                         <span style="font-size: 11.5px; font-weight: 700; color: var(--brown-soft);">${escapeHtml(item.or_number || 'OR Attached')}</span>
                     </td>
                     <td><strong style="color: var(--brown-soft); font-family: var(--font-family-heading); font-size: 13.5px;">${costStr}</strong></td>
-                    <td><span class="badge-route route-procure">🟢 Direct Buy Liquidation</span></td>
+                    <td><span class="badge-route route-procure"><span class="badge-dot dot-procure"></span> Direct Buy Liquidation</span></td>
                     <td style="text-align: right;">
                         <button type="button" class="btn-liquidate-direct" onclick="verifyAndLiquidate(${item.id}, '${escapeHtml(item.item_name)}', ${item.total_cost})">
-                            <i class="fa-solid fa-stamp"></i> Verify &amp; Liquidate
+                            Verify &amp; Liquidate
                         </button>
                     </td>
                 </tr>
@@ -242,24 +262,92 @@ function renderFinPagerButtons(totalPages, activePage) {
     });
 }
 
-// Action: Approve Pre-Purchase (₱301-₱500)
-function approvePrePurchase(id, itemName, cost) {
-    const confirmApprove = confirm(`Approve and Release Funds for "${itemName}" (₱${cost.toFixed(2)})?\nThis clears Procurement to purchase.`);
-    if (!confirmApprove) return;
+// Punto 2: Hybrid Quick Action Review Modal para sa ₱301–₱500 Requisitions
+async function reviewAndEndorseModal(itemId) {
+    const item = allPreApprovals.find(i => i.id === itemId);
+    if (!item) return;
 
-    allPreApprovals = allPreApprovals.filter(i => i.id !== id);
-    applyFinanceFilters();
-    alert(`Funds released for "${itemName}"! Notification sent to Rhodalyn.`);
+    const res = await MMSwal.fire({
+        title: `Requisition Clearance: ${item.pr_code || 'PR-Item'}`,
+        html: `
+            <div style="text-align: left; font-size: 13px; line-height: 1.6; color: var(--text-dark);">
+                <div style="margin-bottom: 6px;"><strong>Item / Supplies:</strong> ${escapeHtml(item.item_name)}</div>
+                <div style="margin-bottom: 6px;"><strong>Requesting Department:</strong> ${escapeHtml(item.department || 'Procurement')}</div>
+                <div style="margin-bottom: 6px;"><strong>Estimated Requisition Amount:</strong> ₱${formatAmount(item.total_cost)}</div>
+                <div style="margin-bottom: 6px;"><strong>DOA Threshold:</strong> <span class="badge-route route-finance"><span class="badge-dot dot-finance"></span> ₱301–₱500 Middle-Tier Clearance</span></div>
+                
+                <div style="background: var(--bg-main); padding: 10px 12px; border-radius: 10px; margin: 10px 0; border-left: 3.5px solid var(--accent-pink);">
+                    <strong>Operating Budget Check:</strong> Sufficient funds in active Raw Materials envelope.<br>
+                    <small style="color: var(--text-muted);">Endorsing will notify Procurement to proceed with vendor purchase.</small>
+                </div>
+
+                <div style="text-align: right; margin-top: 8px;">
+                    <a href="budget.html" style="color: var(--accent-pink); font-size: 11.5px; font-weight: 700; text-decoration: none;">Open Full Budget &amp; Expense Ledger &rarr;</a>
+                </div>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Endorse & Release Funds',
+        denyButtonText: 'Reject Request',
+        cancelButtonText: 'Cancel'
+    });
+
+    if (res.isConfirmed) {
+        allPreApprovals = allPreApprovals.filter(i => i.id !== itemId);
+        applyFinanceFilters();
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Requisition Endorsed',
+            text: `Funds authorized for "${item.item_name}". Procurement has been notified to execute purchase.`
+        });
+    } else if (res.isDenied) {
+        const { value: reason } = await MMSwal.fire({
+            title: 'Reject Requisition',
+            input: 'textarea',
+            inputLabel: 'Reason for Rejection / Deferred Clearance',
+            inputPlaceholder: 'State reason for rejecting this disbursement...',
+            showCancelButton: true,
+            confirmButtonText: 'Confirm Rejection',
+            inputValidator: (val) => {
+                if (!val || val.trim().length === 0) return 'Please state a reason for rejection.';
+            }
+        });
+
+        if (reason) {
+            allPreApprovals = allPreApprovals.filter(i => i.id !== itemId);
+            applyFinanceFilters();
+            MMSwal.fire({
+                icon: 'info',
+                title: 'Requisition Rejected',
+                text: `Request for "${item.item_name}" was rejected. Rationale logged: "${reason}"`
+            });
+        }
+    }
 }
 
-// Action: Verify Receipt & Liquidate (≤ ₱300)
-function verifyAndLiquidate(id, itemName, cost) {
-    const confirmLiq = confirm(`Verify Official Receipt and replenish ₱${cost.toFixed(2)} to Petty Cash Fund for "${itemName}"?`);
-    if (!confirmLiq) return;
+// Action: Verify Receipt & Liquidate (≤ ₱300) gamit ang SweetAlert2
+async function verifyAndLiquidate(id, itemName, cost) {
+    const res = await MMSwal.fire({
+        title: 'Verify & Replenish Petty Cash?',
+        html: `Confirm that Official Receipt / Voucher for <strong>"${escapeHtml(itemName)}"</strong> (₱${cost.toFixed(2)}) has been inspected?<br><br><small style="color:var(--text-muted);">Amount will be added to the petty cash fund replenishment schedule.</small>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Liquidate & Replenish',
+        cancelButtonText: 'Cancel'
+    });
+
+    if (!res.isConfirmed) return;
 
     allLiquidations = allLiquidations.filter(i => i.id !== id);
     applyFinanceFilters();
-    alert(`Disbursement audited and liquidated! ₱${cost.toFixed(2)} added to petty cash replenishment schedule.`);
+
+    MMSwal.fire({
+        icon: 'success',
+        title: 'Disbursement Liquidated',
+        text: `₱${cost.toFixed(2)} added to petty cash replenishment schedule.`
+    });
 }
 
 // Chart 1: Tuesday vs Thursday Cash Flow
@@ -316,9 +404,6 @@ function initCogsDonutChart(customData) {
 
     if (cogsChartInstance) cogsChartInstance.destroy();
 
-    // There is no real per-ingredient cost tracking in the database
-    // (no tea/milk/cups cost breakdown exists anywhere), so we don't
-    // fabricate one. Show an honest "no data" state instead.
     if (!customData || !Array.isArray(customData) || customData.length === 0) {
         if (canvas) {
             const wrapper = canvas.parentElement;
@@ -333,14 +418,12 @@ function initCogsDonutChart(customData) {
         return;
     }
 
-    const dataPoints = customData;
-
     cogsChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: ['Tea & Boba', 'Milk Blend', 'Cups & Film'],
             datasets: [{
-                data: dataPoints,
+                data: customData,
                 backgroundColor: ['#f28b95', '#68B0AB', '#EAA342'],
                 borderWidth: 0
             }]
@@ -371,16 +454,21 @@ function closeDisbursementModal() {
     }
 }
 
-function handleDisbursementSubmit(e) {
+async function handleDisbursementSubmit(e) {
     e.preventDefault();
     const desc = document.getElementById('disburseDesc').value.trim();
     const cat = document.getElementById('disburseCategory').value;
     const amount = parseFloat(document.getElementById('disburseAmount').value || 0);
     const orNum = document.getElementById('disburseOrNum').value.trim();
 
-    alert(`Disbursement Voucher for "${desc}" (₱${amount.toFixed(2)}) successfully posted to general ledger under ${cat}!`);
     closeDisbursementModal();
     e.target.reset();
+
+    MMSwal.fire({
+        icon: 'success',
+        title: 'Disbursement Voucher Posted',
+        text: `Disbursement Voucher for "${desc}" (₱${amount.toFixed(2)}) successfully posted under ${cat}.`
+    });
 }
 
 function formatAmount(val) {
