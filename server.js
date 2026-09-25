@@ -243,7 +243,7 @@ app.get('/customer/:page', (req, res, next) => {
 });
 
 app.get('/', (req, res) => {
-  res.redirect('/customer/index.html');
+  res.redirect('/index.html');
 });
 
 // Avatar paths from the database can be: full https URL, base64, a relative
@@ -2691,7 +2691,7 @@ app.use((req, res) => {
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-    console.log(`Access in browser at http://localhost:${PORT}/customer/index.html`);
+    console.log(`Access in browser at http://localhost:${PORT}/`);
   });
 }
 
