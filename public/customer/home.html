@@ -378,11 +378,12 @@
   <!-- ORDER SUMMARY CHECKOUT MODAL -->
   <div class="product-modal-backdrop" id="orderSummaryModal" style="z-index: 1000001;" onclick="closeOrderSummaryModal(event)">
     <div class="product-modal-container order-summary-card" onclick="event.stopPropagation()">
-      <button type="button" class="modal-close-btn" onclick="closeOrderSummaryModal()" title="Close summary">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-
-      <h2 class="summary-main-title">Order Summary</h2>
+      <div class="summary-sticky-header">
+        <h2 class="summary-main-title">Order Summary</h2>
+        <button type="button" class="modal-close-btn" onclick="closeOrderSummaryModal()" title="Close summary">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
 
       <!-- Recipient Details Block -->
       <div class="summary-section-block">
