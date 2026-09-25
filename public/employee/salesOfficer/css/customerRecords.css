@@ -803,6 +803,7 @@ body {
   visibility: visible;
 }
 
+/* Profile tinanggal scroll bar sa profile */
 .profile-modal {
   width: 100%;
   max-width: 520px;
