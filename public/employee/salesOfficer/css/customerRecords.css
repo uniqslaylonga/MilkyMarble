@@ -814,7 +814,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
 .modal-header {
@@ -1112,9 +1112,10 @@ body {
 .modal-history-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   max-height: 140px;
   overflow-y: auto;
+  padding-right: 12px;
 }
 
 .history-item {
