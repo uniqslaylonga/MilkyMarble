@@ -10,6 +10,20 @@ document.addEventListener('DOMContentLoaded', () => {
   setupGlobalAvatarUpload();
 });
 
+// Fix: hitting the browser Back/Forward button after logout re-shows the
+// last rendered page instead of the login page. That's Chrome's bfcache
+// (back-forward cache) restoring the old DOM snapshot without re-running
+// DOMContentLoaded, so the stale "logged in" navbar/content just flashes
+// back up even though mm_user + the auth cookie were already cleared.
+// Forcing a real reload on a bfcache restore makes the page re-run its
+// normal auth checks (initNavbarState + each page's 401 redirect) instead
+// of showing that stale snapshot.
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) {
+    window.location.reload();
+  }
+});
+
 function escapeHtml(str = '') {
   return String(str)
     .replace(/&/g, '&amp;')
