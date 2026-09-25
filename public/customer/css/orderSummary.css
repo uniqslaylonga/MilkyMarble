@@ -89,11 +89,35 @@ body {
    address bar is showing, which pushes a bottom-sheet card (and its header/
    footer) past the real screen edges. `dvh` tracks the actual visible area;
    browsers that don't support it simply ignore the line and keep the `vh`
-   value above. */
+   value above.
+
+   home.css also defines its own, older `.product-modal-backdrop` /
+   `.product-modal-container` base rule (no !important, `top: 74px` instead
+   of covering the full screen, `align-items: center`, its own padding/
+   max-height) for a different, desktop-style modal. Both home.css and this
+   file are loaded on the same pages, so the two rules compete for every
+   property that isn't pinned here, and the terms sheet could end up
+   inheriting a mix of both  most visibly, being pushed down to start
+   below the top nav instead of covering the whole screen, which then
+   forced it (bottom-anchored) taller than the visible viewport and hid its
+   own header above the top edge. Pin every layout-critical property with
+   `!important` and explicit longhands (not the `inset` shorthand) so this
+   modal's position never depends on cascade order between the two files. */
 #termsConditionsModal.product-modal-backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
     z-index: 1000003 !important;
-    height: 100vh;
-    height: 100dvh;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 16px 12px !important;
+    background: rgba(89, 74, 66, 0.55) !important;
+    box-sizing: border-box !important;
 }
 
 .product-modal-container.order-summary-card {
