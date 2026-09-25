@@ -536,23 +536,26 @@
   <!-- TERMS & CONDITIONS MODAL -->
   <div class="product-modal-backdrop" id="termsConditionsModal" onclick="closeTermsModal(event)">
     <div class="product-modal-container terms-modal-card" onclick="event.stopPropagation()">
-      <button type="button" class="modal-close-btn" onclick="closeTermsModal()" title="Close">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-
       <div class="terms-modal-header">
-        <h2 class="terms-modal-title">Milky Marble — Terms &amp; Conditions</h2>
-        <p class="terms-modal-updated">Last Updated: August 2026</p>
+        <div class="terms-modal-header-top">
+          <span class="terms-modal-badge"><i class="fa-solid fa-file-contract"></i></span>
+          <button type="button" class="modal-close-btn terms-modal-close" onclick="closeTermsModal()" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <h2 class="terms-modal-title">Terms &amp; Conditions</h2>
+        <p class="terms-modal-updated"><i class="fa-regular fa-clock"></i> Last Updated: August 2026</p>
       </div>
 
-      <p class="terms-modal-intro">
-        Please read these Terms &amp; Conditions carefully before using the Milky Marble website.
-        By accessing the website, creating an account, placing an order, making a payment, or
-        otherwise using the platform, you acknowledge that you have read and agreed to these
-        Terms &amp; Conditions.
-      </p>
+      <div class="terms-modal-body">
+        <p class="terms-modal-intro">
+          Please read these Terms &amp; Conditions carefully before using the Milky Marble website.
+          By accessing the website, creating an account, placing an order, making a payment, or
+          otherwise using the platform, you acknowledge that you have read and agreed to these
+          Terms &amp; Conditions.
+        </p>
 
-      <div class="terms-accordion">
+        <div class="terms-accordion">
         <div class="terms-item">
           <button type="button" class="terms-header">
             <h2>1. Educational and Demonstration Platform</h2>
@@ -842,10 +845,14 @@
             </p>
           </div>
         </div>
+        </div>
       </div>
 
       <div class="terms-modal-actions">
-        <button type="button" class="btn-recipient-cancel" onclick="closeTermsModal()">Close</button>
+        <button type="button" class="btn-terms-decline" onclick="closeTermsModal()">Decline</button>
+        <button type="button" class="btn-terms-accept" onclick="acceptTermsAndClose()">
+          <i class="fa-solid fa-check"></i> Accept
+        </button>
       </div>
     </div>
   </div>

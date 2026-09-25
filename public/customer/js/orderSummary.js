@@ -791,11 +791,20 @@ window.openTermsModal = function(event) {
 window.closeTermsModal = function(event) {
   // A click on the dark backdrop passes the click event in; ignore it, same
   // as the other modals on this page. Only the explicit close controls
-  // (X button / "Close" button) call this with no event.
+  // (X button / "Decline" / "Accept" buttons) call this with no event.
   if (event && event.target) return;
   const modal = document.getElementById('termsConditionsModal');
   if (modal) modal.classList.remove('active');
   document.body.style.overflow = '';
+};
+
+window.acceptTermsAndClose = function() {
+  const checkbox = document.getElementById('agreeTermsCheckbox');
+  if (checkbox) {
+    checkbox.checked = true;
+    validateTermsAgreement(checkbox);
+  }
+  closeTermsModal();
 };
 
 (function setupTermsModalAccordion() {
