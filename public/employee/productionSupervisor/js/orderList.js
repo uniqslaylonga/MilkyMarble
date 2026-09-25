@@ -2,7 +2,7 @@ let allOrders = [];
 let filteredOrders = [];
 let allPresets = [];
 let currentOrderPage = 1;
-const ORDERS_PAGE_SIZE = 3;
+const ORDERS_PAGE_SIZE = 5;
 let currentFilterTab = 'all';
 
 document.addEventListener('DOMContentLoaded', () => {
