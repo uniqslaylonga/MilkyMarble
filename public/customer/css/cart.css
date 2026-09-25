@@ -188,14 +188,6 @@ body {
   margin-bottom: 2px;
 }
 
-/* Small Cup.png has more transparent padding baked in than Large Cup.png,
-   so an 8oz customized cart item renders smaller/zoomed out compared to
-   a 12oz one. Scale the whole thumb (all layers together) to compensate. */
-.composite-cart-thumb:has(.cart-layer-cup[src*="Small Cup"]) {
-  transform: scale(1.2);
-  transform-origin: center bottom;
-}
-
 /* Layer 1: Jelly Flavor */
 .composite-cart-thumb .cart-layer-flavor {
   position: absolute;

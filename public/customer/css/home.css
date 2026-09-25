@@ -803,18 +803,6 @@ body {
     width: 155px;
 }
 
-/* Layer 3/Small Cup.png ships with noticeably more transparent margin
-   around the cup than Layer 3/Large Cup.png. Both are stretched with
-   object-fit: contain at the same 100%/100%, so the 8oz cup renders
-   visibly smaller/"zoomed out" than the 12oz one. Scale the whole
-   short-stack composite up (flavor + toppings + cup move together,
-   so alignment between the layers is unaffected) to compensate until
-   the source art is re-exported with matching padding. */
-.short-stack {
-    transform: scale(1.2);
-    transform-origin: center bottom;
-}
-
 .layer-1-flavor {
     position: absolute;
     width: 78%;
@@ -2382,15 +2370,6 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 2;
-}
-
-/* Small Cup.png has more transparent padding baked in than Large Cup.png,
-   so an 8oz customized order renders smaller than a 12oz one even though
-   both fill 100%/100% via object-fit: contain. Scale the whole thumb
-   (all layers together, so flavor/toppings stay aligned with the cup). */
-.orders-composite-thumb:has(.cart-layer-cup[src*="Small Cup"]) {
-  transform: scale(1.2);
-  transform-origin: center bottom;
 }
 
 .orders-composite-thumb .cart-layer-flavor {

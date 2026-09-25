@@ -186,15 +186,6 @@ body {
     z-index: 2;
 }
 
-/* Small Cup.png has more transparent padding baked in than Large Cup.png,
-   so an 8oz customized item renders smaller/zoomed out compared to a
-   12oz one. Scale the whole thumb (all layers together) to compensate. */
-.notif-composite-thumb:has(.cart-layer-cup[src*="Small Cup"]),
-.orders-composite-thumb:has(.cart-layer-cup[src*="Small Cup"]) {
-    transform: scale(1.2);
-    transform-origin: center bottom;
-}
-
 .notif-composite-thumb .cart-layer-flavor,
 .orders-composite-thumb .cart-layer-flavor {
     position: absolute;
