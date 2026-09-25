@@ -485,6 +485,20 @@
         </div>
       </div>
 
+      <!-- TERMS & CONDITIONS AGREEMENT -->
+      <div class="summary-section-block terms-agree-section">
+        <label class="terms-agree-label" style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#594A42; cursor:pointer;">
+          <input type="checkbox" id="agreeTermsCheckbox" style="margin-top:2px; width:16px; height:16px; flex-shrink:0; cursor:pointer;" onchange="validateTermsAgreement(this)">
+          <span>
+            I have read and agree to the
+            <a href="/terms-and-conditions" target="_blank" rel="noopener" style="color:#E27D80; font-weight:600; text-decoration:underline;">Terms &amp; Conditions</a>.
+          </span>
+        </label>
+        <span id="termsRequiredMsg" style="display: none; color: #d32f2f; font-size: 12px; font-weight: 600; margin-top: 6px;">
+          Please agree to the Terms &amp; Conditions before placing your order.
+        </span>
+      </div>
+
       <div class="summary-action-box">
         <button type="button" class="btn-place-order" id="btnPlaceOrderSubmit" onclick="confirmPlaceOrder()">Place Order</button>
       </div>
