@@ -178,8 +178,8 @@ body {
 .notif-composite-thumb,
 .orders-composite-thumb {
     position: relative;
-    width: 60px;
-    height: 78px;
+    width: 74px;
+    height: 86px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -674,6 +674,12 @@ body {
 
     .notif-thumb-img {
         max-height: 74px;
+    }
+
+    .notif-composite-thumb,
+    .orders-composite-thumb {
+        width: 64px;
+        height: 74px;
     }
 
     .notif-item-title,

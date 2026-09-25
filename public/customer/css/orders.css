@@ -498,8 +498,8 @@ body {
 /* Composite Thumbnail Layers */
 .orders-composite-thumb {
     position: relative;
-    width: 86px;
-    height: 114px;
+    width: 110px;
+    height: 120px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1151,6 +1151,11 @@ body {
 
     .order-thumb-img {
         max-height: 88px;
+    }
+
+    .orders-composite-thumb {
+        width: 74px;
+        height: 88px;
     }
 
     .order-header-row {
