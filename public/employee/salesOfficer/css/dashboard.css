@@ -5,12 +5,14 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'Urbanist';
   src: url('/customer/images/Urbanist.ttf') format('woff2');
   font-weight: 400 700;
   font-style: normal;
 }
+
 @font-face {
   font-family: 'Kawaii RT';
   src: url('/customer/images/KawaiiRT-Mona.ttf') format('woff2');
@@ -46,7 +48,8 @@
   padding: 0;
 }
 
-html, body {
+html,
+body {
   width: 100%;
   max-width: 100%;
   margin: 0;
@@ -87,6 +90,7 @@ body {
 .sidebar::-webkit-scrollbar {
   width: 4px;
 }
+
 .sidebar::-webkit-scrollbar-thumb {
   background: rgba(246, 146, 153, 0.3);
   border-radius: 4px;
@@ -551,6 +555,7 @@ body {
   font-family: var(--font-family-heading);
   font-size: 26px;
   font-weight: 800;
+  letter-spacing: 1.5px;
   color: var(--brown-soft);
   line-height: 1;
 }
@@ -584,9 +589,17 @@ body {
   transition: width 0.4s ease;
 }
 
-.bar-fill.bar-pos { background-color: #2E7D32; }
-.bar-fill.bar-neu { background-color: #EAA342; }
-.bar-fill.bar-neg { background-color: #C9302C; }
+.bar-fill.bar-pos {
+  background-color: #2E7D32;
+}
+
+.bar-fill.bar-neu {
+  background-color: #EAA342;
+}
+
+.bar-fill.bar-neg {
+  background-color: #C9302C;
+}
 
 .sentiment-legend-row {
   display: flex;
@@ -607,9 +620,18 @@ body {
   height: 6px;
   border-radius: 50%;
 }
-.legend-dot.dot-pos { background-color: #2E7D32; }
-.legend-dot.dot-neu { background-color: #EAA342; }
-.legend-dot.dot-neg { background-color: #C9302C; }
+
+.legend-dot.dot-pos {
+  background-color: #2E7D32;
+}
+
+.legend-dot.dot-neu {
+  background-color: #EAA342;
+}
+
+.legend-dot.dot-neg {
+  background-color: #C9302C;
+}
 
 .ai-insight-box {
   background: var(--card-white);
@@ -739,12 +761,14 @@ body {
 .inflow-amount {
   font-family: var(--font-family-heading);
   font-size: 16px;
+  letter-spacing: 1px;
   color: var(--brown-soft);
 }
 
 .inflow-amount-prev {
   font-family: var(--font-family-heading);
   font-size: 14px;
+  letter-spacing: 1px;
   color: var(--text-muted);
 }
 
@@ -1569,6 +1593,7 @@ body {
   .overview-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
   .split-dashboard-layout {
     grid-template-columns: 1fr;
   }
@@ -1578,12 +1603,14 @@ body {
   .sidebar {
     display: none;
   }
+
   .main-content {
     margin-left: 0;
     width: 100%;
     max-width: 100%;
     padding: 16px;
   }
+
   .overview-grid {
     grid-template-columns: 1fr;
   }
