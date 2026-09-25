@@ -335,6 +335,13 @@ body {
   color: var(--text-muted);
 }
 
+.filter-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
 .filter-wrapper {
   display: flex;
   align-items: center;
@@ -371,6 +378,49 @@ body {
   color: var(--brown-soft);
   outline: none;
   cursor: pointer;
+}
+
+.search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--card-white);
+  border: 1.5px solid var(--accent-pink);
+  border-radius: 12px;
+  padding: 5px 12px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.search-wrapper:focus-within {
+  border-color: var(--accent-pink-soft);
+  box-shadow: 0 0 0 3px rgba(246, 146, 153, 0.18);
+}
+
+.search-icon-svg {
+  width: 14px;
+  height: 14px;
+  stroke: var(--accent-pink);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  flex-shrink: 0;
+}
+
+.search-input-sm {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-family-body);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brown-soft);
+  width: 190px;
+}
+
+.search-input-sm::placeholder {
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 .directory-card {

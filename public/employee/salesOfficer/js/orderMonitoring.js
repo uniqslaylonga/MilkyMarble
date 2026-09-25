@@ -27,6 +27,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (customDateInput) customDateInput.addEventListener('change', applyMonitoringFilters);
 
+    const orderSearchInput = document.getElementById('orderSearchInput');
+    if (orderSearchInput) {
+        let searchDebounceTimer;
+        orderSearchInput.addEventListener('input', () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(applyMonitoringFilters, 200);
+        });
+    }
+
     const prevBtn = document.getElementById('prevMonitoringBtn');
     const nextBtn = document.getElementById('nextMonitoringBtn');
 
@@ -95,6 +104,7 @@ function applyMonitoringFilters() {
     const statusVal = document.getElementById('statusFilter')?.value || 'all';
     const dateVal = document.getElementById('dateFilter')?.value || 'today';
     const customDateVal = document.getElementById('customDateInput')?.value;
+    const searchVal = (document.getElementById('orderSearchInput')?.value || '').trim().toLowerCase();
 
     const now = new Date();
     const todayStr = SalesCommon.localDate(now);
@@ -121,7 +131,14 @@ function applyMonitoringFilters() {
             else if (dateVal === 'custom') passDate = ordDateStr === customDateVal;
         }
 
-        return passStatus && passDate;
+        let passSearch = true;
+        if (searchVal) {
+            const nameStr = String(ord.customer_name || '').toLowerCase();
+            const orderNumStr = String(ord.order_number || '').toLowerCase();
+            passSearch = nameStr.includes(searchVal) || orderNumStr.includes(searchVal);
+        }
+
+        return passStatus && passDate && passSearch;
     });
 
     currentMonitoringPage = 1;

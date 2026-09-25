@@ -123,16 +123,25 @@
                         <h2 class="section-title">Incoming Orders Awaiting Confirmation</h2>
                         <span class="section-badge-pink">Action Required</span>
                     </div>
-                    <div class="filter-wrapper">
-                        <span class="filter-label">Filter Period:</span>
-                        <select id="orderDateFilter" class="custom-select-sm">
-                            <option value="today" selected>Today</option>
-                            <option value="week">This Week</option>
-                            <option value="month">This Month</option>
-                            <option value="custom">Pick Date...</option>
-                            <option value="all">All Dates</option>
-                        </select>
-                        <input type="date" id="orderCustomDate" class="custom-date-input" style="display: none;" />
+                    <div class="filter-controls-group">
+                        <div class="filter-wrapper">
+                            <span class="filter-label">Filter Period:</span>
+                            <select id="orderDateFilter" class="custom-select-sm">
+                                <option value="today" selected>Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="custom">Pick Date...</option>
+                                <option value="all">All Dates</option>
+                            </select>
+                            <input type="date" id="orderCustomDate" class="custom-date-input" style="display: none;" />
+                        </div>
+                        <div class="search-wrapper">
+                            <svg class="search-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="7" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            <input type="text" id="orderSearchInput" class="search-input-sm" placeholder="Search name or order code..." />
+                        </div>
                     </div>
                 </div>
 
