@@ -344,13 +344,30 @@ window.renderOrderSummaryModal = async function(items = []) {
           `
         : `<img src="${assets.image || 'images/1.jpg'}" alt="Cup" style="width: 50px; height: 50px; object-fit: contain;" onerror="this.src='images/1.jpg'">`;
 
+      // Normalize the toppings/add-ons text so it looks the same no matter
+      // where the item came from (Drinks builder, Orders reorder, or a raw
+      // cart row straight from the database). Drinks/Orders already hand in
+      // a "+ X + Y" string; a cart row only has a plain "X, Y" list — so
+      // build the "+ " formatted version here instead of trusting the caller.
+      const alreadyFormatted = typeof item.toppings === 'string' && item.toppings.trim().startsWith('+');
+      const displayToppings = alreadyFormatted
+        ? item.toppings.trim()
+        : (toppingsArr.length > 0 ? '+ ' + toppingsArr.join(' + ') : '');
+
+      const addonsRaw = item.addons ? String(item.addons).trim() : '';
+      const displayAddons = addonsRaw
+        ? (addonsRaw.startsWith('+') ? addonsRaw : '+ ' + addonsRaw)
+        : '';
+
+      const detailsLine = [displayToppings, displayAddons].filter(Boolean).join(' ');
+
       return `
         <div class="summary-cup-item" style="display: flex; align-items: center; justify-content: space-between; background: #FFF4F2; border-radius: 18px; padding: 12px 16px; margin-bottom: 8px;">
           <div style="display: flex; align-items: center; gap: 12px;">
             ${thumbHTML}
             <div style="display: flex; flex-direction: column;">
               <h4 style="font-size: 14.5px; font-weight: 800; color: #594A42; margin: 0;">${item.size || '12oz'} ${item.title || 'Milky Marble Cup'}</h4>
-              <span style="font-size: 12px; font-weight: 600; color: #7C4F38;">${item.toppings || ''} ${item.addons || ''}</span>
+              <span style="font-size: 12px; font-weight: 600; color: #7C4F38;">${detailsLine}</span>
               <span style="display: inline-block; width: fit-content; background: #F48A8E; color: #fff; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 99px; margin-top: 4px;">${qty}x</span>
             </div>
           </div>
