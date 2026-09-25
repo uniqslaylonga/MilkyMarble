@@ -83,6 +83,12 @@ body {
     z-index: 1000002 !important;
 }
 
+/* The Terms & Conditions modal can be opened from within the order summary
+   (or the agreement checkbox), so keep it above everything else. */
+#termsConditionsModal.product-modal-backdrop {
+    z-index: 1000003 !important;
+}
+
 .product-modal-container.order-summary-card {
     position: relative;
     background: var(--bg-modal);
@@ -693,6 +699,142 @@ body {
 
 .recipient-input-wrapper .input-icon {
     color: var(--btn-buy-pink);
+}
+
+/* ==================================================== */
+/* TERMS & CONDITIONS MODAL CARD                         */
+/* ==================================================== */
+.terms-modal-card {
+    max-width: 620px !important;
+    width: 92% !important;
+    background: #FFF5F4;
+    border-radius: 28px;
+    padding: 30px 26px 24px;
+}
+
+.terms-modal-header {
+    text-align: center;
+    margin-bottom: 6px;
+}
+
+.terms-modal-title {
+    font-family: var(--font-header);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-dark);
+}
+
+.terms-modal-updated {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.terms-modal-intro {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin: 10px 0 4px;
+}
+
+#termsConditionsModal .terms-accordion {
+    margin-top: 14px;
+}
+
+#termsConditionsModal .terms-item {
+    border-top: 1px solid #f4dcdb;
+    padding: 12px 0;
+}
+
+#termsConditionsModal .terms-item:last-child {
+    border-bottom: 1px solid #f4dcdb;
+}
+
+#termsConditionsModal .terms-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: transparent;
+    border: none;
+    padding: 6px 0;
+    cursor: pointer;
+    text-align: left;
+}
+
+#termsConditionsModal .terms-header h2 {
+    font-family: var(--font-body);
+    color: var(--text-dark);
+    font-size: 14.5px;
+    font-weight: 800;
+    margin: 0;
+    transition: color 0.2s ease;
+}
+
+#termsConditionsModal .terms-header .chevron {
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+#termsConditionsModal .terms-item.open .terms-header .chevron {
+    transform: rotate(180deg);
+}
+
+#termsConditionsModal .terms-item.open .terms-header h2 {
+    color: var(--primary-pink);
+}
+
+#termsConditionsModal .terms-item.open .terms-header .chevron path {
+    stroke: var(--primary-pink);
+}
+
+#termsConditionsModal .terms-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    padding: 0;
+}
+
+#termsConditionsModal .terms-item.open .terms-content {
+    max-height: 1000px;
+    padding: 4px 0 4px 0;
+}
+
+#termsConditionsModal .terms-item p {
+    color: var(--text-muted);
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.65;
+    margin: 0 0 8px 0;
+}
+
+#termsConditionsModal .terms-item p:last-child {
+    margin-bottom: 0;
+}
+
+#termsConditionsModal .terms-item ul {
+    margin: 0 0 10px 0;
+    padding-left: 20px;
+    color: var(--text-muted);
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.75;
+}
+
+#termsConditionsModal .terms-flow {
+    background: #fde9e8;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 700 !important;
+    color: var(--text-dark) !important;
+    font-size: 12.5px !important;
+}
+
+.terms-modal-actions {
+    margin-top: 8px;
 }
 
 .recipient-input-field {

@@ -776,6 +776,55 @@ window.closeRecipientModal = function(event) {
   if (modal) modal.classList.remove('active');
 };
 
+// ==========================================
+// TERMS & CONDITIONS MODAL
+// ==========================================
+window.openTermsModal = function(event) {
+  if (event) event.preventDefault();
+  const modal = document.getElementById('termsConditionsModal');
+  if (modal) {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+};
+
+window.closeTermsModal = function(event) {
+  // A click on the dark backdrop passes the click event in; ignore it, same
+  // as the other modals on this page. Only the explicit close controls
+  // (X button / "Close" button) call this with no event.
+  if (event && event.target) return;
+  const modal = document.getElementById('termsConditionsModal');
+  if (modal) modal.classList.remove('active');
+  document.body.style.overflow = '';
+};
+
+(function setupTermsModalAccordion() {
+  const buttons = document.querySelectorAll('#termsConditionsModal .terms-header');
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      const item = btn.closest('.terms-item');
+      if (!item) return;
+
+      const content = item.querySelector('.terms-content');
+      const isOpen = item.classList.contains('open');
+
+      item.parentElement
+        .querySelectorAll('.terms-item.open')
+        .forEach(function (openItem) {
+          openItem.classList.remove('open');
+          const openContent = openItem.querySelector('.terms-content');
+          if (openContent) openContent.style.maxHeight = null;
+        });
+
+      if (!isOpen) {
+        item.classList.add('open');
+        if (content) content.style.maxHeight = content.scrollHeight + 'px';
+      }
+    });
+  });
+})();
+
 function buildReceiptDOM(order) {
   let container = document.getElementById('printableReceiptContainer');
   if (!container) {
