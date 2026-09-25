@@ -807,7 +807,7 @@ body {
 .profile-modal {
   width: 100%;
   max-width: 520px;
-  max-height: 91vh;
+  max-height: 92vh;
   background: var(--card-white);
   border-radius: 22px;
   box-shadow: 0 16px 40px rgba(124, 79, 56, 0.22);
