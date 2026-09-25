@@ -207,19 +207,13 @@ body {
     }
 }
 
-/* The card itself scrolls (overflow-y: auto), so on short/mobile screens the
-   title, close button, and Place Order button could all end up scrolled out
-   of view along with the rest of the content -- the close "X" is
-   `position: absolute` on the card, so it scrolls away with everything else,
-   and Place Order sits at the very end of a long form. `position: sticky`
-   pins this header to the top and the action box (below) to the bottom of
-   the card's own scroll area, so both stay visible ("above" the scrolling
-   content) no matter how far the middle section is scrolled. */
+/* Wraps the title and close button in one row. Not made sticky: position:
+   sticky on this and on .summary-action-box below caused the card's own
+   scroll to repaint them out of order on some devices, overlapping the
+   Recipient Details / Order Total sections instead of cleanly hiding behind
+   them. Plain in-flow layout avoids that; the card still scrolls normally
+   as one column and the close button always sits with the title. */
 .summary-sticky-header {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    background: var(--bg-modal);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -712,13 +706,6 @@ body {
     display: flex;
     justify-content: center;
     margin-top: 4px;
-    position: sticky;
-    bottom: 0;
-    z-index: 5;
-    background: var(--bg-modal);
-    padding-top: 12px;
-    padding-bottom: 2px;
-    box-shadow: 0 -10px 14px -10px rgba(89, 74, 66, 0.2);
 }
 
 .btn-place-order {
