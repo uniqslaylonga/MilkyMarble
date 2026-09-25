@@ -25,6 +25,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (customDateInput) customDateInput.addEventListener('change', applyOrderFilters);
 
+    const orderSearchInput = document.getElementById('orderSearchInput');
+    if (orderSearchInput) {
+        let searchDebounceTimer;
+        orderSearchInput.addEventListener('input', () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(applyOrderFilters, 200);
+        });
+    }
+
     const prevBtn = document.getElementById('prevOrderBtn');
     const nextBtn = document.getElementById('nextOrderBtn');
 
@@ -92,6 +101,7 @@ async function loadOrderConfirmationData() {
 function applyOrderFilters() {
     const filterType = document.getElementById('orderDateFilter')?.value || 'today';
     const customDateVal = document.getElementById('orderCustomDate')?.value;
+    const searchVal = (document.getElementById('orderSearchInput')?.value || '').trim().toLowerCase();
 
     const now = new Date();
     const todayStr = SalesCommon.localDate(now);
@@ -100,15 +110,25 @@ function applyOrderFilters() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     filteredPendingOrders = allPendingOrders.filter(ord => {
-        if (!ord.placed_at) return true;
-        const ordDate = new Date(ord.placed_at);
-        const ordDateStr = SalesCommon.localDate(ord.placed_at);
+        let passDate = true;
+        if (ord.placed_at) {
+            const ordDate = new Date(ord.placed_at);
+            const ordDateStr = SalesCommon.localDate(ord.placed_at);
 
-        if (filterType === 'today') return ordDateStr === todayStr;
-        if (filterType === 'week') return ordDate >= weekAgo;
-        if (filterType === 'month') return ordDate >= startOfMonth;
-        if (filterType === 'custom') return ordDateStr === customDateVal;
-        return true;
+            if (filterType === 'today') passDate = ordDateStr === todayStr;
+            else if (filterType === 'week') passDate = ordDate >= weekAgo;
+            else if (filterType === 'month') passDate = ordDate >= startOfMonth;
+            else if (filterType === 'custom') passDate = ordDateStr === customDateVal;
+        }
+
+        let passSearch = true;
+        if (searchVal) {
+            const nameStr = String(ord.customer_name || '').toLowerCase();
+            const orderNumStr = String(ord.order_number || '').toLowerCase();
+            passSearch = nameStr.includes(searchVal) || orderNumStr.includes(searchVal);
+        }
+
+        return passDate && passSearch;
     });
 
     currentOrderPage = 1;
