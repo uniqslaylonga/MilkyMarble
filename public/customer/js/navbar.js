@@ -110,6 +110,27 @@ function injectNavbarDropdownStyles() {
       box-sizing: border-box;
       font-family: 'Urbanist', sans-serif;
     }
+    /* On phones/tablets a fixed 360px-wide dropdown anchored to the small
+       bell icon overflows the viewport (or runs almost edge-to-edge while
+       still being offset by the icon's position), so it visually floats
+       over the page content instead of reading as a clean panel. Below
+       860px -- the breakpoint where the navbar itself switches to its
+       compact 56px mobile height -- anchor the dropdown to the *viewport*
+       instead of the icon: fixed position, inset evenly from both sides,
+       and capped height with its own scroll so it never runs past the
+       bottom of the screen either. */
+    @media (max-width: 860px) {
+      .nav-notif-dropdown {
+        position: fixed;
+        top: 66px;
+        right: 12px;
+        left: 12px;
+        width: auto;
+        max-height: calc(100vh - 82px);
+        max-height: calc(100dvh - 82px);
+        overflow-y: auto;
+      }
+    }
     .nav-notif-wrapper:hover .nav-notif-dropdown,
     .nav-notif-wrapper.active .nav-notif-dropdown {
       display: flex !important;

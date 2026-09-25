@@ -187,10 +187,61 @@ function showSweetAlert(options) {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadRecipientInfoFromSession();
-  // Also runs on plain page load (not just when the modal opens) so the
-  // "(Mon, Tue, & Thu only)" hint text is correct even if visible before then.
   loadAllowedPickupDays();
 });
+
+// ==========================================
+// PICK-UP DAYS (admin-configurable via /api/admin/settings/pickup-days)
+// ==========================================
+// Falls back to Mon/Tue/Thu — the old hardcoded behavior — until the
+// public settings endpoint responds, mirroring the server's own fallback.
+const DEFAULT_PICKUP_DAYS = [1, 2, 4];
+let allowedPickupDays = DEFAULT_PICKUP_DAYS.slice();
+let pickupDaysPromise = null;
+
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function formatPickupDaysList(days, names) {
+  const labels = [...days].sort((a, b) => a - b).map(d => names[d]).filter(Boolean);
+  if (labels.length === 0) return '';
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return labels.join(' & ');
+  return labels.slice(0, -1).join(', ') + ', & ' + labels[labels.length - 1];
+}
+
+// Keeps the "(Mon, Tue, & Thu only)" heading hint and the red validation
+// message in sync with whatever the admin actually saved, on every page
+// that renders this shared Order Summary modal (Cart, Drinks, Orders).
+function updatePickupDaysHintText() {
+  const hintSpan = document.getElementById('pickupDaysHintSpan');
+  if (hintSpan) hintSpan.textContent = `(${formatPickupDaysList(allowedPickupDays, WEEKDAY_SHORT)} only)`;
+
+  const errText = document.getElementById('dateErrorMsgText');
+  if (errText) errText.textContent = `Pick-ups are only available on ${formatPickupDaysList(allowedPickupDays, WEEKDAY_FULL)}.`;
+}
+
+// Cached as a single in-flight/resolved promise so every page only fetches
+// this once, no matter how many times the modal is opened.
+function loadAllowedPickupDays() {
+  if (pickupDaysPromise) return pickupDaysPromise;
+
+  pickupDaysPromise = (async () => {
+    try {
+      const res = await fetch('/api/settings/pickup-days');
+      const data = await res.json();
+      if (data.status === 'success' && Array.isArray(data.days) && data.days.length > 0) {
+        allowedPickupDays = data.days;
+      }
+    } catch (err) {
+      console.warn('Could not load admin pickup-day settings, using default Mon/Tue/Thu:', err);
+    }
+    updatePickupDaysHintText();
+    return allowedPickupDays;
+  })();
+
+  return pickupDaysPromise;
+}
 
 async function loadRecipientInfoFromSession() {
   const activeCustomer = await getActiveCustomerProfile();
@@ -261,6 +312,11 @@ window.renderOrderSummaryModal = async function(items = []) {
   const ewalletHint = document.getElementById('ewalletHint');
   if (ewalletHint) ewalletHint.style.display = 'none';
 
+  const agreeTermsCheckbox = document.getElementById('agreeTermsCheckbox');
+  if (agreeTermsCheckbox) agreeTermsCheckbox.checked = false;
+  const termsReq = document.getElementById('termsRequiredMsg');
+  if (termsReq) termsReq.style.display = 'none';
+
   // Auto-select the customer's saved payment preference. If they never set
   // one in Account Settings, fall back to whichever method they used last
   // (from the server's order history, then from this browser's memory).
@@ -308,6 +364,9 @@ window.renderOrderSummaryModal = async function(items = []) {
   const loyaltyRow = document.getElementById('summaryLoyaltyDiscountRow');
   if (loyaltyRow) loyaltyRow.style.display = 'none';
 
+  // Make sure we have the admin's current pickup-day settings before
+  // picking a default date or showing the hint text — this also covers
+  // the case where the modal is opened before the page-load fetch resolves.
   await loadAllowedPickupDays();
   setNextDefaultPickupDate();
 
@@ -343,13 +402,30 @@ window.renderOrderSummaryModal = async function(items = []) {
           `
         : `<img src="${assets.image || 'images/1.jpg'}" alt="Cup" style="width: 50px; height: 50px; object-fit: contain;" onerror="this.src='images/1.jpg'">`;
 
+      // Normalize the toppings/add-ons text so it looks the same no matter
+      // where the item came from (Drinks builder, Orders reorder, or a raw
+      // cart row straight from the database). Drinks/Orders already hand in
+      // a "+ X + Y" string; a cart row only has a plain "X, Y" list — so
+      // build the "+ " formatted version here instead of trusting the caller.
+      const alreadyFormatted = typeof item.toppings === 'string' && item.toppings.trim().startsWith('+');
+      const displayToppings = alreadyFormatted
+        ? item.toppings.trim()
+        : (toppingsArr.length > 0 ? '+ ' + toppingsArr.join(' + ') : '');
+
+      const addonsRaw = item.addons ? String(item.addons).trim() : '';
+      const displayAddons = addonsRaw
+        ? (addonsRaw.startsWith('+') ? addonsRaw : '+ ' + addonsRaw)
+        : '';
+
+      const detailsLine = [displayToppings, displayAddons].filter(Boolean).join(' ');
+
       return `
         <div class="summary-cup-item" style="display: flex; align-items: center; justify-content: space-between; background: #FFF4F2; border-radius: 18px; padding: 12px 16px; margin-bottom: 8px;">
           <div style="display: flex; align-items: center; gap: 12px;">
             ${thumbHTML}
             <div style="display: flex; flex-direction: column;">
               <h4 style="font-size: 14.5px; font-weight: 800; color: #594A42; margin: 0;">${item.size || '12oz'} ${item.title || 'Milky Marble Cup'}</h4>
-              <span style="font-size: 12px; font-weight: 600; color: #7C4F38;">${item.toppings || ''} ${item.addons || ''}</span>
+              <span style="font-size: 12px; font-weight: 600; color: #7C4F38;">${detailsLine}</span>
               <span style="display: inline-block; width: fit-content; background: #F48A8E; color: #fff; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 99px; margin-top: 4px;">${qty}x</span>
             </div>
           </div>
@@ -491,56 +567,20 @@ window.selectPaymentMethod = function(btnElement) {
   if (ewalletHint) ewalletHint.style.display = isEwallet ? 'block' : 'none';
 };
 
-// Which weekdays (0=Sun..6=Sat) customers are allowed to pick up on.
-// Admin-configurable via the Store Settings page; falls back to the old
-// Mon/Tue/Thu default until that loads (or if it fails to load at all).
-let allowedPickupDays = [1, 2, 4];
-
-const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const WEEKDAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-// Turns [1, 2, 6] into "Mon, Tue, & Sat" (or "Monday, Tuesday, and Saturday"
-// for the longer sentence), so the wording always matches whatever days
-// the admin actually picked instead of staying stuck on "Mon, Tue, & Thu".
-function joinDayNames(sortedDays, names, finalWord) {
-  const labels = sortedDays.map(d => names[d]);
-  if (labels.length === 1) return labels[0];
-  if (labels.length === 2) return `${labels[0]} ${finalWord} ${labels[1]}`;
-  return `${labels.slice(0, -1).join(', ')}, ${finalWord} ${labels[labels.length - 1]}`;
-}
-
-function updatePickupDaysLabels() {
-  const sortedDays = [...allowedPickupDays].sort((a, b) => a - b);
-
-  const hintSpan = document.getElementById('pickupDaysHintSpan');
-  if (hintSpan) hintSpan.textContent = `(${joinDayNames(sortedDays, WEEKDAY_SHORT, '&')} only)`;
-
-  const errText = document.getElementById('dateErrorMsgText');
-  if (errText) errText.textContent = `Pick-ups are only available on ${joinDayNames(sortedDays, WEEKDAY_LONG, 'and')}.`;
-}
-
-async function loadAllowedPickupDays() {
-  try {
-    const res = await fetch('/api/settings/pickup-days');
-    const data = await res.json();
-    if (data.status === 'success' && Array.isArray(data.days) && data.days.length > 0) {
-      allowedPickupDays = data.days;
-    }
-  } catch (e) {
-    console.warn('Could not load pickup day settings, using default:', e);
-  }
-  updatePickupDaysLabels();
-}
-
 function setNextDefaultPickupDate() {
   const input = document.getElementById('pickupDateInput');
   if (!input) return;
 
+  const days = allowedPickupDays.length > 0 ? allowedPickupDays : DEFAULT_PICKUP_DAYS;
+
   const date = new Date();
   date.setDate(date.getDate() + 1);
 
-  while (!allowedPickupDays.includes(date.getDay())) {
+  // Safety cap so a misconfigured/empty admin setting can't spin forever.
+  let guard = 0;
+  while (!days.includes(date.getDay()) && guard < 14) {
     date.setDate(date.getDate() + 1);
+    guard++;
   }
 
   const yyyy = date.getFullYear();
@@ -573,10 +613,18 @@ window.validatePickupDate = function(input) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  if (selected < today || !allowedPickupDays.includes(day)) {
+  const days = allowedPickupDays.length > 0 ? allowedPickupDays : DEFAULT_PICKUP_DAYS;
+
+  if (selected < today || !days.includes(day)) {
     if (dateErr) dateErr.style.display = 'block';
     targetInput.value = '';
   }
+};
+
+window.validateTermsAgreement = function(input) {
+  const termsReq = document.getElementById('termsRequiredMsg');
+  const checkbox = input || document.getElementById('agreeTermsCheckbox');
+  if (termsReq && checkbox && checkbox.checked) termsReq.style.display = 'none';
 };
 
 window.openDatePicker = function() {
@@ -669,94 +717,73 @@ window.applyPromo = async function() {
 let guestGoogleReady = false;
 let guestGoogleInitialized = false;
 let guestGoogleButtonRendered = false;
-let guestGoogleRetryTimer = null;
 
-function setGuestGoogleLoadingMessage(message, visible = true) {
+function initGuestGoogleSignIn(retriesLeft = 40) {
   const loadingMsg = document.getElementById('guestGoogleLoadingMsg');
-  if (!loadingMsg) return;
-  loadingMsg.textContent = message;
-  loadingMsg.style.display = visible ? 'block' : 'none';
-}
 
-// Render Google's real button in a visible container. The old implementation
-// rendered it off-screen and forwarded clicks from a custom button, which made
-// readiness depend on a hidden element being created at exactly the right time.
-window.initGuestGoogleSignIn = function initGuestGoogleSignIn(retriesLeft = 40) {
-  const container = document.getElementById('guestGoogleButton');
-  if (!container) return false;
-
-  const existingButton = container.querySelector('div[role="button"]');
-  if (existingButton) {
-    guestGoogleReady = true;
-    setGuestGoogleLoadingMessage('', false);
-    return true;
-  }
-
-  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
-    setGuestGoogleLoadingMessage('Loading Google Sign-In...');
-    if (retriesLeft > 0 && !guestGoogleRetryTimer) {
-      guestGoogleRetryTimer = setTimeout(() => {
-        guestGoogleRetryTimer = null;
-        window.initGuestGoogleSignIn(retriesLeft - 1);
-      }, 250);
-    } else if (retriesLeft <= 0) {
-      setGuestGoogleLoadingMessage('Google Sign-In could not load. Please refresh and try again.');
-      console.error('Google Identity Services failed to load after waiting.');
+  if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+    // Only call initialize() once — calling it repeatedly every time the
+    // modal is opened is wasteful and can reset GSI's internal state.
+    if (!guestGoogleInitialized) {
+      google.accounts.id.initialize({
+        client_id: "1077352091553-6d77b0rtu3km8r1har7ra3lsmbf5en35.apps.googleusercontent.com",
+        callback: handleGuestGoogleCredentialResponse,
+        auto_select: false
+      });
+      guestGoogleInitialized = true;
     }
-    return false;
+
+    // The real, visible Google button now renders straight into
+    // #guestGoogleButton — there is no hidden proxy button anymore.
+    const container = document.getElementById('guestGoogleButton');
+    let hasBtn = container && container.querySelector('div[role="button"]');
+
+    if (container && !hasBtn && !guestGoogleButtonRendered) {
+      google.accounts.id.renderButton(container, {
+        type: 'standard',
+        shape: 'rectangular',
+        theme: 'outline',
+        text: 'signin_with',
+        size: 'large',
+        width: container.offsetWidth || 280
+      });
+      guestGoogleButtonRendered = true;
+      hasBtn = container.querySelector('div[role="button"]');
+    }
+
+    // renderButton() can occasionally take an extra tick to actually insert
+    // the real button. Only flip guestGoogleReady, and hide the "Loading
+    // Google Sign-In..." message, once the button truly exists.
+    if (hasBtn) {
+      guestGoogleReady = true;
+      if (loadingMsg) loadingMsg.style.display = 'none';
+    } else if (retriesLeft > 0) {
+      guestGoogleButtonRendered = false;
+      setTimeout(() => initGuestGoogleSignIn(retriesLeft - 1), 250);
+    } else {
+      console.error('Google Sign-In button failed to render after waiting.');
+      if (loadingMsg) loadingMsg.innerText = 'Google Sign-In is unavailable right now. Please refresh and try again.';
+    }
+    return;
   }
 
-  // Only initialize once. Calling initialize() again can reset GSI's internal
-  // state and make the rendered button disappear while the modal is open.
-  if (!guestGoogleInitialized) {
-    google.accounts.id.initialize({
-      client_id: "1077352091553-6d77b0rtu3km8r1har7ra3lsmbf5en35.apps.googleusercontent.com",
-      callback: handleGuestGoogleCredentialResponse,
-      auto_select: false
-    });
-    guestGoogleInitialized = true;
+  if (retriesLeft > 0) {
+    setTimeout(() => initGuestGoogleSignIn(retriesLeft - 1), 250);
+  } else {
+    console.error('Google Identity Services failed to load after waiting.');
+    if (loadingMsg) loadingMsg.innerText = 'Google Sign-In is unavailable right now. Please refresh and try again.';
   }
-
-  if (!guestGoogleButtonRendered) {
-    setGuestGoogleLoadingMessage('Loading Google Sign-In...');
-    google.accounts.id.renderButton(container, {
-      type: 'standard',
-      shape: 'rectangular',
-      theme: 'outline',
-      text: 'continue_with',
-      size: 'large',
-      width: Math.min(container.clientWidth || 320, 400)
-    });
-    guestGoogleButtonRendered = true;
-  }
-
-  const renderedButton = container.querySelector('div[role="button"]');
-  if (renderedButton) {
-    guestGoogleReady = true;
-    setGuestGoogleLoadingMessage('', false);
-    return true;
-  }
-
-  if (retriesLeft > 0 && !guestGoogleRetryTimer) {
-    guestGoogleRetryTimer = setTimeout(() => {
-      guestGoogleRetryTimer = null;
-      window.initGuestGoogleSignIn(retriesLeft - 1);
-    }, 250);
-  } else if (retriesLeft <= 0) {
-    setGuestGoogleLoadingMessage('Google Sign-In could not load. Please refresh and try again.');
-    console.error('Google Sign-In button failed to render after waiting.');
-  }
-  return false;
-};
+}
 
 async function handleGuestGoogleCredentialResponse(response) {
   if (!response || !response.credential) return;
 
-  const btn = document.getElementById('btnGuestGoogleLogin');
-  const originalBtnHtml = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerText = 'Signing in...';
+  const container = document.getElementById('guestGoogleButton');
+  const loadingMsg = document.getElementById('guestGoogleLoadingMsg');
+  if (container) container.style.pointerEvents = 'none';
+  if (loadingMsg) {
+    loadingMsg.style.display = 'block';
+    loadingMsg.innerText = 'Signing in...';
   }
 
   try {
@@ -802,10 +829,8 @@ async function handleGuestGoogleCredentialResponse(response) {
       showCancelButton: false
     });
   } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = originalBtnHtml;
-    }
+    if (container) container.style.pointerEvents = '';
+    if (loadingMsg) loadingMsg.style.display = 'none';
   }
 }
 
@@ -813,16 +838,18 @@ window.openRecipientModal = function() {
   const modal = document.getElementById('recipientEditModal');
   const summaryModal = document.getElementById('orderSummaryModal');
 
-  // Keep the recipient modal above the order summary and the mobile bottom
-  // navigation. The CSS rule uses !important because the summary itself has
-  // a !important z-index for mobile stacking.
-  if (summaryModal) summaryModal.style.setProperty('z-index', '1000001', 'important');
+  // Force the recipient modal above the order summary modal regardless of
+  // whatever z-index the stylesheet gives .product-modal-backdrop. The
+  // modal's own inline z-index (1000002) is already higher than this, so
+  // only raise it — never lower it back down.
+  if (summaryModal) summaryModal.style.zIndex = '9000';
   if (modal) {
-    modal.style.setProperty('z-index', '1000002', 'important');
+    const currentZ = parseInt(modal.style.zIndex, 10) || 0;
+    if (currentZ < 10000) modal.style.zIndex = '10000';
     modal.classList.add('active');
   }
 
-  window.initGuestGoogleSignIn();
+  initGuestGoogleSignIn();
 };
 
 window.closeRecipientModal = function(event) {
@@ -830,6 +857,75 @@ window.closeRecipientModal = function(event) {
   const modal = document.getElementById('recipientEditModal');
   if (modal) modal.classList.remove('active');
 };
+
+// ==========================================
+// TERMS & CONDITIONS MODAL
+// ==========================================
+window.openTermsModal = function(event) {
+  if (event) event.preventDefault();
+  const modal = document.getElementById('termsConditionsModal');
+  if (modal) {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  // The sheet intentionally stops short of the screen bottom (see the
+  // max-height calc in orderSummary.css) so its own action buttons are
+  // never squeezed under the fixed mobile bottom nav. But that nav sits at
+  // z-index 999999, still under the modal's z-index, so it was showing
+  // through, fully lit, in that reserved gap on small/short phones (e.g.
+  // 360x700) instead of the dimmed backdrop  looking like a layout bug.
+  // Hide it for as long as the terms modal is open.
+  const bottomNav = document.getElementById('mobileBottomNav');
+  if (bottomNav) bottomNav.style.display = 'none';
+};
+
+window.closeTermsModal = function(event) {
+  // A click on the dark backdrop passes the click event in; ignore it, same
+  // as the other modals on this page. Only the explicit close controls
+  // (X button / "Decline" / "Accept" buttons) call this with no event.
+  if (event && event.target) return;
+  const modal = document.getElementById('termsConditionsModal');
+  if (modal) modal.classList.remove('active');
+  document.body.style.overflow = '';
+  const bottomNav = document.getElementById('mobileBottomNav');
+  if (bottomNav) bottomNav.style.display = '';
+};
+
+window.acceptTermsAndClose = function() {
+  const checkbox = document.getElementById('agreeTermsCheckbox');
+  if (checkbox) {
+    checkbox.checked = true;
+    validateTermsAgreement(checkbox);
+  }
+  closeTermsModal();
+};
+
+(function setupTermsModalAccordion() {
+  const buttons = document.querySelectorAll('#termsConditionsModal .terms-header');
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      const item = btn.closest('.terms-item');
+      if (!item) return;
+
+      const content = item.querySelector('.terms-content');
+      const isOpen = item.classList.contains('open');
+
+      item.parentElement
+        .querySelectorAll('.terms-item.open')
+        .forEach(function (openItem) {
+          openItem.classList.remove('open');
+          const openContent = openItem.querySelector('.terms-content');
+          if (openContent) openContent.style.maxHeight = null;
+        });
+
+      if (!isOpen) {
+        item.classList.add('open');
+        if (content) content.style.maxHeight = content.scrollHeight + 'px';
+      }
+    });
+  });
+})();
 
 function buildReceiptDOM(order) {
   let container = document.getElementById('printableReceiptContainer');
@@ -996,7 +1092,7 @@ window.confirmPlaceOrder = async function() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (selected < today || !allowedPickupDays.includes(day)) {
+    if (selected < today || (day !== 1 && day !== 2 && day !== 4)) {
       if (dateErr) dateErr.style.display = 'block';
       return;
     }
@@ -1006,6 +1102,14 @@ window.confirmPlaceOrder = async function() {
   if (paymentPills.length > 0 && !selectedPaymentMethod) {
     const paymentReq = document.getElementById('paymentRequiredMsg');
     if (paymentReq) paymentReq.style.display = 'block';
+    return;
+  }
+
+  const agreeTermsCheckbox = document.getElementById('agreeTermsCheckbox');
+  if (!agreeTermsCheckbox || !agreeTermsCheckbox.checked) {
+    const termsReq = document.getElementById('termsRequiredMsg');
+    if (termsReq) termsReq.style.display = 'block';
+    if (agreeTermsCheckbox) agreeTermsCheckbox.focus();
     return;
   }
 
@@ -1243,10 +1347,3 @@ window.confirmPlaceOrder = async function() {
     }
   }
 };
-
-// Start loading before the recipient modal is opened. The SDK is async, so
-// this keeps retrying until either the script's onload handler or the retry
-// loop can initialize the visible button.
-document.addEventListener('DOMContentLoaded', () => {
-  window.initGuestGoogleSignIn();
-});

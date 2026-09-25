@@ -178,8 +178,8 @@ body {
 .notif-composite-thumb,
 .orders-composite-thumb {
     position: relative;
-    width: 60px;
-    height: 78px;
+    width: 74px;
+    height: 86px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -222,6 +222,25 @@ body {
     object-fit: contain;
     z-index: 3;
     pointer-events: none;
+}
+
+/* The Layer 1/2/3 art is exported on a square canvas with built-in
+   transparent padding, so a layered custom cup renders visibly smaller
+   than a preset drink's tightly-cropped flattened photo even when both
+   thumbnails sit in an identically sized box. Scale the whole composite
+   up (all layers move together, so alignment is unaffected) to match
+   the preset thumb's visual size. Small Cup.png carries noticeably more
+   padding than Large Cup.png, so it needs an extra boost. */
+.notif-composite-thumb,
+.orders-composite-thumb {
+    transform: scale(1.12);
+    transform-origin: center bottom;
+}
+
+.notif-composite-thumb:has(.cart-layer-cup[src*="Small Cup"]),
+.orders-composite-thumb:has(.cart-layer-cup[src*="Small Cup"]) {
+    transform: scale(1.3);
+    transform-origin: center bottom;
 }
 
 /* Details Body */
@@ -674,6 +693,12 @@ body {
 
     .notif-thumb-img {
         max-height: 74px;
+    }
+
+    .notif-composite-thumb,
+    .orders-composite-thumb {
+        width: 64px;
+        height: 74px;
     }
 
     .notif-item-title,
