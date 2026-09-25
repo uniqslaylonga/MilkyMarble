@@ -187,7 +187,61 @@ function showSweetAlert(options) {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadRecipientInfoFromSession();
+  loadAllowedPickupDays();
 });
+
+// ==========================================
+// PICK-UP DAYS (admin-configurable via /api/admin/settings/pickup-days)
+// ==========================================
+// Falls back to Mon/Tue/Thu — the old hardcoded behavior — until the
+// public settings endpoint responds, mirroring the server's own fallback.
+const DEFAULT_PICKUP_DAYS = [1, 2, 4];
+let allowedPickupDays = DEFAULT_PICKUP_DAYS.slice();
+let pickupDaysPromise = null;
+
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function formatPickupDaysList(days, names) {
+  const labels = [...days].sort((a, b) => a - b).map(d => names[d]).filter(Boolean);
+  if (labels.length === 0) return '';
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return labels.join(' & ');
+  return labels.slice(0, -1).join(', ') + ', & ' + labels[labels.length - 1];
+}
+
+// Keeps the "(Mon, Tue, & Thu only)" heading hint and the red validation
+// message in sync with whatever the admin actually saved, on every page
+// that renders this shared Order Summary modal (Cart, Drinks, Orders).
+function updatePickupDaysHintText() {
+  const hintSpan = document.getElementById('pickupDaysHintSpan');
+  if (hintSpan) hintSpan.textContent = `(${formatPickupDaysList(allowedPickupDays, WEEKDAY_SHORT)} only)`;
+
+  const errText = document.getElementById('dateErrorMsgText');
+  if (errText) errText.textContent = `Pick-ups are only available on ${formatPickupDaysList(allowedPickupDays, WEEKDAY_FULL)}.`;
+}
+
+// Cached as a single in-flight/resolved promise so every page only fetches
+// this once, no matter how many times the modal is opened.
+function loadAllowedPickupDays() {
+  if (pickupDaysPromise) return pickupDaysPromise;
+
+  pickupDaysPromise = (async () => {
+    try {
+      const res = await fetch('/api/settings/pickup-days');
+      const data = await res.json();
+      if (data.status === 'success' && Array.isArray(data.days) && data.days.length > 0) {
+        allowedPickupDays = data.days;
+      }
+    } catch (err) {
+      console.warn('Could not load admin pickup-day settings, using default Mon/Tue/Thu:', err);
+    }
+    updatePickupDaysHintText();
+    return allowedPickupDays;
+  })();
+
+  return pickupDaysPromise;
+}
 
 async function loadRecipientInfoFromSession() {
   const activeCustomer = await getActiveCustomerProfile();
@@ -310,6 +364,10 @@ window.renderOrderSummaryModal = async function(items = []) {
   const loyaltyRow = document.getElementById('summaryLoyaltyDiscountRow');
   if (loyaltyRow) loyaltyRow.style.display = 'none';
 
+  // Make sure we have the admin's current pickup-day settings before
+  // picking a default date or showing the hint text — this also covers
+  // the case where the modal is opened before the page-load fetch resolves.
+  await loadAllowedPickupDays();
   setNextDefaultPickupDate();
 
   const cupsList = document.getElementById('summaryCupsList');
@@ -513,11 +571,16 @@ function setNextDefaultPickupDate() {
   const input = document.getElementById('pickupDateInput');
   if (!input) return;
 
+  const days = allowedPickupDays.length > 0 ? allowedPickupDays : DEFAULT_PICKUP_DAYS;
+
   const date = new Date();
   date.setDate(date.getDate() + 1);
 
-  while (date.getDay() !== 1 && date.getDay() !== 2 && date.getDay() !== 4) {
+  // Safety cap so a misconfigured/empty admin setting can't spin forever.
+  let guard = 0;
+  while (!days.includes(date.getDay()) && guard < 14) {
     date.setDate(date.getDate() + 1);
+    guard++;
   }
 
   const yyyy = date.getFullYear();
@@ -550,7 +613,9 @@ window.validatePickupDate = function(input) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  if (selected < today || (day !== 1 && day !== 2 && day !== 4)) {
+  const days = allowedPickupDays.length > 0 ? allowedPickupDays : DEFAULT_PICKUP_DAYS;
+
+  if (selected < today || !days.includes(day)) {
     if (dateErr) dateErr.style.display = 'block';
     targetInput.value = '';
   }
