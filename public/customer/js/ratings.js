@@ -1,3 +1,12 @@
+// Force a real reload if restored from bfcache (e.g. pressing Back after
+// logout), so this page re-runs its normal auth checks instead of showing
+// a stale cached snapshot.
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) {
+    window.location.reload();
+  }
+});
+
 let currentSelectedRating = 5;
 let activeRatingOrderId = 0;
 let activeRatingCupTitle = '';

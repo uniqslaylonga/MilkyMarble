@@ -1,13 +1,13 @@
 @font-face {
     font-family: 'Kawaii RT - Mona';
-    src: local('Kawaii RT - Mona'), local('KawaiiRT-Mona'), local('Sniglet'), local('Fredoka');
+    src: url("../images/KawaiiRT-Mona.ttf") format("truetype");
     font-weight: normal;
     font-style: normal;
 }
 
 @font-face {
     font-family: 'Bootzy TM';
-    src: local('Bootzy TM'), local('BootzyTM'), local('Plus Jakarta Sans ExtraBold'), local('Urbanist');
+    src: url("../images/BootzyTM.ttf") format("truetype");
     font-weight: 800;
     font-style: normal;
 }

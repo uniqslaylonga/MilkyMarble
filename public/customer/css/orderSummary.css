@@ -1,7 +1,7 @@
 /* css/orderSummary.css */
 @font-face {
     font-family: 'Bootzy TM';
-    src: local('Bootzy TM'), local('BootzyTM'), local('Plus Jakarta Sans ExtraBold'), local('Urbanist');
+    src: url("../images/BootzyTM.ttf") format("truetype");
     font-weight: 800;
     font-style: normal;
 }

@@ -187,6 +187,9 @@ function showSweetAlert(options) {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadRecipientInfoFromSession();
+  // Also runs on plain page load (not just when the modal opens) so the
+  // "(Mon, Tue, & Thu only)" hint text is correct even if visible before then.
+  loadAllowedPickupDays();
 });
 
 async function loadRecipientInfoFromSession() {
@@ -493,6 +496,29 @@ window.selectPaymentMethod = function(btnElement) {
 // Mon/Tue/Thu default until that loads (or if it fails to load at all).
 let allowedPickupDays = [1, 2, 4];
 
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// Turns [1, 2, 6] into "Mon, Tue, & Sat" (or "Monday, Tuesday, and Saturday"
+// for the longer sentence), so the wording always matches whatever days
+// the admin actually picked instead of staying stuck on "Mon, Tue, & Thu".
+function joinDayNames(sortedDays, names, finalWord) {
+  const labels = sortedDays.map(d => names[d]);
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} ${finalWord} ${labels[1]}`;
+  return `${labels.slice(0, -1).join(', ')}, ${finalWord} ${labels[labels.length - 1]}`;
+}
+
+function updatePickupDaysLabels() {
+  const sortedDays = [...allowedPickupDays].sort((a, b) => a - b);
+
+  const hintSpan = document.getElementById('pickupDaysHintSpan');
+  if (hintSpan) hintSpan.textContent = `(${joinDayNames(sortedDays, WEEKDAY_SHORT, '&')} only)`;
+
+  const errText = document.getElementById('dateErrorMsgText');
+  if (errText) errText.textContent = `Pick-ups are only available on ${joinDayNames(sortedDays, WEEKDAY_LONG, 'and')}.`;
+}
+
 async function loadAllowedPickupDays() {
   try {
     const res = await fetch('/api/settings/pickup-days');
@@ -503,6 +529,7 @@ async function loadAllowedPickupDays() {
   } catch (e) {
     console.warn('Could not load pickup day settings, using default:', e);
   }
+  updatePickupDaysLabels();
 }
 
 function setNextDefaultPickupDate() {
@@ -969,7 +996,7 @@ window.confirmPlaceOrder = async function() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (selected < today || (day !== 1 && day !== 2 && day !== 4)) {
+    if (selected < today || !allowedPickupDays.includes(day)) {
       if (dateErr) dateErr.style.display = 'block';
       return;
     }

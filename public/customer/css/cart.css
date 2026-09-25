@@ -1,8 +1,7 @@
 /* css/cart.css */
 @font-face {
   font-family: "Bootzy TM";
-  src: local("Bootzy TM"), local("BootzyTM"),
-    local("Plus Jakarta Sans ExtraBold"), local("Urbanist");
+  src: url("../images/BootzyTM.ttf") format("truetype");
   font-weight: 800;
   font-style: normal;
 }
@@ -261,6 +260,15 @@ body {
   align-items: flex-start;
 }
 
+/* Flex items default to min-width: auto, which lets long product names
+   push the card wider than the screen instead of shrinking/truncating.
+   min-width: 0 lets this column shrink to fit, so the ellipsis on
+   .cart-item-title can actually kick in on small screens. */
+.cart-specs-block {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .cart-item-title {
   font-family: var(--font-header) !important;
   font-size: 24px;
@@ -269,6 +277,7 @@ body {
   letter-spacing: 2px !important;
   line-height: 1.2;
   margin-bottom: 4px;
+  max-width: 100%;
 }
 
 .cart-specs-list {
@@ -307,6 +316,7 @@ body {
   flex-direction: column;
   align-items: flex-end;
   gap: 16px;
+  flex-shrink: 0;
 }
 
 .btn-delete-cart-item {
