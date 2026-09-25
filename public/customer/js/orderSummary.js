@@ -996,7 +996,7 @@ window.confirmPlaceOrder = async function() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (selected < today || (day !== 1 && day !== 2 && day !== 4)) {
+    if (selected < today || !allowedPickupDays.includes(day)) {
       if (dateErr) dateErr.style.display = 'block';
       return;
     }
