@@ -28,6 +28,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function bindEventListeners() {
+    const searchInput = document.getElementById('customerSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', applyFiltersAndSort);
+    }
+
     const sortSelect = document.getElementById('customerSortSelect');
     if (sortSelect) sortSelect.addEventListener('change', applyFiltersAndSort);
 
@@ -180,6 +185,7 @@ function applyFiltersAndSort() {
     const sortVal = document.getElementById('customerSortSelect')?.value || 'orders_desc';
     const filterVal = document.getElementById('customerDateFilter')?.value || 'all';
     const customDate = document.getElementById('customerCustomDate')?.value;
+    const searchVal = document.getElementById('customerSearchInput')?.value.toLowerCase().trim() || '';
 
     const now = new Date();
     const todayStr = SalesCommon.localDate(now);
@@ -187,6 +193,16 @@ function applyFiltersAndSort() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     filteredCustomers = allCustomers.filter(c => {
+        // 1. Check Search Query (Name or Email)
+        if (searchVal) {
+            const name = (c.full_name || '').toLowerCase();
+            const email = (c.email || '').toLowerCase();
+            if (!name.includes(searchVal) && !email.includes(searchVal)) {
+                return false; // Skip if it doesn't match the search
+            }
+        }
+
+        // 2. Check Date Filter
         if (filterVal === 'all') return true;
         if (!c.last_order_at) return false;
         const lastDate = new Date(c.last_order_at);
@@ -199,6 +215,7 @@ function applyFiltersAndSort() {
         return true;
     });
 
+    // 3. Sort the remaining results
     filteredCustomers.sort((a, b) => {
         if (sortVal === 'name_asc') return (a.full_name || '').localeCompare(b.full_name || '');
         if (sortVal === 'orders_desc') return (b.total_orders || 0) - (a.total_orders || 0);

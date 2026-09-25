@@ -347,6 +347,46 @@ body {
   cursor: pointer;
 }
 
+/* Add these right below .custom-date-input */
+/* Search Bar Styles */
+.search-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  width: 14px;
+  height: 14px;
+  stroke: var(--accent-pink);
+  pointer-events: none; /* Prevents the icon from blocking clicks */
+}
+
+.custom-search-input {
+  background-color: var(--card-white);
+  border: 1.5px solid var(--accent-pink);
+  border-radius: 12px;
+  /* Increased left padding (30px) to make room for the icon */
+  padding: 5px 12px 5px 30px; 
+  font-family: var(--font-family-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--brown-soft);
+  outline: none;
+  width: 220px;
+  transition: border-color 0.2s ease;
+}
+
+.custom-search-input::placeholder {
+  color: var(--text-light);
+}
+
+.custom-search-input:focus {
+  border-color: var(--accent-pink);
+}
+
 /* Stat Cards */
 .four-col-grid {
   display: grid;
@@ -433,6 +473,7 @@ body {
 .growth-stat-number {
   font-family: var(--font-family-heading);
   font-size: 24px;
+  letter-spacing: 1px;
   font-weight: 700;
   color: var(--brown-soft);
 }
@@ -449,6 +490,7 @@ body {
 
 .status-pace-warning {
   color: #B26A00 !important;
+  letter-spacing: 1.5px;
 }
 
 /* Directory Table */
@@ -528,6 +570,7 @@ body {
 .member-name {
   font-family: var(--font-family-heading);
   font-size: 13.5px;
+  letter-spacing: 1px;
   font-weight: 700;
   color: var(--brown-soft);
 }
@@ -584,6 +627,7 @@ body {
 .stat-number-cell {
   font-family: var(--font-family-heading);
   font-size: 14px;
+  letter-spacing: 1px;
   color: var(--brown-soft);
 }
 
@@ -784,6 +828,7 @@ body {
 .modal-title {
   font-family: var(--font-family-heading);
   font-size: 18px;
+  letter-spacing: 1.5px;
   color: var(--brown-soft);
 }
 
@@ -837,6 +882,7 @@ body {
 .modal-name {
   font-family: var(--font-family-heading);
   font-size: 18px;
+  letter-spacing: 1px;
   color: var(--brown-soft);
 }
 
@@ -956,6 +1002,24 @@ body {
   border-radius: 4px;
 }
 
+.modal-history-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.modal-history-list::-webkit-scrollbar-thumb {
+  background: rgba(246, 146, 153, 0.35);
+  border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: rgba(246, 146, 153, 0.35);
+  border-radius: 4px;
+}
+
 .customer-review-card {
   background: var(--card-sub-bg);
   border: 1px solid var(--border-soft);
@@ -976,6 +1040,7 @@ body {
   font-family: var(--font-family-heading);
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.5px;
   color: var(--brown-soft);
 }
 

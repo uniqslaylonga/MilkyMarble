@@ -400,7 +400,7 @@ body {
   font-size: 24px;
   font-weight: 700;
   color: #4a3434;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
 }
 
 .quota-sub {
@@ -581,6 +581,7 @@ body {
 .preset-name-bold {
   font-family: var(--font-family-heading);
   font-size: 13.5px;
+  letter-spacing: 1px;
   font-weight: 700;
   color: var(--brown-soft);
 }
@@ -623,6 +624,7 @@ body {
 .revenue-val-bold {
   font-family: var(--font-family-heading);
   font-size: 14.5px;
+  letter-spacing: 0.5px;
   font-weight: 700;
   color: #4a3434;
 }
@@ -636,7 +638,8 @@ body {
 .rank-badge {
   font-family: var(--font-family-heading);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 300;
+  letter-spacing: 0.5px;
   width: 26px;
   height: 26px;
   border-radius: 50%;
@@ -654,6 +657,7 @@ body {
   font-family: var(--font-family-heading);
   font-weight: 700;
   font-size: 13.5px;
+  letter-spacing: 1px;
   color: var(--brown-soft);
 }
 
@@ -665,6 +669,7 @@ body {
 .spent-val {
   font-family: var(--font-family-heading);
   font-size: 14.5px;
+  letter-spacing: 0.5px;
   font-weight: 700;
   color: var(--brown-soft);
 }
