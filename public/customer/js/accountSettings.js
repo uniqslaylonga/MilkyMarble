@@ -124,7 +124,11 @@ function togglePassVisibility(inputId, button) { //[cite: 4]
 async function updateAccountPreference(prefKey, isChecked, label) { //[cite: 4]
     try { //[cite: 4]
         const localUser = JSON.parse(localStorage.getItem('mm_user') || '{}');
-        const customerId = localUser.customer_id || (currentCustomerData && currentCustomerData.id) || 11;
+        const customerId = localUser.customer_id || (currentCustomerData && currentCustomerData.id);
+        if (!customerId) {
+            SettingsSwal.fire({ icon: 'error', title: 'Session Error', text: 'Please log in again to update preferences.' });
+            return;
+        }
 
         const res = await fetch('/api/customer/preferences', { //[cite: 4]
             method: 'PATCH', //[cite: 4]
@@ -222,7 +226,11 @@ async function clearPaymentPreference() {
 async function savePaymentPreference(method, successMessage) {
     try {
         const localUser = JSON.parse(localStorage.getItem('mm_user') || '{}');
-        const customerId = localUser.customer_id || (currentCustomerData && currentCustomerData.id) || 11;
+        const customerId = localUser.customer_id || (currentCustomerData && currentCustomerData.id);
+        if (!customerId) {
+            SettingsSwal.fire({ icon: 'error', title: 'Session Error', text: 'Please log in again to update preferences.' });
+            return;
+        }
 
         const res = await fetch('/api/customer/preferences', {
             method: 'PATCH',
@@ -307,7 +315,12 @@ async function interceptPasswordSubmit(event) { //[cite: 4]
         const targetEmail = (currentCustomerData && currentCustomerData.users && currentCustomerData.users.email)
                          || (currentCustomerData && currentCustomerData.email)
                          || localUser.email;
-        const targetCustomerId = (currentCustomerData && currentCustomerData.id) || localUser.customer_id || 11;
+        const targetCustomerId = (currentCustomerData && currentCustomerData.id) || localUser.customer_id;
+        if (!targetCustomerId) {
+            Swal.close();
+            SettingsSwal.fire({ icon: 'error', title: 'Session Error', text: 'Please log in again to change your password.' });
+            return;
+        }
 
         const res = await fetch('/api/customer/request-password-otp', { //[cite: 4]
             method: 'POST', //[cite: 4]
@@ -359,7 +372,11 @@ async function verifyPasswordOtp() { //[cite: 4]
     }
 
     const localUser = JSON.parse(localStorage.getItem('mm_user') || '{}');
-    const targetCustomerId = (currentCustomerData && currentCustomerData.id) || localUser.customer_id || 11;
+    const targetCustomerId = (currentCustomerData && currentCustomerData.id) || localUser.customer_id;
+    if (!targetCustomerId) {
+        SettingsSwal.fire({ icon: 'error', title: 'Session Error', text: 'Please log in again to change your password.' });
+        return;
+    }
 
     const payload = { //[cite: 4]
         customer_id: targetCustomerId,
@@ -422,7 +439,11 @@ function confirmDeactivateAccount() { //[cite: 4]
         if (result.isConfirmed) { //[cite: 4]
             try { //[cite: 4]
                 const localUser = JSON.parse(localStorage.getItem('mm_user') || '{}');
-                const targetCustomerId = (currentCustomerData && currentCustomerData.id) || localUser.customer_id || 11;
+                const targetCustomerId = (currentCustomerData && currentCustomerData.id) || localUser.customer_id;
+                if (!targetCustomerId) {
+                    SettingsSwal.fire({ icon: 'error', title: 'Session Error', text: 'Please log in again before deactivating your account.' });
+                    return;
+                }
 
                 const res = await fetch('/api/customer/deactivate', { //[cite: 4]
                     method: 'POST', //[cite: 4]
