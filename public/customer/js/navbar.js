@@ -131,7 +131,7 @@ function injectNavbarDropdownStyles() {
         overflow-y: auto;
       }
     }
-    .nav-notif-wrapper:hover .nav-notif-dropdown,
+    .nav-notif-wrapper.hover-open .nav-notif-dropdown,
     .nav-notif-wrapper.active .nav-notif-dropdown {
       display: flex !important;
     }
@@ -449,6 +449,24 @@ function setupDropdownToggle() {
       notifWrapper.classList.toggle('active');
       if (dropdown) dropdown.classList.remove('active');
     });
+
+    // Keep the dropdown open a little longer on hover so the cursor has
+    // time to travel from the bell icon down into the panel without it
+    // vanishing mid-way (plain CSS :hover closes it the instant the mouse
+    // leaves the bell's small hit-box, before it reaches the dropdown).
+    let notifHoverCloseTimer = null;
+    const openNotifOnHover = () => {
+      clearTimeout(notifHoverCloseTimer);
+      notifWrapper.classList.add('hover-open');
+    };
+    const scheduleNotifClose = () => {
+      clearTimeout(notifHoverCloseTimer);
+      notifHoverCloseTimer = setTimeout(() => {
+        notifWrapper.classList.remove('hover-open');
+      }, 450);
+    };
+    notifWrapper.addEventListener('mouseenter', openNotifOnHover);
+    notifWrapper.addEventListener('mouseleave', scheduleNotifClose);
   }
 
   document.addEventListener('click', (e) => {
@@ -457,6 +475,7 @@ function setupDropdownToggle() {
     }
     if (notifWrapper && !notifWrapper.contains(e.target)) {
       notifWrapper.classList.remove('active');
+      notifWrapper.classList.remove('hover-open');
     }
   });
 }
