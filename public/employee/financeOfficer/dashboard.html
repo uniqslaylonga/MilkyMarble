@@ -3,506 +3,333 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Milky Marble — Financial Reports &amp; Executive Audit</title>
+    <title>Milky Marble — Finance Officer Dashboard</title>
     <link rel="icon" type="image/png" href="/customer/images/logo.png">
-    <link rel="stylesheet" href="css/reports.css">
+    <link rel="stylesheet" href="css/dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
-
-<div class="app-container">
-    <!-- STICKY / FIXED SIDEBAR (CONSOLIDATED 4-LINK ARCHITECTURE) -->
-    <aside class="sidebar">
-        <div class="brand-section">
-            <div class="brand-logo-wrap">
-                <img src="/customer/images/logo.png" alt="Milky Marble Logo" class="brand-logo-img">
-            </div>
-            <div class="brand-title">Milky Marble</div>
-        </div>
-
-        <nav class="nav-menu">
-            <!-- 1. Dashboard -->
-            <a href="dashboard.html" class="nav-link">
-                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
-                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
-                </svg>
-                <span>Dashboard</span>
-            </a>
-
-            <!-- 2. Revenue & Payments -->
-            <a href="revenue.html" class="nav-link">
-                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-                    <polyline points="17 6 23 6 23 12"></polyline>
-                </svg>
-                <span>Revenue &amp; Payments</span>
-            </a>
-
-            <!-- 3. Budget & Expenses -->
-            <a href="budget.html" class="nav-link">
-                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-                    <path d="M7 15h0M2 9.5h20"></path>
-                </svg>
-                <span>Budget &amp; Expenses</span>
-            </a>
-
-            <!-- 4. Reports & Audit (Active) -->
-            <a href="reports.html" class="nav-link active">
-                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                </svg>
-                <span>Financial Reports</span>
-            </a>
-        </nav>
-
-        <div class="sidebar-bottom">
-            <a href="../login.html" class="nav-link logout-btn">
-                <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                    <polyline points="16 17 21 12 16 7"></polyline>
-                    <line x1="21" y1="12" x2="9" y2="12"></line>
-                </svg>
-                <span>Log out</span>
-            </a>
-        </div>
-    </aside>
-
-    <!-- MAIN SCROLLABLE CONTENT -->
-    <main class="main-content">
-        <!-- TOPBAR -->
-        <header class="topbar">
-            <div class="topbar-status-strip">
-                <span class="status-pulse-dot"></span>
-                <span>Audit &amp; Treasury Sentinel Active • October 8 Benchmark Cycle Tracking</span>
+    <div class="app-container">
+        <!-- STICKY SIDEBAR (4-LINK ARCHITECTURE) -->
+        <aside class="sidebar">
+            <div class="brand-section">
+                <div class="brand-logo-wrap">
+                    <img src="/customer/images/logo.png" alt="Milky Marble Logo" class="brand-logo-img">
+                </div>
+                <div class="brand-title">Milky Marble</div>
             </div>
 
-            <div class="topbar-right">
-                <div class="user-profile">
-                    <div class="user-avatar" id="userAvatarContainer">
-                        <img id="userAvatar" src="/customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
-                    </div>
-                    <span id="userName" class="user-name">Financial Officer</span>
-                </div>
+            <nav class="nav-menu">
+                <!-- 1. Dashboard (Active) -->
+                <a href="dashboard.html" class="nav-link active">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+
+                <!-- 2. Revenue & Payments -->
+                <a href="revenue.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                        <polyline points="17 6 23 6 23 12"></polyline>
+                    </svg>
+                    <span>Revenue &amp; Payments</span>
+                </a>
+
+                <!-- 3. Budget & Expenses -->
+                <a href="budget.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                        <path d="M7 15h0M2 9.5h20"></path>
+                    </svg>
+                    <span>Budget &amp; Expenses</span>
+                </a>
+
+                <!-- 4. Reports & Audit -->
+                <a href="reports.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <span>Financial Reports</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <a href="../login.html" class="nav-link logout-btn">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span>Log out</span>
+                </a>
             </div>
-        </header>
+        </aside>
 
-        <!-- PAGE HEADER -->
-        <section class="page-header">
-            <div class="page-eyebrow">Executive Treasury &amp; Financial Governance</div>
-            <div class="header-row">
-                <div>
-                    <h1 class="page-title">Executive Financial Statements</h1>
-                    <p class="header-sub">Generate audit-cleared profit and loss statements, evaluate COGS margins, and monitor the 45-day DSO collection window.</p>
-                </div>
-                <div class="header-action-group">
-                    <div class="custom-select-wrap">
-                        <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                            <line x1="16" y1="2" x2="16" y2="6" />
-                            <line x1="8" y1="2" x2="8" y2="6" />
-                            <line x1="3" y1="10" x2="21" y2="10" />
-                        </svg>
-                        <select id="reportCycleSelector">
-                            <option value="active" selected>Active 45-Day Cycle (Oct 8 – Nov 22, 2026)</option>
-                            <option value="tue_thu">Tuesday &amp; Thursday Operational Batches</option>
-                            <option value="all_time">All-Time Cumulative Operating Ledger</option>
-                        </select>
-                    </div>
-
-                    <button type="button" class="btn-pdf-export" onclick="exportFinancialReportToPDF()">
-                        <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="7 10 12 15 17 10" />
-                            <line x1="12" y1="15" x2="12" y2="3" />
-                        </svg>
-                        <span>Export Audit PDF</span>
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- 4 EXECUTIVE FINANCIAL KPIS -->
-        <section class="section">
-            <div class="overview-grid four-col-grid">
-                <!-- 1. Gross Realized Inflow -->
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-title">Gross Operating Revenue</span>
-                        <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#F69299" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path>
-                            <path d="M12 18V6"></path>
-                        </svg>
-                    </div>
-                    <div class="stat-body"><span id="kpiGrossRevenue" class="stat-value">₱0.00</span></div>
-                    <div class="stat-footer">Reconciled release collections</div>
+        <!-- MAIN SCROLLABLE CONTENT -->
+        <main class="main-content">
+            <!-- TOPBAR -->
+            <header class="topbar">
+                <div class="search-box">
+                    <input type="text" id="financeSearchInput" placeholder="Search PR code, item, department, or OR #...">
+                    <svg class="search-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
                 </div>
 
-                <!-- 2. Cost of Goods Sold (BOM Deductions + Bulk Stock) -->
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-title">COGS (Raw Materials)</span>
-                        <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#68B0AB" stroke-width="2">
-                            <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path>
-                            <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path>
-                        </svg>
+                <div class="topbar-right">
+                    <div class="user-profile">
+                        <div class="user-avatar">
+                            <img id="userAvatar" src="/customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                        </div>
+                        <span id="userName" class="user-name">Financial Officer</span>
                     </div>
-                    <div class="stat-body"><span id="kpiCogsTotal" class="stat-value">₱0.00</span></div>
-                    <div class="stat-footer">Tea, Dairy, Boba &amp; Packaging</div>
                 </div>
+            </header>
 
-                <!-- 3. Operating Overhead Disbursements -->
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-title">Overhead &amp; Logistics</span>
-                        <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#EAA342" stroke-width="2">
-                            <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path>
-                            <line x1="8" y1="9" x2="16" y2="9"></line>
-                            <line x1="8" y1="13" x2="14" y2="13"></line>
-                        </svg>
+            <!-- WELCOME BANNER -->
+            <section class="welcome-banner">
+                <div class="welcome-banner-content">
+                    <div class="welcome-text-col">
+                        <div class="banner-badge-row">
+                            <span class="release-window-pill">Finance Command Center</span>
+                            <span class="shift-subtag">Tuesday &amp; Thursday Release Cycle Oversight</span>
+                        </div>
+                        <h1 class="welcome-title">Welcome back, <span id="userFirstName">Finance Officer</span></h1>
+                        <p class="welcome-sub">Track cash position, clear the DOA disbursement queue, and monitor cost of goods sold at a glance.</p>
                     </div>
-                    <div class="stat-body"><span id="kpiOperatingExpenses" class="stat-value">₱0.00</span></div>
-                    <div class="stat-footer">Direct buys, marketing, logistics</div>
-                </div>
-
-                <!-- 4. Net Operating Margin -->
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-title">Net Operating Profit</span>
-                        <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2">
-                            <line x1="12" y1="1" x2="12" y2="23"></line>
-                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                        </svg>
-                    </div>
-                    <div class="stat-body"><span id="kpiNetProfit" class="stat-value" style="color: #2E7D32;">₱0.00</span></div>
-                    <div class="stat-footer" id="kpiMarginFooter">Net Profit Margin: 0.0%</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- SPLIT REPORT LAYOUT: FORMAL INCOME STATEMENT & DSO AGING AUDIT -->
-        <div class="split-reports-layout">
-            <!-- LEFT PANEL: AUDITED INCOME STATEMENT (P&L) -->
-            <section class="directory-card pnl-card">
-                <div class="panel-header-bar">
-                    <div>
-                        <h2 class="section-title">Income Statement (Profit &amp; Loss)</h2>
-                        <p class="section-sub-text">Audited financial performance for active operating releases</p>
-                    </div>
-                    <span class="section-badge-pink">Statement of Operations</span>
-                </div>
-
-                <div class="pnl-statement-container">
-                    <!-- 1. Operating Revenue -->
-                    <div class="pnl-section-header">1. OPERATING REVENUE (INFLOWS)</div>
-                    <div class="pnl-row">
-                        <span>Pre-Order Digital Collections (Custom 8oz &amp; 12oz)</span>
-                        <strong id="pnlPreorderSales">₱0.00</strong>
-                    </div>
-                    <div class="pnl-row">
-                        <span>Walk-in Presets Cash Collections (Chiller counter sales)</span>
-                        <strong id="pnlPresetSales">₱0.00</strong>
-                    </div>
-                    <div class="pnl-row total-row">
-                        <span>GROSS OPERATING REVENUE</span>
-                        <strong id="pnlGrossRevenue">₱0.00</strong>
-                    </div>
-
-                    <!-- 2. Cost of Goods Sold -->
-                    <div class="pnl-section-header" style="margin-top: 14px;">2. COST OF GOODS SOLD (COGS)</div>
-                    <div class="pnl-row">
-                        <span>Raw Beverage Ingredients (Gulaman, Tea, Boba, Sugar, Milk)</span>
-                        <strong id="pnlIngredientsCost">₱0.00</strong>
-                    </div>
-                    <div class="pnl-row">
-                        <span>Packaging &amp; Consumables (Plastic Cups, Lids, Boba Straws)</span>
-                        <strong id="pnlPackagingCost">₱0.00</strong>
-                    </div>
-                    <div class="pnl-row total-row subtotal-row">
-                        <span>TOTAL COST OF GOODS SOLD</span>
-                        <strong id="pnlTotalCogs" style="color: #C9302C;">(₱0.00)</strong>
-                    </div>
-
-                    <!-- 3. Gross Operating Profit -->
-                    <div class="pnl-row grand-highlight-row">
-                        <span>GROSS OPERATING PROFIT</span>
-                        <strong id="pnlGrossProfit">₱0.00</strong>
-                    </div>
-
-                    <!-- 4. Operating Overhead & Administrative -->
-                    <div class="pnl-section-header" style="margin-top: 14px;">3. OPERATING OVERHEAD &amp; ADMINISTRATIVE (OUTFLOWS)</div>
-                    <div class="pnl-row">
-                        <span>Petty Cash Liquidations (&le; ₱300 Direct Buys)</span>
-                        <strong id="pnlDirectBuyExp">₱0.00</strong>
-                    </div>
-                    <div class="pnl-row">
-                        <span>Logistics, Ice &amp; Store Overhead</span>
-                        <strong id="pnlOverheadExp">₱0.00</strong>
-                    </div>
-                    <div class="pnl-row">
-                        <span>Marketing, Banners &amp; Promos</span>
-                        <strong id="pnlMarketingExp">₱0.00</strong>
-                    </div>
-                    <div class="pnl-row total-row subtotal-row">
-                        <span>TOTAL OPERATING DISBURSEMENTS</span>
-                        <strong id="pnlTotalDisbursements" style="color: #C9302C;">(₱0.00)</strong>
-                    </div>
-
-                    <!-- 5. Net Income -->
-                    <div class="pnl-row grand-highlight-row net-income-row">
-                        <span>NET OPERATING INCOME</span>
-                        <strong id="pnlNetOperatingIncome">₱0.00</strong>
+                    <div class="banner-action-col">
+                        <button type="button" class="btn-primary" onclick="openDisbursementModal()">
+                            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            <span>Post Disbursement Voucher</span>
+                        </button>
                     </div>
                 </div>
             </section>
 
-            <!-- RIGHT PANEL: 45-DAY DSO & CASH RECONCILIATION SUMMARY -->
-            <div class="reports-right-col">
-                <!-- 45-Day DSO Health Sentinel -->
-                <section class="directory-card dso-sentinel-card">
-                    <div class="panel-header-bar">
-                        <div>
-                            <h2 class="section-title">45-Day DSO Health Sentinel</h2>
-                            <p class="section-sub-text">Days Sales Outstanding benchmark tracking</p>
+            <!-- 4 EXECUTIVE OVERVIEW KPIS -->
+            <section class="section">
+                <div class="overview-grid four-col-grid">
+                    <!-- 1. Total Revenue -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Revenue</span>
+                            <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#F69299" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path>
+                                <path d="M12 18V6"></path>
+                            </svg>
                         </div>
-                        <span class="badge-dso-target good" id="dsoBadgeIndicator">Term: &lt; 45 Days</span>
+                        <div class="stat-body"><span id="totalRevenue" class="stat-value">0.00</span></div>
+                        <div class="stat-footer">Reconciled release collections</div>
                     </div>
 
-                    <div class="dso-timeline-progress-wrap">
-                        <div class="dso-timeline-meta">
-                            <span id="dsoCurrentDaysText">Day 1 of 45 Days</span>
-                            <span id="dsoTargetBenchmarkText">Conclusion: Nov 22, 2026</span>
+                    <!-- 2. Net Margin -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Net Margin</span>
+                            <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2">
+                                <line x1="12" y1="1" x2="12" y2="23"></line>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                            </svg>
                         </div>
-                        <div class="dso-progress-track">
-                            <div class="dso-progress-fill" id="dsoProgressFill" style="width: 2.2%;"></div>
-                        </div>
+                        <div class="stat-body"><span id="netMarginVal" class="stat-value" style="color: #2E7D32;">—</span></div>
+                        <div class="stat-footer">Revenue less operating expenses</div>
                     </div>
 
-                    <div class="dso-insights-box">
-                        <div class="dso-insight-header">Working Capital Liquidity Status:</div>
-                        <p class="dso-insight-copy" id="dsoInsightCopy">
-                            Collection cycles for Tuesday and Thursday pre-orders are currently running smoothly with immediate settlement on pickup. Cash flow turnover remains within optimal low-risk parameters.
-                        </p>
-                    </div>
-                </section>
-
-                <!-- Cash Reconciliation & Physical Drawer Audit Summary -->
-                <section class="directory-card cash-reconciliation-card">
-                    <div class="panel-header-bar">
-                        <div>
-                            <h2 class="section-title">Shift Audit &amp; Drawer Balancing</h2>
-                            <p class="section-sub-text">Physical cash drawer variance from recent Z-Readings</p>
+                    <!-- 3. Pending Pre-Approvals -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Pending Pre-Approvals</span>
+                            <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#B26A00" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
                         </div>
-                        <span class="settle-status-pill settled" id="registerStatusBadge">Register Unlocked</span>
+                        <div class="stat-body"><span id="pendingApprovalCount" class="stat-value">00</span></div>
+                        <div class="stat-footer">₱301–₱500 Middle-Tier Clearance</div>
                     </div>
 
-                    <div class="drawer-audit-metrics-grid">
-                        <div class="drawer-metric-tile">
-                            <span class="tile-label">Opening Float</span>
-                            <strong class="tile-val">₱1,000.00</strong>
+                    <!-- 4. Pending Liquidations -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Pending Liquidations</span>
+                            <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#EAA342" stroke-width="2">
+                                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                <path d="M7 15h0M2 9.5h20"></path>
+                            </svg>
                         </div>
-                        <div class="drawer-metric-tile">
-                            <span class="tile-label">Cash Sales Expected</span>
-                            <strong class="tile-val" id="drawerCashSalesExpected">₱0.00</strong>
-                        </div>
-                        <div class="drawer-metric-tile">
-                            <span class="tile-label">Physical Cash Counted</span>
-                            <strong class="tile-val" id="drawerPhysicalCounted">₱0.00</strong>
-                        </div>
-                        <div class="drawer-metric-tile highlight">
-                            <span class="tile-label">Audit Discrepancy</span>
-                            <strong class="tile-val" id="drawerAuditVariance">₱0.00</strong>
-                        </div>
-                    </div>
-
-                    <div class="drawer-card-footer">
-                        <small id="lastReconciledTimestamp">Last Reconciled: Shift close pending</small>
-                        <a href="revenue.html" class="view-link">Open Settlements Desk &rarr;</a>
-                    </div>
-                </section>
-            </div>
-        </div>
-    </main>
-</div>
-
-<!-- ==========================================================================
-     CORPORATE EXECUTIVE AUDIT REPORT TEMPLATE (PDF EXPORT ENGINE ONLY)
-     Adhering to MM-SOP-MASTER-2026 Section 8 Standard
-     ========================================================================== -->
-<div id="corporatePdfRenderWrapper" class="corporate-pdf-render-area" style="display: none;">
-    <div class="corp-doc-page">
-        <!-- Corporate Letterhead Header -->
-        <div class="corp-header-block">
-            <div class="corp-brand-left">
-                <img src="/customer/images/logo.png" alt="Milky Marble Logo" class="corp-doc-logo" />
-                <div>
-                    <h2 class="corp-company-name">MILKY MARBLE ENTERPRISE</h2>
-                    <span class="corp-company-sub">Corporate Treasury, Financial Governance &amp; Executive Audit Division</span>
-                </div>
-            </div>
-            <div class="corp-meta-right">
-                <div class="corp-doc-code">DOC: MM-FIN-2026</div>
-                <div class="corp-doc-date" id="pdfReportDate">Date: ---</div>
-                <div class="corp-doc-period" id="pdfCoveragePeriod">Cycle: Active 45-Day Benchmark</div>
-            </div>
-        </div>
-
-        <div class="corp-doc-divider"></div>
-        <h1 class="corp-doc-title">OFFICIAL STATEMENT OF FINANCIAL PERFORMANCE &amp; AUDIT REPORT</h1>
-
-        <!-- 1. Executive Summary Table -->
-        <div class="corp-section-wrap">
-            <h3 class="corp-section-title">1. EXECUTIVE PROFIT &amp; LOSS STATEMENT (P&amp;L)</h3>
-            <table class="corp-data-table">
-                <thead>
-                    <tr>
-                        <th style="width: 50%;">Accounting Classification</th>
-                        <th style="width: 25%; text-align: right;">Period Subtotal</th>
-                        <th style="width: 25%; text-align: right;">Net Balance</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Pre-Order Digital Collections (E-Wallet)</strong></td>
-                        <td style="text-align: right;" id="pdfPreorderSales">₱0.00</td>
-                        <td></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Walk-in Preset Collections (Counter Cash Drawer)</strong></td>
-                        <td style="text-align: right;" id="pdfPresetSales">₱0.00</td>
-                        <td></td>
-                    </tr>
-                    <tr class="table-subtotal-row">
-                        <td><strong>GROSS REALIZED REVENUE</strong></td>
-                        <td></td>
-                        <td style="text-align: right;" id="pdfGrossRevenue">₱0.00</td>
-                    </tr>
-                    <tr>
-                        <td>Raw Beverage Ingredients (Tea, Dairy, Boba, Sugar)</td>
-                        <td style="text-align: right;" id="pdfIngredientsCost">₱0.00</td>
-                        <td></td>
-                    </tr>
-                    <tr>
-                        <td>Packaging Supplies (Cups, Lids, Straws, Sealing Film)</td>
-                        <td style="text-align: right;" id="pdfPackagingCost">₱0.00</td>
-                        <td></td>
-                    </tr>
-                    <tr class="table-subtotal-row">
-                        <td><strong>TOTAL COST OF GOODS SOLD (COGS)</strong></td>
-                        <td></td>
-                        <td style="text-align: right; color: #7C4F38;" id="pdfTotalCogs">(₱0.00)</td>
-                    </tr>
-                    <tr class="table-highlight-row">
-                        <td><strong>GROSS OPERATING PROFIT</strong></td>
-                        <td></td>
-                        <td style="text-align: right;" id="pdfGrossProfit">₱0.00</td>
-                    </tr>
-                    <tr>
-                        <td>Direct Buy Liquidations (&le; ₱300 Petty Cash)</td>
-                        <td style="text-align: right;" id="pdfDirectBuyExp">₱0.00</td>
-                        <td></td>
-                    </tr>
-                    <tr>
-                        <td>Store Logistics &amp; Operational Overheads</td>
-                        <td style="text-align: right;" id="pdfOverheadExp">₱0.00</td>
-                        <td></td>
-                    </tr>
-                    <tr>
-                        <td>Marketing, Promotions &amp; Administrative</td>
-                        <td style="text-align: right;" id="pdfMarketingExp">₱0.00</td>
-                        <td></td>
-                    </tr>
-                    <tr class="table-subtotal-row">
-                        <td><strong>TOTAL OPERATING DISBURSEMENTS</strong></td>
-                        <td></td>
-                        <td style="text-align: right; color: #7C4F38;" id="pdfTotalDisbursements">(₱0.00)</td>
-                    </tr>
-                    <tr class="table-highlight-row table-net-row">
-                        <td><strong>NET OPERATING PROFIT</strong></td>
-                        <td></td>
-                        <td style="text-align: right;" id="pdfNetOperatingIncome">₱0.00</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- 2. DSO & Treasury Audit Performance -->
-        <div class="corp-section-wrap">
-            <h3 class="corp-section-title">2. WORKING CAPITAL &amp; 45-DAY DSO AUDIT</h3>
-            <div class="corp-two-col-grid">
-                <table class="corp-data-table">
-                    <thead>
-                        <tr>
-                            <th>Performance Metric</th>
-                            <th>Value / Term</th>
-                            <th>Audit Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>Operating Cycle Benchmark</strong></td>
-                            <td>October 8 – November 22, 2026</td>
-                            <td>Active Operating Term</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Days Sales Outstanding (DSO)</strong></td>
-                            <td id="pdfDsoDays">12 Days</td>
-                            <td>Compliant (&lt; 45 Days)</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Sales Drawer Opening Float</strong></td>
-                            <td>₱1,000.00</td>
-                            <td>Verified Floating Reserve</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Drawer Reconciliation Discrepancy</strong></td>
-                            <td id="pdfDrawerDiscrepancy">₱0.00</td>
-                            <td>Balanced</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div class="corp-summary-box">
-                    <div class="corp-box-head">Executive Audit Certification</div>
-                    <div class="corp-box-highlight">MM-SOP-MASTER-2026 AUDITED</div>
-                    <div class="corp-box-desc">
-                        Financial figures reflected in this document represent actual ledger transactions verified across customer payment channels, raw material inventory deductions, and approved Delegation of Authority (DOA) disbursements.
+                        <div class="stat-body"><span id="pendingLiquidationCount" class="stat-value">00</span></div>
+                        <div class="stat-footer">≤ ₱300 Direct Buy Audit</div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <!-- Dual Sign-off Block (Reporting Officer + Approving Executive) -->
-        <div class="corp-signoff-row">
-            <div class="corp-sig-box">
-                <div class="corp-sig-line"></div>
-                <span class="corp-sig-name" id="pdfReportingOfficer">Kerstin E. Reyes</span>
-                <span class="corp-sig-role">Financial Officer — Reporting Officer</span>
-            </div>
-            <div class="corp-sig-box">
-                <div class="corp-sig-line"></div>
-                <span class="corp-sig-name">Chief Executive Officer / General Manager</span>
-                <span class="corp-sig-role">Executive Endorsement &amp; Corporate Audit</span>
-            </div>
-        </div>
+            <!-- SPLIT LAYOUT: DISBURSEMENT DESK (LEFT) + CHARTS (RIGHT) -->
+            <div class="split-dashboard-layout">
+                <!-- LEFT: PRE-APPROVAL / LIQUIDATION DESK -->
+                <div class="table-column">
+                    <section class="directory-card">
+                        <div class="panel-header-bar">
+                            <div>
+                                <h2 class="section-title">Disbursement Clearance Desk</h2>
+                                <p class="section-sub-text">DOA-routed requisitions awaiting finance action</p>
+                            </div>
+                            <div class="order-filter-tabs">
+                                <button type="button" class="tab-btn active" id="tabPreApproval" onclick="switchFinanceTab('preapproval')">
+                                    <span>₱301–₱500 Pre-Approval</span>
+                                    <span class="counter-badge" id="badgePreApp">0</span>
+                                </button>
+                                <button type="button" class="tab-btn" id="tabLiquidation" onclick="switchFinanceTab('liquidation')">
+                                    <span>≤ ₱300 Liquidation</span>
+                                    <span class="counter-badge" id="badgeLiq">0</span>
+                                </button>
+                            </div>
+                        </div>
 
-        <div class="corp-doc-footer-note">
-            Milky Marble Enterprise ERP System • Confidential Financial Governance Statement • Generated for official operational audit and accounting review.
+                        <div class="threshold-legend-row">
+                            <span class="badge-route route-finance"><span class="badge-dot dot-finance"></span> Endorsed to Finance</span>
+                            <span class="badge-route route-procure"><span class="badge-dot dot-procure"></span> Direct Buy Liquidation</span>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="cust-table">
+                                <thead>
+                                    <tr id="tableHeaderRow">
+                                        <th>PR Code &amp; Item</th>
+                                        <th>Requesting Dept</th>
+                                        <th>Estimated Cost</th>
+                                        <th>DOA Status</th>
+                                        <th style="text-align: right;">Authorization</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="financeTableBody">
+                                    <tr><td colspan="5" class="loading-state-text">Loading disbursement queue...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="tx-pagination-bar">
+                            <span class="tx-page-info" id="financePageInfo">Showing 0 of 0 records</span>
+                            <div class="tx-pager-buttons">
+                                <button type="button" class="pager-btn" id="prevFinBtn" title="Previous Page" disabled>
+                                    <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                                </button>
+                                <div class="pager-numbers" id="finPagerNumbers">
+                                    <button type="button" class="pager-num-btn active" disabled>1</button>
+                                </div>
+                                <button type="button" class="pager-btn" id="nextFinBtn" title="Next Page" disabled>
+                                    <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- RIGHT: CASH FLOW + COGS CHARTS -->
+                <div class="charts-column">
+                    <section class="chart-card">
+                        <div class="card-head-row">
+                            <div>
+                                <h2 class="section-title">Release Day Cash Flow</h2>
+                                <p class="section-sub-text">Gross sales vs. procurement COGS</p>
+                            </div>
+                        </div>
+                        <div style="position: relative; height: 220px;">
+                            <canvas id="releaseDayBarChart"></canvas>
+                        </div>
+                    </section>
+
+                    <section class="chart-card">
+                        <div class="card-head-row">
+                            <div>
+                                <h2 class="section-title">COGS Breakdown</h2>
+                                <p class="section-sub-text">Cost of goods sold by ingredient group</p>
+                            </div>
+                        </div>
+                        <div class="donut-flex-container">
+                            <div style="position: relative; height: 140px; width: 140px; flex-shrink: 0;">
+                                <canvas id="cogsDonutChart"></canvas>
+                            </div>
+                            <div class="donut-legend-col">
+                                <div class="legend-row"><span class="legend-box" style="background-color:#f28b95;"></span> Tea &amp; Boba</div>
+                                <div class="legend-row"><span class="legend-box" style="background-color:#68B0AB;"></span> Milk Blend</div>
+                                <div class="legend-row"><span class="legend-box" style="background-color:#EAA342;"></span> Cups &amp; Film</div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: POST DISBURSEMENT VOUCHER -->
+    <div class="modal-overlay" id="disbursementModal">
+        <div class="profile-modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <h3 class="modal-title">Post Disbursement Voucher</h3>
+                    <p class="modal-subtitle">Record an approved outflow against the active operating budget.</p>
+                </div>
+                <button type="button" class="modal-close" onclick="closeDisbursementModal()">✕</button>
+            </div>
+
+            <form id="disbursementForm" class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label for="disburseDesc">Description *</label>
+                        <input type="text" id="disburseDesc" placeholder="e.g. 2x 1kg Tapioca Pearls Replenishment" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="disburseCategory">Classification *</label>
+                        <select id="disburseCategory" required>
+                            <option value="cogs" selected>COGS - Raw Ingredients &amp; Cups</option>
+                            <option value="direct">Petty Cash Direct Buy (&le; ₱300)</option>
+                            <option value="marketing">Marketing &amp; Promotional</option>
+                            <option value="admin">Admin, Ice &amp; Utilities</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="disburseAmount">Amount (₱) *</label>
+                        <input type="number" step="0.5" id="disburseAmount" placeholder="e.g. 260.00" min="1" required>
+                    </div>
+
+                    <div class="form-group full">
+                        <label for="disburseOrNum">OR / Sales Invoice # *</label>
+                        <input type="text" id="disburseOrNum" placeholder="e.g. OR-88219" required>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeDisbursementModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">
+                        <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>Post Voucher</span>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
-</div>
 
-<script src="../js/employeeAuth.js"></script>
-<script src="js/reports.js"></script>
-<script src="/shared/js/avatarUpload.js"></script>
+    <script src="../js/employeeAuth.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="/shared/js/avatarUpload.js"></script>
 </body>
 </html>
