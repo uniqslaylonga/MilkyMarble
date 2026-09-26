@@ -1,5 +1,16 @@
 // public/customer/js/orders.js
 
+// Force a real reload if this page is restored from bfcache (e.g. the
+// customer used the browser's Back button to return here). Otherwise
+// they'd see whatever order data was in memory the last time this page
+// actually loaded - which can be stale (e.g. missing a transaction_id
+// that was only written to the order after they'd already fetched it).
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) {
+    window.location.reload();
+  }
+});
+
 let allOrdersList = [];
 let activeStatusFilter = 'all';
 let currentSearchQuery = '';
@@ -19,6 +30,18 @@ const ratingDescriptions = {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadOrders();
+
+  // The order list is only fetched once per page load and cached in
+  // allOrdersList - it doesn't update itself in the background. If the
+  // customer switches away to finish a payment (a new tab/e-wallet app)
+  // and comes back to this same Orders tab, silently re-fetch so fields
+  // like transaction_id (written to the order right after payment) show
+  // up without them having to manually refresh the page.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      loadOrders();
+    }
+  });
 
   // Search Listeners (Input typing, Enter key, Search Button)
   const searchInput = document.getElementById('globalNavSearchInput');
