@@ -890,7 +890,7 @@ function openSavedBuildsPanel() {
     target: document.body,
     customClass: {
       container: 'mm-swal-container-top',
-      popup: 'mm-swal-popup'
+      popup: 'mm-swal-popup mm-swal-saved-builds-popup'
     }
   });
 }

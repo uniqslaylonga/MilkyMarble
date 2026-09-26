@@ -1107,17 +1107,27 @@ button.swal2-cancel.mm-swal-cancel-btn:hover {
    mirroring .layer-1-flavor / .layer-2-* / .layer-3-cup
    in home.css so it renders on every page.
    =================================================== */
+
+/* This panel reuses the shared .mm-swal-popup padding (34px 28px 28px),
+   which was designed for short confirmation/prompt text, not a scrolling
+   list - on top of the list's own row padding it made the panel feel
+   very roomy/empty. Tighten just this popup's outer padding without
+   touching every other modal on the site. */
+div.swal2-popup.mm-swal-popup.mm-swal-saved-builds-popup {
+    padding: 20px 16px 16px !important;
+}
+
 .saved-builds-list {
     max-height: min(60vh, 430px);
     overflow-y: auto;
-    padding: 2px 4px 2px 0;
+    padding: 2px 2px 0 0;
 }
 
 .saved-build-row {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 10px 0;
+    gap: 12px;
+    padding: 8px 0;
     border-bottom: 1px solid #FCE1DD;
     text-align: left;
 }
