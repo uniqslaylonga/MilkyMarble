@@ -1,5 +1,0 @@
-pie 3.1416
-INPUT = RADIUS
-Area = pie (3.1416 x radius^2)
-OUTPUT = AREA
-
