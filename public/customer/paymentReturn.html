@@ -165,6 +165,7 @@
     function renderResult(state, order, errorMessage) {
       const card = document.getElementById('statusCard');
       const orderNo = order && order.order_number ? order.order_number : '';
+      const txnId = order && order.transaction_id ? order.transaction_id : '';
       const ordersHref = `orders.html${ordersLinkSuffix}`;
 
       if (state === 'success') {
@@ -173,6 +174,7 @@
           <h1>Payment Confirmed!</h1>
           <p>Your PayMongo e-wallet payment was successful.</p>
           ${orderNo ? `<p>Order No: <span class="order-no">${orderNo}</span></p>` : ''}
+          ${txnId ? `<p>Transaction ID: <span class="order-no" style="font-family: monospace; font-size: 12.5px;">${txnId}</span></p>` : ''}
           <a class="btn-back" href="${ordersHref}">View My Orders</a>
         `;
       } else if (state === 'pending') {

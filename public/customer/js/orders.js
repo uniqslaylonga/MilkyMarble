@@ -556,6 +556,17 @@ window.openOrderDetailsModal = function(orderOrId) {
   }
   document.getElementById('modalPaymentMethod').innerText = paymentMethod;
 
+  const txnIdRow = document.getElementById('modalTransactionIdRow');
+  const txnIdEl = document.getElementById('modalTransactionId');
+  if (txnIdRow && txnIdEl) {
+    if (order.transaction_id) {
+      txnIdEl.innerText = order.transaction_id;
+      txnIdRow.style.display = '';
+    } else {
+      txnIdRow.style.display = 'none';
+    }
+  }
+
   const itemsContainer = document.getElementById('modalOrderItemsList');
   const rawItems = order.items || order.order_items || [];
 

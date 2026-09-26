@@ -185,7 +185,7 @@ router.get('/verify/:orderId', async (req, res) => {
     const { orderId } = req.params;
     const { data: order, error: orderErr } = await supabase
       .from('orders')
-      .select('id, order_number, total_amount, status, pickup_instructions')
+      .select('id, order_number, total_amount, status, pickup_instructions, transaction_id')
       .eq('id', orderId)
       .single();
 

@@ -385,7 +385,7 @@ router.get('/', async (req, res) => {
       .from('orders')
       .select(`
         id, order_number, status, subtotal, discount_amount, total_amount, 
-        pickup_instructions, pickup_date, placed_at,
+        pickup_instructions, pickup_date, placed_at, payment_method, transaction_id,
         order_items (id, item_label, quantity, unit_price, line_total, size, is_custom, toppings, addons, flavor_img, toppings_img, cup_img, accent_color)
       `)
       .eq('customer_id', customer.id)
@@ -410,6 +410,8 @@ router.get('/', async (req, res) => {
         status: o.status || 'PENDING_PAYMENT',
         total_amount: o.total_amount || 0,
         pickup_date: schedule,
+        payment_method: o.payment_method || null,
+        transaction_id: o.transaction_id || null,
         items: (o.order_items || []).map(it => ({
           item_label: it.item_label,
           title: it.item_label,
