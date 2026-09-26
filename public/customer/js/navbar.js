@@ -443,10 +443,22 @@ function setupDropdownToggle() {
   }
 
   if (notifBell && notifWrapper) {
+    // Touch devices fire a synthetic "mouseenter" on the first tap of the
+    // bell (see the hover listeners below), which used to add .hover-open
+    // with no matching "mouseleave" ever firing to remove it (there's no
+    // real cursor to leave with on a touch screen). That left .hover-open
+    // stuck forever, so a second tap on the bell only toggled .active back
+    // off while .hover-open kept the dropdown visible via the CSS rule
+    // that shows it on either class - i.e. the dropdown never closed on
+    // mobile. Track open/closed as one explicit state and clear BOTH
+    // classes on every tap so a second tap (or an outside tap, handled
+    // below) always closes it, on touch or mouse alike.
     notifBell.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      notifWrapper.classList.toggle('active');
+      const isOpen = notifWrapper.classList.contains('active') || notifWrapper.classList.contains('hover-open');
+      notifWrapper.classList.remove('active', 'hover-open');
+      if (!isOpen) notifWrapper.classList.add('active');
       if (dropdown) dropdown.classList.remove('active');
     });
 
@@ -454,19 +466,25 @@ function setupDropdownToggle() {
     // time to travel from the bell icon down into the panel without it
     // vanishing mid-way (plain CSS :hover closes it the instant the mouse
     // leaves the bell's small hit-box, before it reaches the dropdown).
-    let notifHoverCloseTimer = null;
-    const openNotifOnHover = () => {
-      clearTimeout(notifHoverCloseTimer);
-      notifWrapper.classList.add('hover-open');
-    };
-    const scheduleNotifClose = () => {
-      clearTimeout(notifHoverCloseTimer);
-      notifHoverCloseTimer = setTimeout(() => {
-        notifWrapper.classList.remove('hover-open');
-      }, 450);
-    };
-    notifWrapper.addEventListener('mouseenter', openNotifOnHover);
-    notifWrapper.addEventListener('mouseleave', scheduleNotifClose);
+    // Only wired up on devices that actually have a real mouse/hover -
+    // on touch devices this has no meaningful "leave" event, which was
+    // the root cause of the stuck-open bug above.
+    const supportsHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    if (supportsHover) {
+      let notifHoverCloseTimer = null;
+      const openNotifOnHover = () => {
+        clearTimeout(notifHoverCloseTimer);
+        notifWrapper.classList.add('hover-open');
+      };
+      const scheduleNotifClose = () => {
+        clearTimeout(notifHoverCloseTimer);
+        notifHoverCloseTimer = setTimeout(() => {
+          notifWrapper.classList.remove('hover-open');
+        }, 450);
+      };
+      notifWrapper.addEventListener('mouseenter', openNotifOnHover);
+      notifWrapper.addEventListener('mouseleave', scheduleNotifClose);
+    }
   }
 
   document.addEventListener('click', (e) => {
@@ -476,6 +494,15 @@ function setupDropdownToggle() {
     if (notifWrapper && !notifWrapper.contains(e.target)) {
       notifWrapper.classList.remove('active');
       notifWrapper.classList.remove('hover-open');
+    }
+  });
+
+  // Belt-and-suspenders for touch: some mobile browsers fire touchend
+  // more reliably/quicker than the simulated click on background taps,
+  // especially with fast double-taps. Close on outside touch too.
+  document.addEventListener('touchend', (e) => {
+    if (notifWrapper && notifWrapper.classList.contains('active') && !notifWrapper.contains(e.target)) {
+      notifWrapper.classList.remove('active', 'hover-open');
     }
   });
 }
