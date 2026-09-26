@@ -690,6 +690,7 @@ function renderPaginatedTransactions() {
                 </div>
                 <div class="row-item-footer">
                     <span class="order-meta-info">${escapeHtml(ord.order_number || '')} &bull; ${dateFormatted}</span>
+                    <span class="order-meta-info" style="font-family: monospace;">${escapeHtml(ord.transaction_id || 'No Txn ID')}</span>
                     <span>Status: <strong>${escapeHtml(ord.status || 'PENDING')}</strong></span>
                 </div>
             </div>

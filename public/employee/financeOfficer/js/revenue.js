@@ -385,7 +385,7 @@ function renderPaymentsTable() {
                     </span>
                 </td>
                 <td>
-                    <span style="font-size: 12px; font-family: monospace; color: var(--text-dark);">${escapeHtml(p.ref_id || 'Cash Remittance')}</span>
+                    <span style="font-size: 12px; font-family: monospace; color: var(--text-dark);">${escapeHtml(p.ref_id || 'Not Recorded')}</span>
                 </td>
                 <td>
                     <strong style="color: var(--brown-soft); font-family: var(--font-family-heading); font-size: 13.5px;">₱${formatAmount(p.amount)}</strong>
@@ -458,6 +458,7 @@ function inspectTransactionDetail(txId) {
             <div style="text-align: left; font-size: 13px; line-height: 1.6; color: var(--text-dark);">
                 <div style="margin-bottom: 6px;"><strong>Customer:</strong> ${escapeHtml(tx.customer_name)}</div>
                 <div style="margin-bottom: 6px;"><strong>Channel:</strong> ${escapeHtml(tx.channel_label)}</div>
+                <div style="margin-bottom: 6px;"><strong>Transaction ID:</strong> <span style="font-family: monospace;">${escapeHtml(tx.ref_id || 'Not Recorded')}</span></div>
                 <div style="margin-bottom: 6px;"><strong>Amount Settled:</strong> ₱${formatAmount(tx.amount)}</div>
                 <div style="margin-bottom: 6px;"><strong>Transaction Timestamp:</strong> ${escapeHtml(tx.date)}</div>
                 <div style="background: var(--bg-main); padding: 10px 12px; border-radius: 10px; margin-top: 10px; border-left: 3px solid var(--accent-pink);">

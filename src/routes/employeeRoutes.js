@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../config/supabase');
+const { generateCashTransactionId } = require('../utils/transactionId');
 
 // Optional SDK load for Google Gemini AI
 let GoogleGenAI;
@@ -563,6 +564,7 @@ router.get('/sales-officer/dashboard', async (req, res) => {
       .from('orders')
       .select(`
         id, order_number, order_type, status, total_amount, placed_at, customer_id, guest_name,
+        payment_method, transaction_id,
         customers (
           users (full_name)
         )
@@ -581,7 +583,9 @@ router.get('/sales-officer/dashboard', async (req, res) => {
         total_amount: parseFloat(o.total_amount) || 0,
         placed_at: o.placed_at,
         customer_id: o.customer_id,
-        customer_name: custName
+        customer_name: custName,
+        payment_method: o.payment_method || null,
+        transaction_id: o.transaction_id || null
       };
     });
 
@@ -1031,6 +1035,7 @@ router.post('/sales-officer/order-monitoring/update', async (req, res) => {
           order_type: 'preset',
           status: 'COMPLETED',
           payment_method: 'Cash on Counter',
+          transaction_id: generateCashTransactionId(),
           subtotal: amount,
           total_amount: amount,
           placed_at: nowISO,
@@ -1860,7 +1865,7 @@ router.get('/finance-officer/payments', async (req, res) => {
 
     const { data: paidOrders, error } = await supabase
       .from('orders')
-      .select('id, order_number, total_amount, placed_at, payment_method, guest_name, customers(users(full_name, username))')
+      .select('id, order_number, total_amount, placed_at, payment_method, transaction_id, guest_name, customers(users(full_name, username))')
       .eq('status', 'PAID_VERIFIED')
       .order('placed_at', { ascending: false });
     if (error) throw error;
@@ -1892,7 +1897,7 @@ router.get('/finance-officer/payments', async (req, res) => {
         user_identifier: (userObj && userObj.username) || 'N/A',
         channel,
         channel_label: channelLabel,
-        ref_id: 'N/A',
+        ref_id: o.transaction_id || 'N/A',
         status_label: '✓ Verified'
       };
     });

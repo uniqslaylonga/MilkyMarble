@@ -127,11 +127,29 @@ function checkoutSessionIsPaid(sessionData) {
   return false;
 }
 
+/**
+ * Pulls PayMongo's own transaction/payment id off a paid Checkout Session,
+ * so it can be stored against the order for reconciliation. Prefers the
+ * actual `payment` id (e.g. "pay_..."); falls back to the payment_intent id
+ * if that's the only thing PayMongo populated for this session.
+ */
+function getPaymentTransactionId(sessionData) {
+  const attrs = (sessionData && sessionData.attributes) || {};
+  const payments = Array.isArray(attrs.payments) ? attrs.payments : [];
+  const paidPayment = payments.find((p) => p && p.attributes && p.attributes.status === 'paid');
+  if (paidPayment && paidPayment.id) return paidPayment.id;
+  if (attrs.payment_intent && attrs.payment_intent.status === 'succeeded' && attrs.payment_intent.id) {
+    return attrs.payment_intent.id;
+  }
+  return null;
+}
+
 module.exports = {
   EWALLET_METHOD_TYPES,
   isConfigured,
   isLiveKey,
   createEwalletCheckoutSession,
   retrieveCheckoutSession,
-  checkoutSessionIsPaid
+  checkoutSessionIsPaid,
+  getPaymentTransactionId
 };

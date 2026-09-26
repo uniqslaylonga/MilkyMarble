@@ -8,6 +8,7 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 const { dispatchOrderStatusEmail } = require('../services/mailServices');
+const { generateCashTransactionId } = require('../utils/transactionId');
 
 // Resolves the name/email to send order emails to, for either a
 // logged-in customer (via users table) or a guest checkout.
@@ -235,6 +236,14 @@ router.post('/', async (req, res) => {
     const cleanGuestName = guest_name || recipient_name || null;
     const cleanGuestEmail = guest_email || recipient_email || null;
 
+    // Cash has no payment gateway to source a transaction id from, so we
+    // generate an internal reference right away. E-Wallet orders get
+    // PayMongo's real transaction id once the checkout is verified as paid
+    // (see paymentRoutes.js) - left null here in the meantime.
+    const transactionId = cleanPaymentMethod === 'Cash on Pick-Up'
+      ? generateCashTransactionId()
+      : null;
+
     const orderPayload = {
       customer_id: targetCustomerId,
       order_number: orderNumber,
@@ -244,6 +253,7 @@ router.post('/', async (req, res) => {
       discount_amount: Number((promoDiscount + actualPointsDiscount).toFixed(2)),
       total_amount: finalTotalAmount,
       payment_method: cleanPaymentMethod,
+      transaction_id: transactionId,
       pickup_date: scheduleDate,
       pickup_instructions: `${scheduleText} | Payment: ${cleanPaymentMethod}`,
       guest_name: cleanGuestName,

@@ -206,9 +206,10 @@ router.get('/verify/:orderId', async (req, res) => {
     const paid = paymongo.checkoutSessionIsPaid(session);
 
     if (paid) {
+      const txnId = paymongo.getPaymentTransactionId(session);
       const { data: updatedOrder } = await supabase
         .from('orders')
-        .update({ status: 'PAID_VERIFIED' })
+        .update({ status: 'PAID_VERIFIED', ...(txnId ? { transaction_id: txnId } : {}) })
         .eq('id', order.id)
         .select()
         .single();
@@ -272,7 +273,11 @@ router.post('/webhook', async (req, res) => {
         .single();
 
       if (order && order.status !== 'PAID_VERIFIED') {
-        await supabase.from('orders').update({ status: 'PAID_VERIFIED' }).eq('id', order.id);
+        const txnId = paymongo.getPaymentTransactionId(resource);
+        await supabase
+          .from('orders')
+          .update({ status: 'PAID_VERIFIED', ...(txnId ? { transaction_id: txnId } : {}) })
+          .eq('id', order.id);
         console.log(`[PayMongo Webhook] Order ${referenceNumber} marked PAID_VERIFIED.`);
         sendPaidConfirmationEmail(order.id);
       }
