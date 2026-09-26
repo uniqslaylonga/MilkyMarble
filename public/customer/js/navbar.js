@@ -543,6 +543,14 @@ async function handleGlobalAvatarFileSelect(event) {
       title: 'Updating Photo...',
       text: 'Saving to your profile in the database...',
       allowOutsideClick: false,
+      target: document.body,
+      customClass: {
+        container: 'mm-swal-container-top',
+        popup: 'mm-swal-popup',
+        title: 'mm-swal-title',
+        htmlContainer: 'mm-swal-html'
+      },
+      buttonsStyling: false,
       didOpen: () => Swal.showLoading()
     });
   }
@@ -577,7 +585,15 @@ async function handleGlobalAvatarFileSelect(event) {
           title: 'Photo Updated!',
           text: 'Saved successfully to database!',
           timer: 1800,
-          showConfirmButton: false
+          showConfirmButton: false,
+          target: document.body,
+          customClass: {
+            container: 'mm-swal-container-top',
+            popup: 'mm-swal-popup',
+            title: 'mm-swal-title',
+            htmlContainer: 'mm-swal-html'
+          },
+          buttonsStyling: false
         });
       }
     } else {
@@ -589,7 +605,17 @@ async function handleGlobalAvatarFileSelect(event) {
       Swal.fire({
         icon: 'error',
         title: 'Upload Error',
-        text: err.message || 'Could not save profile image.'
+        text: err.message || 'Could not save profile image.',
+        target: document.body,
+        customClass: {
+          container: 'mm-swal-container-top',
+          popup: 'mm-swal-popup',
+          title: 'mm-swal-title',
+          htmlContainer: 'mm-swal-html',
+          actions: 'mm-swal-actions',
+          confirmButton: 'mm-swal-confirm-btn'
+        },
+        buttonsStyling: false
       });
     }
   } finally {

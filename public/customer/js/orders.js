@@ -741,7 +741,21 @@ window.submitOrderRating = async function(event) {
 
   const user = JSON.parse(localStorage.getItem('mm_user') || '{}');
   if (!user.customer_id) {
-    Swal.fire({ icon: 'warning', title: 'Login Required', text: 'Please log in to submit a review.' });
+    Swal.fire({
+      icon: 'warning',
+      title: 'Login Required',
+      text: 'Please log in to submit a review.',
+      target: document.body,
+      customClass: {
+        container: 'mm-swal-container-top',
+        popup: 'mm-swal-popup',
+        title: 'mm-swal-title',
+        htmlContainer: 'mm-swal-html',
+        actions: 'mm-swal-actions',
+        confirmButton: 'mm-swal-confirm-btn'
+      },
+      buttonsStyling: false
+    });
     return;
   }
 
@@ -770,14 +784,51 @@ window.submitOrderRating = async function(event) {
         icon: 'success',
         title: 'Review Submitted!',
         text: 'Thank you for sharing your sweet feedback!',
-        confirmButtonColor: '#F48A8E'
+        target: document.body,
+        customClass: {
+          container: 'mm-swal-container-top',
+          popup: 'mm-swal-popup',
+          title: 'mm-swal-title',
+          htmlContainer: 'mm-swal-html',
+          actions: 'mm-swal-actions',
+          confirmButton: 'mm-swal-confirm-btn'
+        },
+        buttonsStyling: false
       });
     } else {
-      Swal.fire({ icon: 'error', title: 'Submission Failed', text: data.message || 'Could not save review.' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Submission Failed',
+        text: data.message || 'Could not save review.',
+        target: document.body,
+        customClass: {
+          container: 'mm-swal-container-top',
+          popup: 'mm-swal-popup',
+          title: 'mm-swal-title',
+          htmlContainer: 'mm-swal-html',
+          actions: 'mm-swal-actions',
+          confirmButton: 'mm-swal-confirm-btn'
+        },
+        buttonsStyling: false
+      });
     }
   } catch (err) {
     window.closeRateModal();
-    Swal.fire({ icon: 'success', title: 'Review Submitted!', text: 'Thank you for your sweet feedback!' });
+    Swal.fire({
+      icon: 'success',
+      title: 'Review Submitted!',
+      text: 'Thank you for your sweet feedback!',
+      target: document.body,
+      customClass: {
+        container: 'mm-swal-container-top',
+        popup: 'mm-swal-popup',
+        title: 'mm-swal-title',
+        htmlContainer: 'mm-swal-html',
+        actions: 'mm-swal-actions',
+        confirmButton: 'mm-swal-confirm-btn'
+      },
+      buttonsStyling: false
+    });
   }
 };
 
@@ -863,7 +914,10 @@ window.saveOrderAsBuild = function(encodedOrder) {
       icon: 'success',
       title: 'Build saved! Find it in the bookmark icon up top.',
       showConfirmButton: false,
-      timer: 2000
+      timer: 2000,
+      customClass: {
+        popup: 'mm-swal-toast'
+      }
     });
   }
 };
@@ -969,14 +1023,56 @@ window.confirmOrderReceived = function(orderId) {
       });
       const data = await res.json();
       if (res.ok && data.status === 'success') {
-        Swal.fire({ icon: 'success', title: 'Order Complete!', text: 'Thank you! Enjoy your sips!' });
+        Swal.fire({
+          icon: 'success',
+          title: 'Order Complete!',
+          text: 'Thank you! Enjoy your sips!',
+          target: document.body,
+          customClass: {
+            container: 'mm-swal-container-top',
+            popup: 'mm-swal-popup',
+            title: 'mm-swal-title',
+            htmlContainer: 'mm-swal-html',
+            actions: 'mm-swal-actions',
+            confirmButton: 'mm-swal-confirm-btn'
+          },
+          buttonsStyling: false
+        });
         loadOrders();
       } else {
-        Swal.fire({ icon: 'error', title: 'Could Not Confirm', text: data.message || 'Something went wrong. Please try again.' });
+        Swal.fire({
+          icon: 'error',
+          title: 'Could Not Confirm',
+          text: data.message || 'Something went wrong. Please try again.',
+          target: document.body,
+          customClass: {
+            container: 'mm-swal-container-top',
+            popup: 'mm-swal-popup',
+            title: 'mm-swal-title',
+            htmlContainer: 'mm-swal-html',
+            actions: 'mm-swal-actions',
+            confirmButton: 'mm-swal-confirm-btn'
+          },
+          buttonsStyling: false
+        });
       }
     } catch (e) {
       console.error('Confirm order received failed:', e);
-      Swal.fire({ icon: 'error', title: 'Network Error', text: 'Could not reach the server. Please check your connection and try again.' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Network Error',
+        text: 'Could not reach the server. Please check your connection and try again.',
+        target: document.body,
+        customClass: {
+          container: 'mm-swal-container-top',
+          popup: 'mm-swal-popup',
+          title: 'mm-swal-title',
+          htmlContainer: 'mm-swal-html',
+          actions: 'mm-swal-actions',
+          confirmButton: 'mm-swal-confirm-btn'
+        },
+        buttonsStyling: false
+      });
     }
   });
 };

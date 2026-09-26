@@ -116,7 +116,17 @@ async function submitRating() {
       Swal.fire({
         title: 'Login Required',
         text: 'Please log in to submit a rating.',
-        icon: 'warning'
+        icon: 'warning',
+        target: document.body,
+        customClass: {
+          container: 'mm-swal-container-top',
+          popup: 'mm-swal-popup',
+          title: 'mm-swal-title',
+          htmlContainer: 'mm-swal-html',
+          actions: 'mm-swal-actions',
+          confirmButton: 'mm-swal-confirm-btn'
+        },
+        buttonsStyling: false
       });
     } else {
       alert('Please log in to submit a rating.');
@@ -156,7 +166,17 @@ async function submitRating() {
         await Swal.fire({
           title: 'Review Saved!',
           text: data.message || 'Thank you for your rating!',
-          icon: 'success'
+          icon: 'success',
+          target: document.body,
+          customClass: {
+            container: 'mm-swal-container-top',
+            popup: 'mm-swal-popup',
+            title: 'mm-swal-title',
+            htmlContainer: 'mm-swal-html',
+            actions: 'mm-swal-actions',
+            confirmButton: 'mm-swal-confirm-btn'
+          },
+          buttonsStyling: false
         });
       } else {
         alert(data.message || 'Thank you for your rating!');
@@ -172,7 +192,17 @@ async function submitRating() {
       Swal.fire({
         title: 'Error',
         text: err.message || 'Network error while submitting rating.',
-        icon: 'error'
+        icon: 'error',
+        target: document.body,
+        customClass: {
+          container: 'mm-swal-container-top',
+          popup: 'mm-swal-popup',
+          title: 'mm-swal-title',
+          htmlContainer: 'mm-swal-html',
+          actions: 'mm-swal-actions',
+          confirmButton: 'mm-swal-confirm-btn'
+        },
+        buttonsStyling: false
       });
     } else {
       alert(err.message || 'Network error while submitting rating.');

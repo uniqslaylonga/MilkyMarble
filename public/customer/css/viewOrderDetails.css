@@ -613,3 +613,86 @@
     position: relative;
     z-index: 2;
 }
+
+/* ==========================================
+   MILKY MARBLE SWEETALERT2 SYSTEM STYLE
+   ========================================== */
+.swal2-container.mm-swal-container-top,
+div.swal2-container.mm-swal-container-top {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(89, 74, 66, 0.55) !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+}
+
+div.swal2-popup.mm-swal-popup {
+  background-color: var(--bg-modal) !important;
+  background: var(--bg-modal) !important;
+  border-radius: var(--radius-modal) !important;
+  padding: 34px 28px 28px !important;
+  border: 2px solid #FCE1DD !important;
+  box-shadow: 0 20px 48px rgba(89, 74, 66, 0.28) !important;
+  width: 90% !important;
+  max-width: 440px !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  font-family: var(--font-body) !important;
+}
+
+div.swal2-title.mm-swal-title {
+  font-family: var(--font-header) !important;
+  font-size: 22px !important;
+  font-weight: 800 !important;
+  color: var(--text-dark) !important;
+  letter-spacing: 1px !important;
+  margin: 12px 0 8px !important;
+  padding: 0 !important;
+  line-height: 1.25 !important;
+}
+
+div.swal2-html-container.mm-swal-html {
+  font-family: var(--font-body) !important;
+  font-size: 14.5px !important;
+  font-weight: 600 !important;
+  color: var(--text-muted) !important;
+  line-height: 1.5 !important;
+  margin: 8px 0 0 !important;
+  padding: 0 !important;
+}
+
+div.swal2-actions.mm-swal-actions {
+  margin-top: 24px !important;
+  gap: 12px !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+button.swal2-confirm.mm-swal-confirm-btn {
+  background-color: var(--btn-buy-pink) !important;
+  background: var(--btn-buy-pink) !important;
+  color: #FFFFFF !important;
+  border-radius: 24px !important;
+  font-family: var(--font-body) !important;
+  font-weight: 800 !important;
+  font-size: 14px !important;
+  padding: 10px 26px !important;
+  box-shadow: 0 4px 14px rgba(244, 138, 142, 0.4) !important;
+  border: none !important;
+  outline: none !important;
+  cursor: pointer !important;
+  transition: transform 0.15s ease, opacity 0.2s ease !important;
+}
+
+button.swal2-confirm.mm-swal-confirm-btn:hover {
+  opacity: 0.92 !important;
+  transform: scale(1.03) !important;
+}

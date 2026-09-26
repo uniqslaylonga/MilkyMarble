@@ -1286,7 +1286,10 @@ window.saveCurrentCustomBuild = function() {
       icon: 'success',
       title: 'Build saved!',
       showConfirmButton: false,
-      timer: 1600
+      timer: 1600,
+      customClass: {
+        popup: 'mm-swal-toast'
+      }
     });
   }
 };
@@ -1448,7 +1451,10 @@ window.copyOrderNumber = function(orderNum) {
       icon: 'success',
       title: 'Order ID copied!',
       showConfirmButton: false,
-      timer: 1500
+      timer: 1500,
+      customClass: {
+        popup: 'mm-swal-toast'
+      }
     });
   }
 };

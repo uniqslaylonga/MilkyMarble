@@ -1100,6 +1100,23 @@ button.swal2-cancel.mm-swal-cancel-btn:hover {
   transform: scale(1.03) !important;
 }
 
+/* Toast-style Swal notifications (top-end, no backdrop) that still need
+   the Milky Marble look instead of SweetAlert2's plain default toast. */
+div.swal2-popup.swal2-toast.mm-swal-toast {
+  background-color: #FFF5F4 !important;
+  background: #FFF5F4 !important;
+  border-radius: 16px !important;
+  border: 1.5px solid #FCE1DD !important;
+  box-shadow: 0 8px 24px rgba(89, 74, 66, 0.18) !important;
+  font-family: 'Urbanist', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+div.swal2-popup.swal2-toast.mm-swal-toast .swal2-title {
+  color: #594A42 !important;
+  font-weight: 700 !important;
+  font-size: 14.5px !important;
+}
+
 
 /* ===================================================
    SAVED BUILDS PANEL (navbar bookmark icon)

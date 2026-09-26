@@ -23,7 +23,17 @@ async function fetchAndOpenOrder(orderId) {
       Swal.fire({
         title: 'Error',
         text: 'Could not load order details. Please try again.',
-        icon: 'error'
+        icon: 'error',
+        target: document.body,
+        customClass: {
+          container: 'mm-swal-container-top',
+          popup: 'mm-swal-popup',
+          title: 'mm-swal-title',
+          htmlContainer: 'mm-swal-html',
+          actions: 'mm-swal-actions',
+          confirmButton: 'mm-swal-confirm-btn'
+        },
+        buttonsStyling: false
       });
     } else {
       alert('Could not load order details. Please try again.');
