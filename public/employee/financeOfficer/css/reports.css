@@ -198,9 +198,15 @@ body {
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
+  justify-content: end;
   gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background-color: var(--bg-main);
+  border-left: 2px solid var(--border-soft);
+  margin: -24px -36px 24px -24px;
+  padding: 15px 36px 15px 20px;
 }
 
 .topbar-status-strip {
@@ -285,7 +291,7 @@ body {
 .page-title {
   font-family: var(--font-family-heading);
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--brown-soft);
   letter-spacing: 1.5px;
 }
@@ -338,7 +344,7 @@ body {
   border-radius: 14px;
   font-family: var(--font-family-body);
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 700;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -401,7 +407,7 @@ body {
 
 .stat-title {
   font-family: var(--font-family-heading);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text-dark);
   letter-spacing: 0.5px;
@@ -505,7 +511,7 @@ body {
 .pnl-section-header {
   font-family: var(--font-family-heading);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--brown-soft);
   letter-spacing: 0.8px;
   padding-bottom: 4px;
@@ -524,7 +530,7 @@ body {
 .pnl-row.total-row {
   border-top: 1px solid var(--border-soft);
   padding-top: 6px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--brown-soft);
 }
 
@@ -541,7 +547,8 @@ body {
   border-radius: 8px;
   font-family: var(--font-family-heading);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
+  letter-spacing: .5px;
   color: var(--brown-soft);
 }
 
@@ -552,7 +559,7 @@ body {
 }
 
 .pnl-row.net-income-row strong {
-  font-size: 16px;
+  font-size: 13px;
   color: #2E7D32;
 }
 
@@ -565,7 +572,7 @@ body {
 
 .badge-dso-target {
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 2px 8px;
   border-radius: 6px;
   display: inline-block;
@@ -621,7 +628,7 @@ body {
 
 .dso-insight-header {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--brown-soft);
   margin-bottom: 4px;
 }
@@ -664,12 +671,13 @@ body {
 .tile-val {
   font-family: var(--font-family-heading);
   font-size: 14px;
+  letter-spacing: 1px;
   color: var(--brown-soft);
 }
 
 .settle-status-pill {
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 2px 8px;
   border-radius: 8px;
 }
@@ -756,7 +764,7 @@ body {
 }
 
 .corp-doc-code {
-  font-weight: 800;
+  font-weight: 700;
   color: #7C4F38;
 }
 
@@ -784,7 +792,7 @@ body {
 .corp-section-title {
   font-family: var(--font-family-heading);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   color: #7C4F38;
   border-bottom: 1px solid #7C4F38;
   padding-bottom: 3px;
@@ -803,7 +811,7 @@ body {
   color: #443333;
   padding: 6px 8px;
   border: 0.5px solid #cccccc;
-  font-weight: 800;
+  font-weight: 700;
   text-align: left;
 }
 
@@ -820,7 +828,7 @@ body {
 
 .table-highlight-row td {
   background-color: #FFF0ED;
-  font-weight: 800;
+  font-weight: 700;
   color: #7C4F38;
 }
 
@@ -846,7 +854,7 @@ body {
 
 .corp-box-head {
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 700;
   color: #666666;
   text-transform: uppercase;
 }
@@ -854,7 +862,7 @@ body {
 .corp-box-highlight {
   font-family: var(--font-family-heading);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   color: #7C4F38;
   margin: 3px 0;
 }
@@ -888,7 +896,7 @@ body {
 
 .corp-sig-name {
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   color: #222222;
 }
 
@@ -920,7 +928,7 @@ body {
   font-family: var(--font-family-heading) !important;
   color: var(--brown-soft) !important;
   font-size: 18px !important;
-  letter-spacing: 0.5px !important;
+  letter-spacing: 1.5px !important;
 }
 
 .swal2-confirm.mm-swal-confirm {
