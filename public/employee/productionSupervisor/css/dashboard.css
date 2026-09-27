@@ -492,6 +492,7 @@ body {
 
 .orders-container-vertical::-webkit-scrollbar {
   width: 4px;
+  margin-left: 3px;
 }
 
 .orders-container-vertical::-webkit-scrollbar-thumb {
