@@ -196,7 +196,7 @@ body {
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: end;
   gap: 20px;
   position: sticky;
   top: 0;
