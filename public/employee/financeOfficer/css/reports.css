@@ -190,7 +190,7 @@ body {
   width: calc(100% - 260px);
   max-width: calc(100% - 260px);
   min-width: 0;
-  padding: 24px 36px 40px 24px;
+  padding: 0px 36px 40px 24px;
   box-sizing: border-box;
 }
 
