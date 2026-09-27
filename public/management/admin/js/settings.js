@@ -14,7 +14,30 @@ let currentPickupDays = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   loadPickupDaySettings();
+  loadAdminProfile();
 });
+
+// Populates the topbar avatar/name. Reuses the same admin dashboard
+// endpoint the other admin pages already use, so it stays consistent.
+async function loadAdminProfile() {
+  try {
+    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    const headers = userId ? { 'x-user-id': userId } : {};
+    const res = await fetch('/api/admin/dashboard', { headers, credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const nameEl = document.getElementById('userFullName');
+    const avatarEl = document.getElementById('userAvatarImg');
+    if (nameEl && data.user?.fullName) nameEl.textContent = data.user.fullName;
+    // Only swap the src if it actually resolves — an onerror handler on the
+    // <img> itself falls back to the default silhouette otherwise, so a
+    // broken/expired avatar URL never shows the browser's broken-image icon.
+    if (avatarEl && data.user?.avatar) avatarEl.src = data.user.avatar;
+  } catch (err) {
+    // Non-critical — the page still works without the profile header.
+  }
+}
 
 async function loadPickupDaySettings() {
   const grid = document.getElementById('pickupDaysGrid');
