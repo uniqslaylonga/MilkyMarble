@@ -50,12 +50,24 @@
   padding: 0;
 }
 
-html, body {
+html {
   width: 100%;
   max-width: 100%;
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+}
+
+body {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  /* overflow-x removed from body: it was silently forcing overflow-y:auto 
+     on body, which turns body into its own scroll container and breaks 
+     position:sticky on .topbar (nearest scrolling ancestor becomes body 
+     instead of the real viewport). html alone still prevents horizontal 
+     scrollbars. */
 }
 
 body {
@@ -664,6 +676,7 @@ body {
 
 .channel-val {
   font-size: 12.5px;
+  letter-spacing: 0.5px;
   color: var(--brown-soft);
   font-family: var(--font-family-heading);
 }

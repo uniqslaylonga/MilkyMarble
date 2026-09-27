@@ -50,12 +50,19 @@
   padding: 0;
 }
 
-html, body {
+html {
   width: 100%;
   max-width: 100%;
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+}
+
+body {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {
@@ -198,7 +205,7 @@ body {
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: end;
+  justify-content: space-between;
   gap: 20px;
   position: sticky;
   top: 0;
