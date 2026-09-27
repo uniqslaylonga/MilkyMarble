@@ -676,6 +676,7 @@ body {
 
 .channel-val {
   font-size: 12.5px;
+  letter-spacing: 0.5px;
   color: var(--brown-soft);
   font-family: var(--font-family-heading);
 }
