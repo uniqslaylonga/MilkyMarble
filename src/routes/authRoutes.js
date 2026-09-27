@@ -7,6 +7,7 @@ const { OAuth2Client } = require('google-auth-library');
 const supabase = require('../config/supabase');
 const { sendPromoWelcomeEmail } = require('../services/mailServices');
 const { setStaffCookie } = require('../middleware/staffAuth');
+const { logActivity } = require('../utils/activityLog');
 
 // This must match the client_id used by the Google Sign-In button in
 // public/customer/js/login.js and public/customer/js/signup.js. Override via
@@ -376,10 +377,29 @@ router.post('/employee-login', async (req, res) => {
     if (userErr) throw userErr;
 
     if (!account) {
+      logActivity(supabase, {
+        req,
+        actorType: 'unknown',
+        action: 'auth.login_failed',
+        category: 'auth',
+        description: `Failed staff login attempt for unknown username "${cleanUsername}"`,
+        metadata: { username: cleanUsername, reason: 'unknown_username' }
+      });
       return res.status(400).json({ status: 'error', message: 'Invalid username: Employee account not found.' });
     }
 
     if (!account.is_active) {
+      logActivity(supabase, {
+        req,
+        actorId: account.id,
+        actorType: account.user_type,
+        actorName: account.full_name,
+        action: 'auth.login_blocked',
+        category: 'auth',
+        description: `Blocked login attempt on deactivated account "${account.full_name || cleanUsername}"`,
+        targetType: 'user',
+        targetId: account.id
+      });
       return res.status(403).json({ status: 'error', message: 'This account has been deactivated. Contact an administrator.' });
     }
 
@@ -394,6 +414,18 @@ router.post('/employee-login', async (req, res) => {
     }
 
     if (!isPasswordValid) {
+      logActivity(supabase, {
+        req,
+        actorId: account.id,
+        actorType: account.user_type,
+        actorName: account.full_name,
+        action: 'auth.login_failed',
+        category: 'auth',
+        description: `Failed staff login attempt (wrong password) for "${account.full_name || cleanUsername}"`,
+        targetType: 'user',
+        targetId: account.id,
+        metadata: { reason: 'invalid_password' }
+      });
       return res.status(400).json({ status: 'error', message: 'Invalid password. Please check your credentials.' });
     }
 
@@ -417,6 +449,19 @@ router.post('/employee-login', async (req, res) => {
 
     // Signed httpOnly cookie - the staff API routes check this (401 without it).
     setStaffCookie(res, { id: account.id, type: account.user_type, roles: roleNames });
+
+    logActivity(supabase, {
+      req,
+      actorId: account.id,
+      actorType: account.user_type,
+      actorName: account.full_name,
+      actorRole: roleNames[0] || null,
+      action: 'auth.login',
+      category: 'auth',
+      description: `${account.full_name || account.username} logged in`,
+      targetType: 'user',
+      targetId: account.id
+    });
 
     let targetUrl = 'login.html';
     if (roleNames.includes('Sales Officer') || cleanUsername === 'salesofficer1') {

@@ -13,6 +13,7 @@ const orderRoutes = require('./src/routes/orderRoutes');
 const paymentRoutes = require('./src/routes/paymentRoutes');
 const employeeRoutes = require('./src/routes/employeeRoutes');
 const { requireStaff, setStaffCookie, clearStaffCookie, readToken, COOKIE_NAME } = require('./src/middleware/staffAuth');
+const { logActivity } = require('./src/utils/activityLog');
 
 let customerRoutes = null;
 try {
@@ -693,6 +694,17 @@ app.post('/api/admin/settings/pickup-days', async (req, res) => {
       .upsert([{ key: 'pickup_days', value: cleanDays.join(',') }], { onConflict: 'key' });
 
     if (error) throw error;
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    logActivity(supabase, {
+      req,
+      action: 'settings.pickup_days_updated',
+      category: 'settings',
+      description: `Updated store pickup days to ${cleanDays.map(d => dayNames[d]).join(', ')}`,
+      targetType: 'store_settings',
+      targetId: 'pickup_days',
+      metadata: { days: cleanDays }
+    });
 
     return res.json({ status: 'success', days: cleanDays });
   } catch (err) {
@@ -1974,7 +1986,18 @@ app.post('/api/admin/create-plan', async (req, res) => {
       .single();
       
     if (error) throw error;
-    
+
+    logActivity(supabase, {
+      req,
+      action: 'production.plan_created',
+      category: 'production',
+      description: `Created a production plan${batch_code ? ` (batch ${batch_code})` : ''} for ${total_cups_produced} cups`,
+      targetType: 'production_log',
+      targetId: data.id,
+      targetLabel: batch_code || null,
+      metadata: { recipe_id, total_cups_produced, cooked_by }
+    });
+
     return res.json({ status: 'success', plan: data });
   } catch (error) {
     console.error('Create Plan Error:', error);
@@ -2080,11 +2103,24 @@ app.post('/api/admin/employee-records/status', async (req, res) => {
   try {
     if (!supabase) throw new Error('Database disconnected');
     const { id, is_active } = req.body;
-    
+
+    const { data: targetUser } = await supabase.from('users').select('full_name').eq('id', id).maybeSingle();
+
     // Update the is_active flag in the main users table
     const { error: userErr } = await supabase.from('users').update({ is_active: is_active === 1 }).eq('id', id);
     if (userErr) throw userErr;
-    
+
+    const activated = is_active === 1;
+    logActivity(supabase, {
+      req,
+      action: activated ? 'employee.activated' : 'employee.deactivated',
+      category: 'employee',
+      description: `${activated ? 'Activated' : 'Deactivated'} employee "${targetUser?.full_name || ('#' + id)}"`,
+      targetType: 'employee',
+      targetId: id,
+      targetLabel: targetUser?.full_name || null
+    });
+
     return res.json({ success: true });
   } catch (error) {
      return res.status(500).json({ success: false, error: error.message });
@@ -2092,6 +2128,89 @@ app.post('/api/admin/employee-records/status', async (req, res) => {
 });
 
 
+
+// ==========================================
+// MANAGEMENT ADMIN ACTIVITY LOGS API
+// ==========================================
+app.get('/api/admin/activity-logs', async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
+
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    let query = supabase
+      .from('activity_logs')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false });
+
+    const category = (req.query.category || '').trim();
+    if (category && category !== 'all') {
+      query = query.eq('category', category);
+    }
+
+    if (req.query.date_from) {
+      query = query.gte('created_at', new Date(req.query.date_from + 'T00:00:00').toISOString());
+    }
+    if (req.query.date_to) {
+      query = query.lte('created_at', new Date(req.query.date_to + 'T23:59:59.999').toISOString());
+    }
+
+    const q = (req.query.q || '').trim();
+    if (q) {
+      const escaped = q.replace(/[%,]/g, '');
+      query = query.or(
+        `description.ilike.%${escaped}%,actor_name.ilike.%${escaped}%,target_label.ilike.%${escaped}%,action.ilike.%${escaped}%`
+      );
+    }
+
+    query = query.range(from, to);
+
+    const { data: logs, error, count } = await query;
+    if (error) throw error;
+
+    // Older/system rows may only have actor_id (no actor_name snapshot) —
+    // batch-resolve those against `users` in one extra query.
+    const idsToResolve = [...new Set((logs || []).filter(l => !l.actor_name && l.actor_id).map(l => l.actor_id))];
+    let actorMap = {};
+    if (idsToResolve.length) {
+      const { data: actors } = await supabase.from('users').select('id, full_name, user_type').in('id', idsToResolve);
+      (actors || []).forEach(a => { actorMap[a.id] = a; });
+    }
+
+    const formatted = (logs || []).map(l => ({
+      id: l.id,
+      actorId: l.actor_id,
+      actorName: l.actor_name || (l.actor_id && actorMap[l.actor_id] && actorMap[l.actor_id].full_name) || 'System',
+      actorType: l.actor_type || (l.actor_id && actorMap[l.actor_id] && actorMap[l.actor_id].user_type) || null,
+      actorRole: l.actor_role,
+      action: l.action,
+      category: l.category,
+      description: l.description,
+      targetType: l.target_type,
+      targetId: l.target_id,
+      targetLabel: l.target_label,
+      metadata: l.metadata,
+      createdAt: l.created_at
+    }));
+
+    return res.json({
+      status: 'success',
+      logs: formatted,
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages: Math.max(1, Math.ceil((count || 0) / limit))
+      }
+    });
+  } catch (error) {
+    console.error('[activity-logs] fetch error:', error.message);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
 
 // ==========================================
 // MANAGEMENT CEO ANALYTICS API (Supabase)
@@ -2414,7 +2533,7 @@ app.post('/api/admin/customer-records/status', async (req, res) => {
     // "id" here is the customers.id (customer_id), so resolve the linked user first.
     const { data: customerRow, error: custErr } = await supabase
       .from('customers')
-      .select('user_id')
+      .select('user_id, users(full_name)')
       .eq('id', id)
       .maybeSingle();
 
@@ -2423,12 +2542,25 @@ app.post('/api/admin/customer-records/status', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Customer not found.' });
     }
 
+    const activated = is_active === 1 || is_active === '1' || is_active === true;
+
     const { error: userErr } = await supabase
       .from('users')
-      .update({ is_active: is_active === 1 || is_active === '1' || is_active === true })
+      .update({ is_active: activated })
       .eq('id', customerRow.user_id);
 
     if (userErr) throw userErr;
+
+    const customerName = customerRow.users?.full_name;
+    logActivity(supabase, {
+      req,
+      action: activated ? 'customer.activated' : 'customer.deactivated',
+      category: 'customer',
+      description: `${activated ? 'Activated' : 'Deactivated'} customer account "${customerName || ('#' + id)}"`,
+      targetType: 'customer',
+      targetId: id,
+      targetLabel: customerName || null
+    });
 
     return res.json({ success: true });
   } catch (error) {
@@ -2580,6 +2712,17 @@ app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
       console.error('[ADD EMPLOYEE] Failed to link user_roles:', userRoleErr.message);
     }
 
+    logActivity(supabase, {
+      req,
+      action: 'employee.created',
+      category: 'employee',
+      description: `Added new employee "${full_name}" as ${selectedRole.name}`,
+      targetType: 'employee',
+      targetId: newUser.id,
+      targetLabel: full_name,
+      metadata: { role: selectedRole.name, department: department || 'General', username: cleanUsername }
+    });
+
     return res.json({
       status: 'success',
       message: 'Employee added successfully.',
@@ -2605,7 +2748,7 @@ app.post('/api/admin/delete-employee', async (req, res) => {
 
     const { data: userRow, error: userLookupErr } = await supabase
       .from('users')
-      .select('id, user_type')
+      .select('id, user_type, full_name')
       .eq('id', user_id)
       .maybeSingle();
 
@@ -2629,6 +2772,16 @@ app.post('/api/admin/delete-employee', async (req, res) => {
 
     const { error: userDeleteErr } = await supabase.from('users').delete().eq('id', user_id);
     if (userDeleteErr) throw userDeleteErr;
+
+    logActivity(supabase, {
+      req,
+      action: 'employee.deleted',
+      category: 'employee',
+      description: `Removed employee "${userRow.full_name || ('#' + user_id)}"`,
+      targetType: 'employee',
+      targetId: user_id,
+      targetLabel: userRow.full_name || null
+    });
 
     return res.json({ status: 'success', message: 'Employee deleted successfully.' });
   } catch (error) {
@@ -2684,6 +2837,18 @@ app.post('/api/admin/edit-employee', employeeAvatarUpload, async (req, res) => {
 
       if (empErr) throw empErr;
     }
+
+    const changedFields = [...Object.keys(userUpdates), ...Object.keys(empUpdates)];
+    logActivity(supabase, {
+      req,
+      action: 'employee.updated',
+      category: 'employee',
+      description: `Updated employee record${full_name ? ` for "${full_name}"` : ''}${changedFields.length ? ` (${changedFields.join(', ')})` : ''}`,
+      targetType: 'employee',
+      targetId: user_id,
+      targetLabel: full_name || null,
+      metadata: { fields: changedFields }
+    });
 
     return res.json({ status: 'success', message: 'Employee updated successfully.' });
   } catch (error) {
