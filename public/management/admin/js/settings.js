@@ -314,20 +314,29 @@ function renderLogTable(logs) {
         return;
     }
 
-    tbody.innerHTML = logs.map(log => `
+    tbody.innerHTML = logs.map(log => {
+        const avatarSrc = log.actorAvatar || log.actor_avatar || '/customer/images/account.png';
+        const actorName = log.actorName || log.actor_name || 'System';
+        return `
         <tr>
             <td class="log-timestamp">${formatTimestamp(log.createdAt || log.created_at)}</td>
             <td>
-                <div class="log-actor">
-                    <span class="log-actor-name">${escapeHtml(log.actorName || log.actor_name || 'System')}</span>
-                    <span class="log-actor-role">${escapeHtml(log.actorRole || log.actor_role || 'Admin')}</span>
+                <div class="log-actor-cell">
+                    <div class="log-avatar-sm">
+                        <img src="${escapeHtml(avatarSrc)}" alt="${escapeHtml(actorName)}" class="log-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                    </div>
+                    <div class="log-actor">
+                        <span class="log-actor-name">${escapeHtml(actorName)}</span>
+                        <span class="log-actor-role">${escapeHtml(log.actorRole || log.actor_role || 'Admin')}</span>
+                    </div>
                 </div>
             </td>
             <td>${categoryBadge(log.category)}</td>
             <td class="log-desc">${escapeHtml(log.description || '')}</td>
             <td class="log-target">${escapeHtml(log.targetLabel || log.target_label || 'Master System')}</td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function renderLogPagination(pagination) {

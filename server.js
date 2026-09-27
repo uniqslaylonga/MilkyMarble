@@ -2179,30 +2179,47 @@ app.get('/api/admin/activity-logs', async (req, res) => {
     const { data: logs, error, count } = await query;
     if (error) throw error;
 
-    // Older/system rows may only have actor_id (no actor_name snapshot) —
-    // batch-resolve those against `users` in one extra query.
-    const idsToResolve = [...new Set((logs || []).filter(l => !l.actor_name && l.actor_id).map(l => l.actor_id))];
+    // Resolve the current avatar (and backfill name/type for older rows
+    // that only stored actor_id) for every actor referenced on this page,
+    // in one extra query. The log row itself never stored a photo, so the
+    // pfp has to come from a live lookup against `users` - it also means
+    // the avatar shown always reflects the actor's *current* photo.
+    const idsToResolve = [...new Set((logs || []).filter(l => l.actor_id).map(l => l.actor_id))];
     let actorMap = {};
     if (idsToResolve.length) {
-      const { data: actors } = await supabase.from('users').select('id, full_name, user_type').in('id', idsToResolve);
+      const { data: actors } = await supabase.from('users').select('id, full_name, user_type, avatar').in('id', idsToResolve);
       (actors || []).forEach(a => { actorMap[a.id] = a; });
     }
 
-    const formatted = (logs || []).map(l => ({
-      id: l.id,
-      actorId: l.actor_id,
-      actorName: l.actor_name || (l.actor_id && actorMap[l.actor_id] && actorMap[l.actor_id].full_name) || 'System',
-      actorType: l.actor_type || (l.actor_id && actorMap[l.actor_id] && actorMap[l.actor_id].user_type) || null,
-      actorRole: l.actor_role,
-      action: l.action,
-      category: l.category,
-      description: l.description,
-      targetType: l.target_type,
-      targetId: l.target_id,
-      targetLabel: l.target_label,
-      metadata: l.metadata,
-      createdAt: l.created_at
-    }));
+    // Same "account.png" fallback / legacy "/PHP" path cleanup used
+    // elsewhere in this file, so log avatars render the same way employee
+    // and customer avatars do.
+    const resolveActorAvatar = (rawAvatar) => {
+      if (!rawAvatar || rawAvatar.includes('account.png')) return null;
+      const cleanAvatar = rawAvatar.replace(/^\/PHP/, '');
+      if (cleanAvatar.startsWith('http') || cleanAvatar.startsWith('data:')) return cleanAvatar;
+      return cleanAvatar.startsWith('/') ? cleanAvatar : '/' + cleanAvatar;
+    };
+
+    const formatted = (logs || []).map(l => {
+      const actor = l.actor_id ? actorMap[l.actor_id] : null;
+      return {
+        id: l.id,
+        actorId: l.actor_id,
+        actorName: l.actor_name || (actor && actor.full_name) || 'System',
+        actorType: l.actor_type || (actor && actor.user_type) || null,
+        actorRole: l.actor_role,
+        actorAvatar: resolveActorAvatar(actor && actor.avatar),
+        action: l.action,
+        category: l.category,
+        description: l.description,
+        targetType: l.target_type,
+        targetId: l.target_id,
+        targetLabel: l.target_label,
+        metadata: l.metadata,
+        createdAt: l.created_at
+      };
+    });
 
     return res.json({
       status: 'success',
