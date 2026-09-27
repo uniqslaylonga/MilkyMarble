@@ -2187,7 +2187,10 @@ app.get('/api/admin/activity-logs', async (req, res) => {
     const idsToResolve = [...new Set((logs || []).filter(l => l.actor_id).map(l => l.actor_id))];
     let actorMap = {};
     if (idsToResolve.length) {
-      const { data: actors } = await supabase.from('users').select('id, full_name, user_type, avatar').in('id', idsToResolve);
+      const { data: actors, error: actorsError } = await supabase.from('users').select('id, full_name, user_type, avatar').in('id', idsToResolve);
+      if (actorsError) {
+        console.error('[activity-logs] actor avatar lookup failed:', actorsError.message);
+      }
       (actors || []).forEach(a => { actorMap[a.id] = a; });
     }
 
