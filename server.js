@@ -2447,14 +2447,50 @@ const employeeAvatarUpload = (req, res, next) => {
   next();
 };
 
+// Predefined roles the admin can assign when adding an employee. Sourced
+// from the same `roles` table (excluding CEO) already used to build the
+// department/role list on the CEO Staff Directory page, so the dropdown
+// always reflects the real, existing set of roles instead of free text.
+app.get('/api/admin/roles', async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
+
+    const { data: rolesData, error } = await supabase
+      .from('roles')
+      .select('id, name')
+      .neq('name', 'CEO')
+      .order('id', { ascending: true });
+
+    if (error) throw error;
+
+    return res.json({ status: 'success', roles: rolesData || [] });
+  } catch (error) {
+    console.error('[admin/roles] error:', error.message);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
 app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
   try {
     if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
 
-    const { username, email, password, full_name, gender, job_title, department } = req.body;
+    const { username, email, password, full_name, gender, role_id, department } = req.body;
 
-    if (!username || !email || !password || !full_name) {
+    if (!username || !email || !password || !full_name || !role_id) {
       return res.status(400).json({ status: 'error', message: 'Missing required fields.' });
+    }
+
+    // Resolve the chosen role against the real `roles` table rather than
+    // trusting free text, so job_title always matches an existing role name.
+    const { data: selectedRole, error: roleErr } = await supabase
+      .from('roles')
+      .select('id, name')
+      .eq('id', role_id)
+      .maybeSingle();
+
+    if (roleErr) throw roleErr;
+    if (!selectedRole) {
+      return res.status(400).json({ status: 'error', message: 'Selected role does not exist.' });
     }
 
     const cleanUsername = String(username).trim();
@@ -2509,7 +2545,7 @@ app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
       .insert([{
         user_id: newUser.id,
         employee_code: employeeCode,
-        job_title: job_title || 'Unassigned',
+        job_title: selectedRole.name,
         department: department || 'General',
         gender: gender || 'Not Specified'
       }])
@@ -2517,6 +2553,16 @@ app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
       .single();
 
     if (empErr) throw empErr;
+
+    // 3. Link the account to its role via user_roles, so RBAC (dashboard
+    // redirect, permissions) recognizes the role immediately on login.
+    const { error: userRoleErr } = await supabase
+      .from('user_roles')
+      .insert([{ user_id: newUser.id, role_id: selectedRole.id }]);
+
+    if (userRoleErr) {
+      console.error('[ADD EMPLOYEE] Failed to link user_roles:', userRoleErr.message);
+    }
 
     return res.json({
       status: 'success',

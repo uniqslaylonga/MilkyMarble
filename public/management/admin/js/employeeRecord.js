@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     fetchEmployeeRecordData();
 
+    populateRoleSelect();
+
 
 
     // Real-time search filter
@@ -409,6 +411,47 @@ function openAddModal() {
         modal.classList.add('open');
 
         document.body.style.overflow = 'hidden';
+
+        populateRoleSelect();
+
+    }
+
+}
+
+
+
+// Loads the same predefined role list used across management pages (roles
+
+// table, excluding CEO) and fills the Add Employee "Role" dropdown with it.
+
+async function populateRoleSelect() {
+
+    const select = document.getElementById('addRoleSelect');
+
+    if (!select) return;
+
+    try {
+
+        const response = await fetch('/api/admin/roles');
+
+        const data = await response.json();
+
+        if (data.status === 'success' && Array.isArray(data.roles) && data.roles.length > 0) {
+
+            select.innerHTML = '<option value="">Select a role...</option>' +
+                data.roles.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
+
+        } else {
+
+            select.innerHTML = '<option value="">No roles available</option>';
+
+        }
+
+    } catch (error) {
+
+        console.error('Error loading roles:', error);
+
+        select.innerHTML = '<option value="">Failed to load roles</option>';
 
     }
 
