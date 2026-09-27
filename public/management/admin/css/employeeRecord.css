@@ -1838,11 +1838,11 @@ body {
 
 .btn-delete-toggle {
 
-  background: rgba(225, 75, 90, 0.08);
+  background: #e14b5a;
 
-  color: #e14b5a;
+  color: #ffffff;
 
-  border: 1.5px solid rgba(225, 75, 90, 0.35);
+  border: none;
 
   padding: 6px 14px;
 
@@ -1854,7 +1854,7 @@ body {
 
   cursor: pointer;
 
-  transition: background 0.15s ease, color 0.15s ease, transform 0.1s;
+  transition: opacity 0.15s ease, transform 0.1s;
 
   display: inline-flex;
 
@@ -1868,19 +1868,9 @@ body {
 
 .btn-delete-toggle:hover {
 
-  background: #e14b5a;
-
-  color: #ffffff;
+  opacity: 0.85;
 
   transform: translateY(-1px);
-
-}
-
-
-
-.btn-delete-toggle:active {
-
-  transform: translateY(0);
 
 }
 
@@ -1984,129 +1974,4 @@ body {
 
   }
 
-}
-
-/* ==========================================
-   SWEETALERT2 — MILKY MARBLE DESIGN SYSTEM
-   (matches the mm-swal-popup styling used on
-   the customer side). The default SweetAlert2
-   z-index sits below .modal-overlay (9999), so
-   without mm-swal-container-top the delete
-   confirmation would render invisibly behind
-   the Employee Master Record modal.
-   ========================================== */
-
-.swal2-container,
-div.swal2-container {
-  z-index: 1000000 !important;
-}
-
-.swal2-container.mm-swal-container-top,
-div.swal2-container.mm-swal-container-top {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 1000000 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: rgba(69, 52, 52, 0.55) !important;
-  backdrop-filter: blur(5px) !important;
-  -webkit-backdrop-filter: blur(5px) !important;
-}
-
-div.swal2-popup.mm-swal-popup {
-  background-color: #FFF5F4 !important;
-  background: #FFF5F4 !important;
-  border-radius: 28px !important;
-  padding: 34px 28px 28px !important;
-  border: 2px solid #FCE1DD !important;
-  box-shadow: 0 20px 48px rgba(69, 52, 52, 0.28) !important;
-  width: 90% !important;
-  max-width: 440px !important;
-  box-sizing: border-box !important;
-  text-align: center !important;
-  font-family: 'Urbanist', -apple-system, BlinkMacSystemFont, sans-serif !important;
-}
-
-div.swal2-icon.mm-swal-icon {
-  margin-top: 4px !important;
-}
-
-div.swal2-title.mm-swal-title {
-  font-family: 'Bootzy TM', 'Urbanist', sans-serif !important;
-  font-size: 24px !important;
-  font-weight: 800 !important;
-  color: #453434 !important;
-  letter-spacing: 1.5px !important;
-  margin: 12px 0 8px !important;
-  padding: 0 !important;
-  line-height: 1.25 !important;
-}
-
-div.swal2-html-container.mm-swal-html {
-  font-family: 'Urbanist', sans-serif !important;
-  font-size: 14.5px !important;
-  font-weight: 600 !important;
-  color: #7C4F38 !important;
-  line-height: 1.5 !important;
-  margin: 8px 0 0 !important;
-  padding: 0 !important;
-}
-
-div.swal2-actions.mm-swal-actions {
-  margin-top: 24px !important;
-  gap: 12px !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  width: 100% !important;
-}
-
-button.swal2-confirm.mm-swal-confirm-btn {
-  background-color: #f28b95 !important;
-  background: #f28b95 !important;
-  color: #FFFFFF !important;
-  border-radius: 24px !important;
-  font-family: 'Urbanist', sans-serif !important;
-  font-weight: 800 !important;
-  font-size: 14px !important;
-  padding: 10px 26px !important;
-  box-shadow: 0 4px 14px rgba(242, 139, 149, 0.4) !important;
-  border: none !important;
-  outline: none !important;
-  cursor: pointer !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  transition: transform 0.15s ease, opacity 0.2s ease !important;
-}
-
-button.swal2-confirm.mm-swal-confirm-btn:hover {
-  opacity: 0.92 !important;
-  transform: scale(1.03) !important;
-}
-
-button.swal2-cancel.mm-swal-cancel-btn {
-  background-color: #fad5d9 !important;
-  background: #fad5d9 !important;
-  color: #453434 !important;
-  border-radius: 24px !important;
-  font-family: 'Urbanist', sans-serif !important;
-  font-weight: 700 !important;
-  font-size: 14px !important;
-  padding: 10px 22px !important;
-  border: none !important;
-  outline: none !important;
-  cursor: pointer !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  transition: transform 0.15s ease, opacity 0.2s ease !important;
-}
-
-button.swal2-cancel.mm-swal-cancel-btn:hover {
-  opacity: 0.92 !important;
-  transform: scale(1.03) !important;
 }

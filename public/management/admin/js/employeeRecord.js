@@ -88,54 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('editProfileForm')?.addEventListener('submit', handleEditEmployee);
 
-
-
-    // Clear the password-mismatch message as soon as the user edits either field
-
-    document.getElementById('addPasswordInput')?.addEventListener('input', hidePasswordMismatchError);
-
-    document.getElementById('addConfirmPasswordInput')?.addEventListener('input', hidePasswordMismatchError);
-
-
-
-    // Show/hide password toggles (Add Employee: password + confirm password)
-
-    document.querySelectorAll('.toggle-password').forEach((btn) => {
-
-        btn.addEventListener('click', () => {
-
-            const targetId = btn.getAttribute('data-target');
-
-            const input = document.getElementById(targetId);
-
-            if (!input) return;
-
-            const eyeOpen = btn.querySelector('.eye-open');
-
-            const eyeClosed = btn.querySelector('.eye-closed');
-
-            if (input.type === 'password') {
-
-                input.type = 'text';
-
-                if (eyeOpen) eyeOpen.style.display = 'block';
-
-                if (eyeClosed) eyeClosed.style.display = 'none';
-
-            } else {
-
-                input.type = 'password';
-
-                if (eyeOpen) eyeOpen.style.display = 'none';
-
-                if (eyeClosed) eyeClosed.style.display = 'block';
-
-            }
-
-        });
-
-    });
-
 });
 
 
@@ -348,16 +300,6 @@ async function toggleEmployeeStatus(empId, selectElement) {
 
 
 
-function hidePasswordMismatchError() {
-
-    const mismatchError = document.getElementById('addPasswordMatchError');
-
-    if (mismatchError) mismatchError.style.display = 'none';
-
-}
-
-
-
 async function handleAddEmployee(e) {
 
     e.preventDefault();
@@ -367,58 +309,6 @@ async function handleAddEmployee(e) {
     const form = document.getElementById('addEmployeeForm');
 
     const formData = new FormData(form);
-
-
-
-    const roleId = formData.get('role_id');
-
-    if (!roleId) {
-
-        alert('Please select a role for the employee.');
-
-        return;
-
-    }
-
-
-
-    const password = formData.get('password');
-
-    const confirmPassword = formData.get('confirm_password');
-
-    const mismatchError = document.getElementById('addPasswordMatchError');
-
-
-
-    if (password !== confirmPassword) {
-
-        if (mismatchError) mismatchError.style.display = 'block';
-
-        document.getElementById('addConfirmPasswordInput')?.focus();
-
-        return;
-
-    }
-
-    if (mismatchError) mismatchError.style.display = 'none';
-
-
-
-    // confirm_password is a client-side check only; the server never needs it
-
-    formData.delete('confirm_password');
-
-
-
-    const submitBtn = form.querySelector('button[type="submit"]');
-
-    if (submitBtn) {
-
-        submitBtn.disabled = true;
-
-        submitBtn.textContent = 'Saving...';
-
-    }
 
 
 
@@ -455,16 +345,6 @@ async function handleAddEmployee(e) {
         console.error('Error adding employee:', error);
 
         alert('An error occurred while adding the employee.');
-
-    } finally {
-
-        if (submitBtn) {
-
-            submitBtn.disabled = false;
-
-            submitBtn.textContent = 'Save Employee Record';
-
-        }
 
     }
 
