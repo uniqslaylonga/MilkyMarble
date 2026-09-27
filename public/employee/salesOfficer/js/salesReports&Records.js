@@ -72,6 +72,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const presetSearchInput = document.getElementById('presetSearchInput');
+    if (presetSearchInput) {
+        let presetSearchDebounce;
+        presetSearchInput.addEventListener('input', () => {
+            clearTimeout(presetSearchDebounce);
+            presetSearchDebounce = setTimeout(applyPresetFilters, 200);
+        });
+    }
+
     fetchAllReportData();
 });
 
@@ -170,6 +179,7 @@ function populateTargetGauges(metrics) {
 function applyPresetFilters() {
     const filterType = document.getElementById('reportDateFilter')?.value || 'month';
     const customDateVal = document.getElementById('reportCustomDate')?.value;
+    const searchVal = (document.getElementById('presetSearchInput')?.value || '').trim().toLowerCase();
 
     const now = new Date();
     const todayStr = SalesCommon.localDate(now);
@@ -178,14 +188,22 @@ function applyPresetFilters() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     filteredPresets = allPresets.filter(p => {
-        if (!p.target_date) return true;
-        const pDate = new Date(p.target_date);
-        const pDateStr = SalesCommon.localDate(p.target_date);
-        if (filterType === 'today') return pDateStr === todayStr;
-        if (filterType === 'week') return pDate >= weekAgo;
-        if (filterType === 'month') return pDate >= startOfMonth;
-        if (filterType === 'custom') return pDateStr === customDateVal;
-        return true;
+        let passDate = true;
+        if (p.target_date) {
+            const pDate = new Date(p.target_date);
+            const pDateStr = SalesCommon.localDate(p.target_date);
+            if (filterType === 'today') passDate = pDateStr === todayStr;
+            else if (filterType === 'week') passDate = pDate >= weekAgo;
+            else if (filterType === 'month') passDate = pDate >= startOfMonth;
+            else if (filterType === 'custom') passDate = pDateStr === customDateVal;
+        }
+
+        let passSearch = true;
+        if (searchVal) {
+            passSearch = String(p.name || '').toLowerCase().includes(searchVal);
+        }
+
+        return passDate && passSearch;
     });
 
     currentPresetPage = 1;

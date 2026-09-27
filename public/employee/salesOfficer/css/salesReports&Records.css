@@ -176,8 +176,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
   gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background-color: var(--bg-main);
+  border-left: 2px solid var(--border-soft);
+  margin: -24px -40px 24px -24px;
+  padding: 15px 36px 15px 20px;
 }
 
 .topbar-status-strip {
@@ -326,6 +332,49 @@ body {
   gap: 12px;
 }
 
+.search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--card-white);
+  border: 1.5px solid var(--accent-pink);
+  border-radius: 12px;
+  padding: 6px 12px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.search-wrapper:focus-within {
+  border-color: var(--accent-pink-soft);
+  box-shadow: 0 0 0 3px rgba(246, 146, 153, 0.18);
+}
+
+.search-icon-svg {
+  width: 14px;
+  height: 13px;
+  stroke: var(--accent-pink);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  flex-shrink: 0;
+}
+
+.search-input-sm {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-family-body);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brown-soft);
+  width: 180px;
+}
+
+.search-input-sm::placeholder {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .section-title {
   font-family: var(--font-family-heading);
   font-size: 18px;
@@ -451,6 +500,7 @@ body {
 
 .dso-status-badge {
   color: var(--dso-accent) !important;
+  letter-spacing: 0.8px;
 }
 
 .dso-gauge-fill {
