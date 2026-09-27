@@ -52,10 +52,10 @@
   padding: 0;
 }
 
+/* Removed overflow-x: hidden to allow the sidebar to stick */
 html, body {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
 }
 
 body {
@@ -65,7 +65,6 @@ body {
   min-height: 100vh;
 }
 
-/* App Container Layout */
 /* App Container Layout */
 .app-container {
   display: grid;
@@ -180,12 +179,13 @@ body {
 }
 
 /* ===== MAIN CONTENT ===== */
+/* Removed overflow-x: hidden to allow the topbar to stick */
 .main-content {
   padding: 0px 36px 40px 24px;
   min-width: 0;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 /* TOPBAR */
@@ -403,7 +403,7 @@ body {
   font-size: 15px;
   font-weight: 700;
   color: var(--text-dark);
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   white-space: nowrap;
 }
 
