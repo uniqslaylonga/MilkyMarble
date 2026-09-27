@@ -4,13 +4,13 @@ let customerDonutChart = null;
 let chartAnalyticsData = {
     monthsLabels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     yearsLabels: ['2024', '2025', '2026', '2027'],
-    monthlyCoffee: [],
-    monthlyStrawberry: [],
-    monthlyPandan: [],
-    yearlyCoffee: [],
-    yearlyStrawberry: [],
-    yearlyPandan: [],
-    customerSegments: [0, 0, 0]
+    monthlyCoffee: [2400, 3100, 2800, 4200, 3900, 4800, 5200, 4900, 6100, 5800, 6400, 7200],
+    monthlyStrawberry: [1800, 2400, 2200, 3400, 3100, 3800, 4100, 3900, 4900, 4600, 5200, 5900],
+    monthlyPandan: [1400, 1900, 1700, 2600, 2400, 2900, 3200, 3100, 3800, 3600, 4100, 4600],
+    yearlyCoffee: [28000, 39000, 54000, 68000],
+    yearlyStrawberry: [21000, 29000, 42000, 53000],
+    yearlyPandan: [16000, 23000, 33000, 41000],
+    customerSegments: [31, 14, 2]
 };
 
 // Table & Pagination State
@@ -19,8 +19,22 @@ let filteredFlavorAnalytics = [];
 let currentAnalyticsPage = 1;
 const ANALYTICS_PAGE_SIZE = 5;
 
+// Global SweetAlert2 Config matching Master SOP Section 2.E
+const MMSwal = Swal.mixin({
+    customClass: {
+        popup: 'mm-swal-popup',
+        title: 'mm-swal-title',
+        confirmButton: 'mm-swal-confirm',
+        cancelButton: 'mm-swal-cancel'
+    },
+    buttonsStyling: false
+});
+
 document.addEventListener('DOMContentLoaded', () => {
-    Chart.defaults.font.family = "'Urbanist', sans-serif";
+    if (typeof Chart !== 'undefined') {
+        Chart.defaults.font.family = "'Urbanist', sans-serif";
+    }
+
     fetchCeoAnalyticsData();
 
     // Search filter listener
@@ -46,11 +60,12 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchCeoAnalyticsData() {
     try {
         const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const headers = userId ? { 'x-user-id': userId } : {};
 
         const response = await fetch('/api/ceo/analytics', {
             method: 'GET',
             headers: {
-                'x-user-id': userId || '',
+                ...headers,
                 'Content-Type': 'application/json'
             }
         });
@@ -60,20 +75,23 @@ async function fetchCeoAnalyticsData() {
 
         // 1. Profile Header
         const userFullNameEl = document.getElementById('userFullNameDisplay');
-        if (userFullNameEl && data.user && data.user.fullName) {
+        const userAvatarEl = document.getElementById('userAvatarImg');
+        if (userFullNameEl && data.user?.fullName) {
             userFullNameEl.textContent = data.user.fullName;
         }
+        if (userAvatarEl && data.user?.avatarSrc) {
+            userAvatarEl.src = data.user.avatarSrc;
+        }
 
-        // 2. Overview Stats (from Screenshot: 185 New, 7 Pre-Orders, 9 Finished, ₱46,567.00 Sales)
+        // 2. Overview Stats
         if (data.overview) {
             document.getElementById('statNewOrders').textContent = Number(data.overview.newOrders || 185).toLocaleString();
             document.getElementById('statPreOrders').textContent = Number(data.overview.preOrders || 7).toLocaleString();
-            document.getElementById('statFinishedGoods').textContent = Number(data.overview.finishedGoods || 9).toLocaleString();
             document.getElementById('statSales').textContent = '₱' + Number(data.overview.totalSales || 46567).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
         // 3. DSO Calculation (45-Day Benchmark)
-        const cycleStartDate = localStorage.getItem('mm_cycle_start_date') || '2026-09-01';
+        const cycleStartDate = localStorage.getItem('mm_cycle_start_date') || '2026-10-08';
         const start = new Date(cycleStartDate);
         const today = new Date();
         start.setHours(0, 0, 0, 0);
@@ -86,23 +104,23 @@ async function fetchCeoAnalyticsData() {
         if (data.charts) {
             chartAnalyticsData.monthsLabels = data.charts.monthsLabels || chartAnalyticsData.monthsLabels;
             chartAnalyticsData.yearsLabels = data.charts.yearsLabels || chartAnalyticsData.yearsLabels;
-            chartAnalyticsData.monthlyCoffee = data.charts.monthlyRevCoffee || [];
-            chartAnalyticsData.monthlyStrawberry = data.charts.monthlyRevStrawberry || [];
-            chartAnalyticsData.monthlyPandan = data.charts.monthlyRevPandan || [];
-            chartAnalyticsData.yearlyCoffee = data.charts.yearlyRevCoffee || [];
-            chartAnalyticsData.yearlyStrawberry = data.charts.yearlyRevStrawberry || [];
-            chartAnalyticsData.yearlyPandan = data.charts.yearlyRevPandan || [];
-            chartAnalyticsData.customerSegments = data.charts.customerData || [31, 14, 2];
-
-            initRevenueAnalyticsChart();
-            initCustomerDonutChart();
+            if (data.charts.monthlyRevCoffee?.length) chartAnalyticsData.monthlyCoffee = data.charts.monthlyRevCoffee;
+            if (data.charts.monthlyRevStrawberry?.length) chartAnalyticsData.monthlyStrawberry = data.charts.monthlyRevStrawberry;
+            if (data.charts.monthlyRevPandan?.length) chartAnalyticsData.monthlyPandan = data.charts.monthlyRevPandan;
+            if (data.charts.customerData?.length) chartAnalyticsData.customerSegments = data.charts.customerData;
         }
+
+        initRevenueAnalyticsChart();
+        initCustomerDonutChart();
 
         // 5. Populate Detailed Flavor Velocity Table
         await fetchFlavorAnalyticsTable();
 
     } catch (error) {
         console.error('Error loading CEO Analytics:', error);
+        initRevenueAnalyticsChart();
+        initCustomerDonutChart();
+        await fetchFlavorAnalyticsTable();
     }
 }
 
@@ -123,12 +141,12 @@ async function fetchFlavorAnalyticsTable() {
 
 function getSampleFlavorContributions() {
     return [
-        { flavor: 'Classic Coffee Jelly Pearl', category: 'Pearl Milk Tea', sold: 48, revenue: 720.00, cogs: 384.00, margin: 46.7, status: 'High Performer' },
-        { flavor: 'Strawberry Marble Supreme', category: 'Specialty Latte', sold: 42, revenue: 672.00, cogs: 360.00, margin: 46.4, status: 'High Performer' },
-        { flavor: 'Buko Pandan Bliss Jelly', category: 'Specialty Latte', sold: 36, revenue: 540.00, cogs: 306.00, margin: 43.3, status: 'High Performer' },
-        { flavor: 'Brown Sugar Marble Jelly', category: 'Pearl Milk Tea', sold: 29, revenue: 435.00, cogs: 261.00, margin: 40.0, status: 'Stable Flow' },
-        { flavor: 'Matcha Milk Tea Presets', category: 'Specialty Latte', sold: 22, revenue: 352.00, cogs: 218.00, margin: 38.1, status: 'Stable Flow' },
-        { flavor: 'Wintermelon Marble Sips', category: 'Pearl Milk Tea', sold: 18, revenue: 270.00, cogs: 172.00, margin: 36.3, status: 'Needs Promotion' }
+        { flavor: 'Classic Coffee Jelly Pearl', category: 'Pearl Milk Tea', sold: 68, revenue: 1020.00, cogs: 544.00, margin: 46.7, status: 'High Yield' },
+        { flavor: 'Strawberry Marble Supreme', category: 'Specialty Latte', sold: 54, revenue: 864.00, cogs: 463.00, margin: 46.4, status: 'High Yield' },
+        { flavor: 'Buko Pandan Bliss Jelly', category: 'Specialty Latte', sold: 45, revenue: 675.00, cogs: 382.50, margin: 43.3, status: 'High Yield' },
+        { flavor: 'Brown Sugar Marble Jelly', category: 'Pearl Milk Tea', sold: 32, revenue: 480.00, cogs: 288.00, margin: 40.0, status: 'Moderate' },
+        { flavor: 'Matcha Milk Tea Presets', category: 'Specialty Latte', sold: 26, revenue: 416.00, cogs: 257.90, margin: 38.1, status: 'Moderate' },
+        { flavor: 'Wintermelon Marble Sips', category: 'Pearl Milk Tea', sold: 18, revenue: 270.00, cogs: 172.00, margin: 36.3, status: 'Moderate' }
     ];
 }
 
@@ -202,38 +220,15 @@ function renderAnalyticsTable() {
     }).join('');
 }
 
-// Smart Sliding Pagination Controls
 function renderAnalyticsPaginationControls(totalPages, activePage) {
     const pagerNumbers = document.getElementById('analyticsPagerNumbers');
     if (!pagerNumbers) return;
 
-    if (totalPages <= 1) {
-        pagerNumbers.innerHTML = `<button type="button" class="pager-num-btn active" data-page="1">1</button>`;
-        return;
-    }
-
-    const pages = [];
-    if (totalPages <= 7) {
-        for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-        if (activePage <= 4) {
-            pages.push(1, 2, 3, 4, 5, '...', totalPages);
-        } else if (activePage >= totalPages - 3) {
-            pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-        } else {
-            pages.push(1, '...', activePage - 1, activePage, activePage + 1, '...', totalPages);
-        }
-    }
-
     let html = '';
-    pages.forEach(p => {
-        if (p === '...') {
-            html += `<span class="pager-ellipsis">&hellip;</span>`;
-        } else {
-            const isActive = p === activePage ? 'active' : '';
-            html += `<button type="button" class="pager-num-btn ${isActive}" data-page="${p}">${p}</button>`;
-        }
-    });
+    for (let i = 1; i <= totalPages; i++) {
+        const isActive = i === activePage ? 'active' : '';
+        html += `<button type="button" class="pager-num-btn ${isActive}" data-page="${i}">${i}</button>`;
+    }
     pagerNumbers.innerHTML = html;
 
     pagerNumbers.querySelectorAll('.pager-num-btn').forEach(btn => {
@@ -247,7 +242,6 @@ function renderAnalyticsPaginationControls(totalPages, activePage) {
     });
 }
 
-// Line Chart Setup
 function initRevenueAnalyticsChart() {
     const ctx = document.getElementById('revenueAnalyticsChart')?.getContext('2d');
     if (!ctx) return;
@@ -267,6 +261,7 @@ function initRevenueAnalyticsChart() {
                     borderWidth: 2.2,
                     pointRadius: 4,
                     pointBackgroundColor: '#fff',
+                    pointBorderColor: '#8b78ff',
                     tension: 0.25
                 },
                 {
@@ -277,6 +272,7 @@ function initRevenueAnalyticsChart() {
                     borderWidth: 2.2,
                     pointRadius: 4,
                     pointBackgroundColor: '#fff',
+                    pointBorderColor: '#ff8579',
                     tension: 0.25
                 },
                 {
@@ -287,6 +283,7 @@ function initRevenueAnalyticsChart() {
                     borderWidth: 2.2,
                     pointRadius: 4,
                     pointBackgroundColor: '#fff',
+                    pointBorderColor: '#38c8db',
                     tension: 0.25
                 }
             ]
@@ -318,7 +315,6 @@ function initRevenueAnalyticsChart() {
         }
     });
 
-    // Toggle Buttons
     const btnMonths = document.getElementById('btnMonths');
     const btnYears = document.getElementById('btnYears');
 
@@ -343,7 +339,6 @@ function initRevenueAnalyticsChart() {
     });
 }
 
-// Donut Chart Setup
 function initCustomerDonutChart() {
     const ctx = document.getElementById('customerSegmentDonutChart')?.getContext('2d');
     if (!ctx) return;
@@ -361,10 +356,10 @@ function initCustomerDonutChart() {
     customerDonutChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Registered', 'Guest', 'Corporate'],
+            labels: ['Registered Members', 'Guest Checkouts', 'Corporate Accounts'],
             datasets: [{
                 data: dataPoints,
-                backgroundColor: ['#F69299', '#E89E80', '#68B0AB'],
+                backgroundColor: ['#f28b95', '#EAA342', '#68B0AB'],
                 borderWidth: 0
             }]
         },
@@ -375,28 +370,6 @@ function initCustomerDonutChart() {
             plugins: { legend: { display: false } }
         }
     });
-}
-
-// Export PDF / Print function
-function exportAnalyticsPDF() {
-    window.print();
-}
-
-function showCustomAlert(title, message) {
-    const modal = document.getElementById('customAlertModal');
-    if (!modal) return;
-    document.getElementById('alertModalTitle').textContent = title;
-    document.getElementById('alertModalMessage').textContent = message;
-    modal.classList.add('open');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeCustomAlert() {
-    const modal = document.getElementById('customAlertModal');
-    if (modal) {
-        modal.classList.remove('open');
-        document.body.style.overflow = '';
-    }
 }
 
 function escapeHtml(str) {

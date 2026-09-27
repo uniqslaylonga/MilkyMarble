@@ -17,17 +17,22 @@ let pageInventory = 1;
 let pagePromos = 1;
 let pageHistory = 1;
 
-// Active Decision Modal Target
-let activeDecisionTarget = null; // { type: 'expense'|'promotion', id, action: 'approve'|'reject', record }
+// Global SweetAlert2 Config matching Master SOP Section 2.E
+const MMSwal = Swal.mixin({
+    customClass: {
+        popup: 'mm-swal-popup',
+        title: 'mm-swal-title',
+        confirmButton: 'mm-swal-confirm',
+        cancelButton: 'mm-swal-cancel'
+    },
+    buttonsStyling: false
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchCeoBudgetApprovals();
 
     // Search filter listener
     document.getElementById('approvalSearchInput')?.addEventListener('input', applyCurrentStreamFilter);
-
-    // Decision Confirmation Button Listener
-    document.getElementById('btnConfirmDecisionAction')?.addEventListener('click', executeDecisionAction);
 
     // Pagination Click Listeners
     setupPaginationEventListeners();
@@ -36,11 +41,12 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchCeoBudgetApprovals() {
     try {
         const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const headers = userId ? { 'x-user-id': userId } : {};
 
         const response = await fetch('/api/ceo/budget-approval', {
             method: 'GET',
             headers: {
-                'x-user-id': userId || '',
+                ...headers,
                 'Content-Type': 'application/json'
             }
         });
@@ -50,8 +56,12 @@ async function fetchCeoBudgetApprovals() {
 
         // 1. Profile Header
         const userFullNameEl = document.getElementById('userFullNameDisplay');
-        if (userFullNameEl && data.user && data.user.fullName) {
+        const userAvatarEl = document.getElementById('userAvatarImg');
+        if (userFullNameEl && data.user?.fullName) {
             userFullNameEl.textContent = data.user.fullName;
+        }
+        if (userAvatarEl && data.user?.avatarSrc) {
+            userAvatarEl.src = data.user.avatarSrc;
         }
 
         // 2. Overview KPIs
@@ -77,7 +87,11 @@ async function fetchCeoBudgetApprovals() {
 
     } catch (error) {
         console.error('Error loading budget approvals:', error);
-        showCustomAlert("Error", "Could not load approvals data from database.", "warning");
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'System Notice',
+            text: error.message || 'Could not load approvals data from database.'
+        });
     }
 }
 
@@ -87,12 +101,10 @@ async function fetchCeoBudgetApprovals() {
 function switchApprovalStream(streamName) {
     currentStream = streamName;
 
-    // Toggle button classes
     document.getElementById('tabInventoryBtn')?.classList.toggle('active', streamName === 'inventory');
     document.getElementById('tabPromosBtn')?.classList.toggle('active', streamName === 'promos');
     document.getElementById('tabHistoryBtn')?.classList.toggle('active', streamName === 'history');
 
-    // Toggle panels
     document.getElementById('panelInventory').style.display = streamName === 'inventory' ? '' : 'none';
     document.getElementById('panelPromos').style.display = streamName === 'promos' ? '' : 'none';
     document.getElementById('panelHistory').style.display = streamName === 'history' ? '' : 'none';
@@ -135,7 +147,7 @@ function applyCurrentStreamFilter() {
 }
 
 // --------------------------------------------------------------------------
-// RENDER STREAM 1: INVENTORY & RESTOCK REQUESTS
+// RENDER STREAM 1: INVENTORY & RESTOCK REQUESTS (> ₱500)
 // --------------------------------------------------------------------------
 function renderInventoryTable() {
     const tbody = document.getElementById('inventoryApprovalBody');
@@ -146,7 +158,7 @@ function renderInventoryTable() {
     if (!tbody) return;
 
     if (filteredInventoryRequests.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="loading-state-text">No pending inventory restock requests awaiting CEO authorization.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="loading-state-text">No pending major inventory restock requests awaiting CEO authorization.</td></tr>';
         if (pageInfo) pageInfo.textContent = 'Showing 0 of 0 requests';
         if (prevBtn) prevBtn.disabled = true;
         if (nextBtn) nextBtn.disabled = true;
@@ -171,7 +183,7 @@ function renderInventoryTable() {
     tbody.innerHTML = pageItems.map(item => {
         const prCode = item.pr_code || `PR-${item.id}`;
         const amount = Number(item.amount || item.total_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const dateFmt = item.expense_date || (item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Today');
+        const dateFmt = item.expense_date || (item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recent');
 
         return `
             <tr>
@@ -182,15 +194,15 @@ function renderInventoryTable() {
                 </td>
                 <td><span style="font-size: 12px;">${escapeHtml(item.store_name || item.supplier || 'Vendor Store')}</span></td>
                 <td><span style="font-size: 12px; color: var(--text-muted);">${escapeHtml(item.requester_name || 'Procurement')}</span></td>
-                <td><strong style="color: var(--brown-soft); font-family: var(--font-family-heading); font-size: 14px;">₱${amount}</strong></td>
+                <td><strong style="color: #C9302C; font-family: var(--font-family-heading); font-size: 14px;">₱${amount}</strong></td>
                 <td><span style="font-size: 11.5px; color: var(--text-muted);">${dateFmt}</span></td>
                 <td style="text-align: right;">
                     <div class="btn-action-group">
-                        <button type="button" class="btn-approve" onclick="openDecisionModal('expense', ${item.id}, 'approve')">
+                        <button type="button" class="btn-approve" onclick="handleExecutiveDecision('expense', ${item.id}, 'approve')">
                             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                             <span>Authorize</span>
                         </button>
-                        <button type="button" class="btn-reject" onclick="openDecisionModal('expense', ${item.id}, 'reject')">
+                        <button type="button" class="btn-reject" onclick="handleExecutiveDecision('expense', ${item.id}, 'reject')">
                             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             <span>Reject</span>
                         </button>
@@ -255,11 +267,11 @@ function renderPromosTable() {
                 <td><span style="font-size: 12px; color: var(--text-muted);">${escapeHtml(item.pitched_by || 'Sales Officer')}</span></td>
                 <td style="text-align: right;">
                     <div class="btn-action-group">
-                        <button type="button" class="btn-approve" onclick="openDecisionModal('promotion', ${item.id}, 'approve')">
+                        <button type="button" class="btn-approve" onclick="handleExecutiveDecision('promotion', ${item.id}, 'approve')">
                             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                             <span>Sanction</span>
                         </button>
-                        <button type="button" class="btn-reject" onclick="openDecisionModal('promotion', ${item.id}, 'reject')">
+                        <button type="button" class="btn-reject" onclick="handleExecutiveDecision('promotion', ${item.id}, 'reject')">
                             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             <span>Decline</span>
                         </button>
@@ -329,39 +341,17 @@ function renderHistoryTable() {
 }
 
 // --------------------------------------------------------------------------
-// SMART SLIDING PAGINATION CONTROLS
+// PERMANENT NUMBERED PAGINATION
 // --------------------------------------------------------------------------
 function renderPaginationNumbers(containerId, totalPages, activePage, streamType) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    if (totalPages <= 1) {
-        container.innerHTML = `<button type="button" class="pager-num-btn active" data-page="1">1</button>`;
-        return;
-    }
-
-    const pages = [];
-    if (totalPages <= 7) {
-        for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-        if (activePage <= 4) {
-            pages.push(1, 2, 3, 4, 5, '...', totalPages);
-        } else if (activePage >= totalPages - 3) {
-            pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-        } else {
-            pages.push(1, '...', activePage - 1, activePage, activePage + 1, '...', totalPages);
-        }
-    }
-
     let html = '';
-    pages.forEach(p => {
-        if (p === '...') {
-            html += `<span class="pager-ellipsis">&hellip;</span>`;
-        } else {
-            const isActive = p === activePage ? 'active' : '';
-            html += `<button type="button" class="pager-num-btn ${isActive}" data-page="${p}">${p}</button>`;
-        }
-    });
+    for (let i = 1; i <= totalPages; i++) {
+        const isActive = i === activePage ? 'active' : '';
+        html += `<button type="button" class="pager-num-btn ${isActive}" data-page="${i}">${i}</button>`;
+    }
     container.innerHTML = html;
 
     container.querySelectorAll('.pager-num-btn').forEach(btn => {
@@ -408,96 +398,62 @@ function setupPaginationEventListeners() {
 }
 
 // --------------------------------------------------------------------------
-// DECISION MODAL & EXECUTION
+// EXECUTIVE DECISION HANDLER (SWEETALERT2 INTEGRATED)
 // --------------------------------------------------------------------------
-function openDecisionModal(type, id, action) {
-    const modal = document.getElementById('decisionModal');
-    if (!modal) return;
-
-    let record = null;
-    if (type === 'expense') {
-        record = allInventoryRequests.find(r => r.id === id);
-    } else {
-        record = allPromoRequests.find(r => r.id === id);
-    }
+async function handleExecutiveDecision(type, id, action) {
+    const record = type === 'expense' 
+        ? allInventoryRequests.find(r => r.id === id)
+        : allPromoRequests.find(r => r.id === id);
 
     if (!record) return;
 
-    activeDecisionTarget = { type, id, action, record };
-
-    const titleEl = document.getElementById('decisionModalTitle');
-    const subEl = document.getElementById('decisionModalSub');
-    const iconWrap = document.getElementById('decisionIconWrap');
-    const summaryBox = document.getElementById('decisionSummaryBox');
-    const remarksWrap = document.getElementById('rejectionReasonWrap');
-    const remarksInput = document.getElementById('decisionRemarksInput');
-    const confirmBtn = document.getElementById('btnConfirmDecisionAction');
-
-    if (remarksInput) remarksInput.value = '';
-
     if (action === 'approve') {
-        titleEl.textContent = type === 'expense' ? 'Authorize Restock Purchase' : 'Sanction Promo Campaign';
-        subEl.textContent = 'This request will be officially authorized and released to operations.';
-        iconWrap.className = 'dialog-icon-circle approve';
-        confirmBtn.className = 'btn-dialog-primary';
-        confirmBtn.textContent = 'Authorize Request';
-        remarksWrap.style.display = 'none';
-    } else {
-        titleEl.textContent = type === 'expense' ? 'Decline Restock Request' : 'Decline Promo Pitch';
-        subEl.textContent = 'Specify the justification for turning down this proposal.';
-        iconWrap.className = 'dialog-icon-circle reject';
-        confirmBtn.className = 'btn-dialog-primary reject-btn';
-        confirmBtn.textContent = 'Confirm Rejection';
-        remarksWrap.style.display = 'flex';
-    }
+        const summaryText = type === 'expense'
+            ? `Sign off on procurement requisition <strong>"${escapeHtml(record.item_name || record.name)}"</strong> for <strong>₱${Number(record.amount || record.total_price || 0).toFixed(2)}</strong>?`
+            : `Sanction promotional discount scheme <strong>"${escapeHtml(record.code)}"</strong> (${record.discount_type === 'percent' ? `${record.discount_value}% OFF` : `₱${record.discount_value}`})?`;
 
-    if (type === 'expense') {
-        summaryBox.innerHTML = `
-            <div class="d-row"><span>Purchase Request:</span> <strong>${escapeHtml(record.pr_code || `PR-${record.id}`)}</strong></div>
-            <div class="d-row"><span>Item:</span> <strong>${escapeHtml(record.item_name || record.name)}</strong></div>
-            <div class="d-row"><span>Estimated Amount:</span> <strong style="color: var(--brown-soft);">₱${Number(record.amount || record.total_price || 0).toFixed(2)}</strong></div>
-            <div class="d-row"><span>Requester:</span> <strong>${escapeHtml(record.requester_name || 'Procurement')}</strong></div>
-        `;
-    } else {
-        summaryBox.innerHTML = `
-            <div class="d-row"><span>Campaign Code:</span> <strong style="color: var(--accent-pink);">${escapeHtml(record.code)}</strong></div>
-            <div class="d-row"><span>Pitch Title:</span> <strong>${escapeHtml(record.title || record.pitch_note)}</strong></div>
-            <div class="d-row"><span>Discount Scheme:</span> <strong>${record.discount_type === 'percent' ? `${record.discount_value}% OFF` : `₱${record.discount_value}`}</strong></div>
-            <div class="d-row"><span>Audience Target:</span> <strong>${escapeHtml(record.target_segment || 'All')}</strong></div>
-        `;
-    }
+        const res = await MMSwal.fire({
+            title: type === 'expense' ? 'Authorize Major Capital Release?' : 'Sanction Promo Campaign?',
+            html: summaryText,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Authorize &amp; Sign',
+            cancelButtonText: 'Cancel'
+        });
 
-    modal.classList.add('open');
-    document.body.style.overflow = 'hidden';
+        if (!res.isConfirmed) return;
+        await submitDecisionPayload(type, id, 'approve', null);
+
+    } else {
+        const { value: reason } = await MMSwal.fire({
+            title: type === 'expense' ? 'Decline Purchase Requisition' : 'Decline Promo Pitch',
+            input: 'textarea',
+            inputLabel: 'Executive Justification / Reason for Rejection *',
+            inputPlaceholder: 'State reason for deferral or returning request...',
+            showCancelButton: true,
+            confirmButtonText: 'Confirm Rejection',
+            cancelButtonText: 'Cancel',
+            inputValidator: (val) => {
+                if (!val || val.trim().length === 0) {
+                    return 'Please provide a justification for declining this proposal.';
+                }
+            }
+        });
+
+        if (reason) {
+            await submitDecisionPayload(type, id, 'reject', reason.trim());
+        }
+    }
 }
 
-function closeDecisionModal() {
-    const modal = document.getElementById('decisionModal');
-    if (modal) {
-        modal.classList.remove('open');
-        document.body.style.overflow = '';
-    }
-    activeDecisionTarget = null;
-}
-
-async function executeDecisionAction() {
-    if (!activeDecisionTarget) return;
-
-    const { type, id, action, record } = activeDecisionTarget;
-    const remarks = document.getElementById('decisionRemarksInput')?.value || '';
-
-    if (action === 'reject' && !remarks.trim()) {
-        showCustomAlert("Remarks Required", "Please provide a reason for declining this request.", "warning");
-        return;
-    }
-
+async function submitDecisionPayload(type, id, action, reason) {
     try {
         const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
         const payload = {
             type,
             id,
             action,
-            rejection_reason: remarks.trim() || null
+            rejection_reason: reason
         };
 
         const response = await fetch('/api/ceo/budget-approval/action', {
@@ -514,49 +470,21 @@ async function executeDecisionAction() {
             throw new Error(resData.message || 'Server rejected authorization update');
         }
 
-        closeDecisionModal();
-        showCustomAlert(
-            action === 'approve' ? "Authorization Confirmed" : "Request Declined",
-            `${type === 'expense' ? 'Purchase Request' : 'Promo Pitch'} has been successfully updated in database.`,
-            action === 'approve' ? "success" : "notice"
-        );
+        await MMSwal.fire({
+            icon: 'success',
+            title: action === 'approve' ? 'Authorized Successfully' : 'Request Declined',
+            text: `${type === 'expense' ? 'Requisition' : 'Campaign proposal'} has been updated in database.`
+        });
 
-        // Refresh Queue
         fetchCeoBudgetApprovals();
 
     } catch (err) {
         console.error('Error executing decision action:', err);
-        showCustomAlert("Update Failed", err.message || "Could not complete authorization.", "warning");
-    }
-}
-
-// --------------------------------------------------------------------------
-// PRINT / PDF SUMMARY
-// --------------------------------------------------------------------------
-function exportApprovalSummaryPDF() {
-    window.print();
-}
-
-function showCustomAlert(title, message, type = "notice") {
-    const modal = document.getElementById('customAlertModal');
-    if (!modal) return;
-    document.getElementById('alertModalTitle').textContent = title;
-    document.getElementById('alertModalMessage').textContent = message;
-
-    const iconWrap = document.getElementById('alertDialogIconWrap');
-    if (iconWrap) {
-        iconWrap.className = 'dialog-icon-circle ' + (type === 'warning' ? 'reject' : (type === 'success' ? 'approve' : ''));
-    }
-
-    modal.classList.add('open');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeCustomAlert() {
-    const modal = document.getElementById('customAlertModal');
-    if (modal) {
-        modal.classList.remove('open');
-        document.body.style.overflow = '';
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Update Failed',
+            text: err.message || 'Could not complete executive authorization.'
+        });
     }
 }
 

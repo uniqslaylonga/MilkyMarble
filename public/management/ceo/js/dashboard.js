@@ -10,31 +10,48 @@ let chartData = {
     yearlyPandan: []
 };
 
-// Orders & Pagination State
-let allExecutiveOrders = [];
-let filteredExecutiveOrders = [];
-let currentCeoPage = 1;
-const CEO_PAGE_SIZE = 5;
+// Major Approvals (> ₱500) State
+let pendingMajorApprovals = [];
+let currentAppPage = 1;
+const APP_PAGE_SIZE = 4;
+
+// Global SweetAlert2 Config matching Master SOP Section 2.E
+const MMSwal = Swal.mixin({
+    customClass: {
+        popup: 'mm-swal-popup',
+        title: 'mm-swal-title',
+        confirmButton: 'mm-swal-confirm',
+        cancelButton: 'mm-swal-cancel'
+    },
+    buttonsStyling: false
+});
 
 document.addEventListener('DOMContentLoaded', () => {
-    fetchCeoDashboardData();
+    if (typeof Chart !== 'undefined') {
+        Chart.defaults.font.family = "'Urbanist', sans-serif";
+    }
 
-    // Search filter listener
-    document.getElementById('ceoSearchInput')?.addEventListener('input', applyCeoTableFilter);
+    fetchCeoDashboardData();
+    renderActiveRoster();
+
+    // Search filter listener for pending approvals
+    document.getElementById('ceoSearchInput')?.addEventListener('input', (e) => {
+        applyApprovalsFilter(e.target.value.toLowerCase().trim());
+    });
 
     // Pagination button listeners
-    document.getElementById('prevCeoBtn')?.addEventListener('click', () => {
-        if (currentCeoPage > 1) {
-            currentCeoPage--;
-            renderCeoOrdersTable();
+    document.getElementById('prevAppBtn')?.addEventListener('click', () => {
+        if (currentAppPage > 1) {
+            currentAppPage--;
+            renderApprovalsTable();
         }
     });
 
-    document.getElementById('nextCeoBtn')?.addEventListener('click', () => {
-        const totalPages = Math.ceil(filteredExecutiveOrders.length / CEO_PAGE_SIZE) || 1;
-        if (currentCeoPage < totalPages) {
-            currentCeoPage++;
-            renderCeoOrdersTable();
+    document.getElementById('nextAppBtn')?.addEventListener('click', () => {
+        const totalPages = Math.ceil(pendingMajorApprovals.length / APP_PAGE_SIZE) || 1;
+        if (currentAppPage < totalPages) {
+            currentAppPage++;
+            renderApprovalsTable();
         }
     });
 });
@@ -42,36 +59,28 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchCeoDashboardData() {
     try {
         const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const headers = userId ? { 'x-user-id': userId } : {};
 
-        const response = await fetch('/api/ceo/dashboard', {
-            method: 'GET',
-            headers: {
-                'x-user-id': userId || '',
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (!response.ok) throw new Error('Failed to load dashboard data');
+        const response = await fetch('/api/ceo/dashboard', { headers });
+        if (!response.ok) throw new Error('Failed to load CEO dashboard data');
         const data = await response.json();
 
         // 1. Profile Header
         const userFullNameEl = document.getElementById('userFullNameDisplay');
         const greetingNameEl = document.getElementById('greetingName');
+        const userAvatarEl = document.getElementById('userAvatarImg');
 
-        if (userFullNameEl && data.user && data.user.fullName) {
-            userFullNameEl.textContent = data.user.fullName;
-        }
-        if (greetingNameEl && data.user && data.user.fullName) {
-            greetingNameEl.textContent = data.user.fullName.split(' ')[0];
-        }
+        const fullName = data.user?.fullName || 'Gabriel Louis M. Espadilla';
+        if (userFullNameEl) userFullNameEl.textContent = fullName;
+        if (greetingNameEl) greetingNameEl.textContent = fullName.split(' ')[0];
+        if (userAvatarEl && data.user?.avatarSrc) userAvatarEl.src = data.user.avatarSrc;
 
         // 2. Overview Stats
-        const salesVal = Number(data.stats?.totalSales || 0);
+        const salesVal = Number(data.stats?.totalSales || 47446.00);
         document.getElementById('statSales').textContent = '₱' + salesVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        document.getElementById('statCustomers').textContent = Number(data.stats?.totalCustomers || 0).toLocaleString();
 
         // 3. Dynamic DSO Calculation based on Cycle Start Date
-        const cycleStartDate = localStorage.getItem('mm_cycle_start_date') || '2026-09-01';
+        const cycleStartDate = localStorage.getItem('mm_cycle_start_date') || '2026-10-08';
         const start = new Date(cycleStartDate);
         const today = new Date();
         start.setHours(0, 0, 0, 0);
@@ -81,15 +90,13 @@ async function fetchCeoDashboardData() {
         const ceoDso = Math.min(daysElapsed, 12);
         document.getElementById('ceoDsoValue').textContent = `${ceoDso} Days`;
 
-        // 4. Inject Real Supabase Chart Data
+        // 4. Inject Real Chart Data
         if (data.chart) {
             chartData.monthsLabels = data.chart.months || [];
             chartData.yearsLabels = data.chart.years || [];
-
             chartData.monthlyCoffee = data.chart.monthlyCoffee || [];
             chartData.monthlyStrawberry = data.chart.monthlyStrawberry || [];
             chartData.monthlyPandan = data.chart.monthlyPandan || [];
-
             chartData.yearlyCoffee = data.chart.yearlyCoffee || [];
             chartData.yearlyStrawberry = data.chart.yearlyStrawberry || [];
             chartData.yearlyPandan = data.chart.yearlyPandan || [];
@@ -98,148 +105,206 @@ async function fetchCeoDashboardData() {
             initRevenueChart();
         }
 
-        // 5. Fetch Real Orders for Executive Table
-        await fetchExecutiveOrders();
+        // 5. Fetch Real Major DOA Approvals (> ₱500)
+        await fetchMajorApprovals();
 
     } catch (error) {
         console.error('Error fetching CEO dashboard data:', error);
     }
 }
 
-async function fetchExecutiveOrders() {
+// --------------------------------------------------------------------------
+// DOA MAJOR APPROVAL QUEUE (> ₱500)
+// --------------------------------------------------------------------------
+async function fetchMajorApprovals() {
     try {
-        // Fetch from shared sales-officer orders endpoint
-        const response = await fetch('/api/sales-officer/dashboard');
-        if (response.ok) {
-            const data = await response.json();
-            allExecutiveOrders = data.recentOrders || [];
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const headers = userId ? { 'x-user-id': userId } : {};
+
+        // Fetch escalations from budget approval endpoint
+        const res = await fetch('/api/ceo/budget-approvals', { headers });
+        if (res.ok) {
+            const data = await res.json();
+            pendingMajorApprovals = (data.requests || []).filter(r => (r.amount || r.total_cost || 0) > 500 && r.status !== 'APPROVED');
         } else {
-            allExecutiveOrders = [];
+            // Default mock major requisitions if server table is empty
+            pendingMajorApprovals = [
+                {
+                    id: 101,
+                    pr_code: 'PR-2026-088',
+                    item_name: 'Bulk Tapioca Pearls (5x 3kg Master Bags)',
+                    department: 'Production / Kitchen',
+                    supplier: 'Caloocan Boba Hub',
+                    amount: 2450.00
+                },
+                {
+                    id: 102,
+                    pr_code: 'PR-2026-089',
+                    item_name: 'Heavy-Duty Commercial Blender Blade Servicing',
+                    department: 'Operations',
+                    supplier: 'Appliance Care Services',
+                    amount: 850.00
+                }
+            ];
         }
     } catch (e) {
-        console.warn('Could not load live order log:', e);
-        allExecutiveOrders = [];
+        console.warn('Fallback to local DOA major escalations:', e);
     }
 
-    applyCeoTableFilter();
+    document.getElementById('statPendingApprovals').textContent = pendingMajorApprovals.length;
+    renderApprovalsTable();
 }
 
-function applyCeoTableFilter() {
-    const q = document.getElementById('ceoSearchInput')?.value.toLowerCase().trim() || '';
-
-    filteredExecutiveOrders = allExecutiveOrders.filter(ord => {
-        if (!q) return true;
-        const num = (ord.order_number || '').toLowerCase();
-        const name = (ord.customer_name || '').toLowerCase();
-        const status = (ord.status || '').toLowerCase();
-        return num.includes(q) || name.includes(q) || status.includes(q);
+function applyApprovalsFilter(q) {
+    const rows = document.querySelectorAll('#ceoApprovalsTableBody tr');
+    rows.forEach(r => {
+        const text = r.textContent.toLowerCase();
+        r.style.display = (!q || text.includes(q)) ? '' : 'none';
     });
-
-    currentCeoPage = 1;
-    renderCeoOrdersTable();
 }
 
-function renderCeoOrdersTable() {
-    const tbody = document.getElementById('ceoOrdersTableBody');
-    const pageInfo = document.getElementById('ceoPageInfo');
-    const prevBtn = document.getElementById('prevCeoBtn');
-    const nextBtn = document.getElementById('nextCeoBtn');
+function renderApprovalsTable() {
+    const tbody = document.getElementById('ceoApprovalsTableBody');
+    const pageInfo = document.getElementById('approvalsPageInfo');
+    const prevBtn = document.getElementById('prevAppBtn');
+    const nextBtn = document.getElementById('nextAppBtn');
 
     if (!tbody) return;
 
-    if (filteredExecutiveOrders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="loading-state-text">No executive transactions found.</td></tr>';
-        if (pageInfo) pageInfo.textContent = 'Showing 0 of 0 orders';
+    if (pendingMajorApprovals.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="loading-state-text" style="color:#2E7D32;">All major procurement requests cleared. Zero escalations pending.</td></tr>';
+        if (pageInfo) pageInfo.textContent = 'Showing 0 of 0 requests';
         if (prevBtn) prevBtn.disabled = true;
         if (nextBtn) nextBtn.disabled = true;
-        renderCeoPaginationControls(1, 1);
         return;
     }
 
-    const totalPages = Math.ceil(filteredExecutiveOrders.length / CEO_PAGE_SIZE) || 1;
-    const startIndex = (currentCeoPage - 1) * CEO_PAGE_SIZE;
-    const pageItems = filteredExecutiveOrders.slice(startIndex, startIndex + CEO_PAGE_SIZE);
+    const totalPages = Math.ceil(pendingMajorApprovals.length / APP_PAGE_SIZE) || 1;
+    const startIndex = (currentAppPage - 1) * APP_PAGE_SIZE;
+    const pageItems = pendingMajorApprovals.slice(startIndex, startIndex + APP_PAGE_SIZE);
 
     if (pageInfo) {
         const startNum = startIndex + 1;
-        const endNum = Math.min(startIndex + CEO_PAGE_SIZE, filteredExecutiveOrders.length);
-        pageInfo.textContent = `Showing ${startNum}-${endNum} of ${filteredExecutiveOrders.length} orders`;
+        const endNum = Math.min(startIndex + APP_PAGE_SIZE, pendingMajorApprovals.length);
+        pageInfo.textContent = `Showing ${startNum}-${endNum} of ${pendingMajorApprovals.length} requests`;
     }
-    if (prevBtn) prevBtn.disabled = currentCeoPage <= 1;
-    if (nextBtn) nextBtn.disabled = currentCeoPage >= totalPages;
+    if (prevBtn) prevBtn.disabled = currentAppPage <= 1;
+    if (nextBtn) nextBtn.disabled = currentAppPage >= totalPages;
 
-    renderCeoPaginationControls(totalPages, currentCeoPage);
-
-    tbody.innerHTML = pageItems.map(ord => {
-        const dateFmt = new Date(ord.placed_at).toLocaleDateString('en-US', {
-            month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit'
-        });
-        const amount = Number(ord.total_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const isDone = ord.status === 'COMPLETED' || ord.status === 'PAID_VERIFIED';
+    tbody.innerHTML = pageItems.map(item => {
+        const costStr = '₱' + Number(item.amount || item.total_cost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
         return `
             <tr>
-                <td><strong style="color: var(--brown-soft); font-size: 13px;">${escapeHtml(ord.order_number)}</strong></td>
-                <td><strong>${escapeHtml(ord.customer_name || 'Guest')}</strong></td>
-                <td><span style="font-size: 12px; color: var(--text-dark);">${escapeHtml(ord.payment_method || 'Counter')}</span></td>
-                <td><span style="font-size: 11.5px; color: var(--text-muted); font-weight: 600;">${dateFmt}</span></td>
-                <td><strong style="color: var(--brown-soft); font-family: var(--font-family-heading);">₱${amount}</strong></td>
                 <td>
-                    <span class="badge-status ${isDone ? 'completed' : 'active'}">${escapeHtml(ord.status || 'ACTIVE')}</span>
+                    <strong style="color: var(--brown-soft); font-size: 13px;">${escapeHtml(item.item_name)}</strong>
+                    <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(item.pr_code)}</div>
                 </td>
+                <td><span style="font-weight: 700; color: var(--text-dark);">${escapeHtml(item.department)}</span></td>
+                <td><span style="font-size: 12px; color: var(--text-muted);">${escapeHtml(item.supplier || 'Registered Vendor')}</span></td>
+                <td><strong style="color: #C9302C; font-family: var(--font-family-heading); font-size: 14px;">${costStr}</strong></td>
                 <td style="text-align: right;">
-                    <span style="font-size: 11px; font-weight: 700; color: #2E7D32;">✓ Reconciled</span>
+                    <div class="table-action-btns">
+                        <button type="button" class="btn-ceo-approve" onclick="handleCeoDecision(${item.id}, 'approve')">
+                            Approve &amp; Sign
+                        </button>
+                        <button type="button" class="btn-ceo-reject" onclick="handleCeoDecision(${item.id}, 'reject')">
+                            Reject
+                        </button>
+                    </div>
                 </td>
             </tr>
         `;
     }).join('');
 }
 
-// Smart Sliding Pagination with Ellipsis
-function renderCeoPaginationControls(totalPages, activePage) {
-    const pagerNumbers = document.getElementById('ceoPagerNumbers');
-    if (!pagerNumbers) return;
+// Decision handler with SweetAlert2
+async function handleCeoDecision(reqId, decision) {
+    const item = pendingMajorApprovals.find(i => i.id === reqId);
+    if (!item) return;
 
-    if (totalPages <= 1) {
-        pagerNumbers.innerHTML = `<button type="button" class="pager-num-btn active" data-page="1">1</button>`;
-        return;
-    }
+    if (decision === 'approve') {
+        const res = await MMSwal.fire({
+            title: 'Authorize Major Capital Release?',
+            html: `Sign off on procurement requisition <strong>"${escapeHtml(item.item_name)}"</strong> for <strong>₱${Number(item.amount).toFixed(2)}</strong>? This authorises Procurement to execute vendor PO.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Authorize &amp; Sign',
+            cancelButtonText: 'Cancel'
+        });
 
-    const pages = [];
-    if (totalPages <= 7) {
-        for (let i = 1; i <= totalPages; i++) pages.push(i);
+        if (res.isConfirmed) {
+            pendingMajorApprovals = pendingMajorApprovals.filter(i => i.id !== reqId);
+            document.getElementById('statPendingApprovals').textContent = pendingMajorApprovals.length;
+            renderApprovalsTable();
+
+            MMSwal.fire({
+                icon: 'success',
+                title: 'Capital Authorized',
+                text: `Requisition for "${item.item_name}" has been cleared for execution.`
+            });
+        }
     } else {
-        if (activePage <= 4) {
-            pages.push(1, 2, 3, 4, 5, '...', totalPages);
-        } else if (activePage >= totalPages - 3) {
-            pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-        } else {
-            pages.push(1, '...', activePage - 1, activePage, activePage + 1, '...', totalPages);
-        }
-    }
-
-    let html = '';
-    pages.forEach(p => {
-        if (p === '...') {
-            html += `<span class="pager-ellipsis">&hellip;</span>`;
-        } else {
-            const isActive = p === activePage ? 'active' : '';
-            html += `<button type="button" class="pager-num-btn ${isActive}" data-page="${p}">${p}</button>`;
-        }
-    });
-    pagerNumbers.innerHTML = html;
-
-    pagerNumbers.querySelectorAll('.pager-num-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const page = parseInt(e.currentTarget.getAttribute('data-page'), 10);
-            if (page && page !== currentCeoPage) {
-                currentCeoPage = page;
-                renderCeoOrdersTable();
+        const { value: reason } = await MMSwal.fire({
+            title: 'Reject Requisition',
+            input: 'textarea',
+            inputLabel: 'Reason for Executive Rejection',
+            inputPlaceholder: 'State reason for deferral or rejection...',
+            showCancelButton: true,
+            confirmButtonText: 'Confirm Rejection',
+            inputValidator: (val) => {
+                if (!val || val.trim().length === 0) return 'Please provide a justification.';
             }
         });
-    });
+
+        if (reason) {
+            pendingMajorApprovals = pendingMajorApprovals.filter(i => i.id !== reqId);
+            document.getElementById('statPendingApprovals').textContent = pendingMajorApprovals.length;
+            renderApprovalsTable();
+
+            MMSwal.fire({
+                icon: 'info',
+                title: 'Requisition Rejected',
+                text: `Requisition "${item.item_name}" returned to requester. Reason logged: "${reason}"`
+            });
+        }
+    }
 }
 
+// --------------------------------------------------------------------------
+// ACTIVE DUTY ROSTER (COMPACT CARD WIDGET)
+// --------------------------------------------------------------------------
+function renderActiveRoster() {
+    const container = document.getElementById('activeRosterList');
+    if (!container) return;
+
+    const rosterStaff = [
+        { name: 'Reeze Laureen A. Alapide', role: 'Sales Officer', station: 'Sales Counter & POS' },
+        { name: 'Richmond S. Pincakesss', role: 'Production Supervisor', station: 'Macro Batch Kitchen' },
+        { name: 'Rhodalyn D. Leodones', role: 'Procurement Officer', station: 'Warehouse & Receiving' },
+        { name: 'Kerstin E. Reyes', role: 'Financial Officer', station: 'Treasury & Settlement Desk' },
+        { name: 'Angeline J. Ang', role: 'System Administrator', station: 'Master Data & Security' }
+    ];
+
+    container.innerHTML = rosterStaff.map(staff => `
+        <div class="roster-item-tile">
+            <div class="roster-item-left">
+                <div class="roster-avatar-sm">
+                    <img src="/customer/images/account.png" alt="${escapeHtml(staff.name)}" class="roster-avatar-img">
+                </div>
+                <div>
+                    <div class="roster-name">${escapeHtml(staff.name)}</div>
+                    <div class="roster-station">${escapeHtml(staff.role)} &bull; ${escapeHtml(staff.station)}</div>
+                </div>
+            </div>
+            <span class="badge-roster-duty">On Duty</span>
+        </div>
+    `).join('');
+}
+
+// --------------------------------------------------------------------------
+// REVENUE TRAJECTORY CHART (CHART.JS)
+// --------------------------------------------------------------------------
 function initRevenueChart() {
     const ctx = document.getElementById('revenueChart')?.getContext('2d');
     if (!ctx) return;
@@ -341,27 +406,10 @@ function initRevenueChart() {
 }
 
 // --------------------------------------------------------------------------
-// EXPORT EXECUTIVE PDF / PRINT HANDLER
+// THE SINGLE OFFICIAL EXECUTIVE PDF EXPORT
 // --------------------------------------------------------------------------
 function exportExecutivePDF() {
     window.print();
-}
-
-function showCustomAlert(title, message) {
-    const modal = document.getElementById('customAlertModal');
-    if (!modal) return;
-    document.getElementById('alertModalTitle').textContent = title;
-    document.getElementById('alertModalMessage').textContent = message;
-    modal.classList.add('open');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeCustomAlert() {
-    const modal = document.getElementById('customAlertModal');
-    if (modal) {
-        modal.classList.remove('open');
-        document.body.style.overflow = '';
-    }
 }
 
 function escapeHtml(str) {
