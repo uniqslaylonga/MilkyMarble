@@ -1836,6 +1836,56 @@ body {
 
 
 
+.btn-delete-toggle {
+
+  background: rgba(225, 75, 90, 0.08);
+
+  color: #e14b5a;
+
+  border: 1.5px solid rgba(225, 75, 90, 0.35);
+
+  padding: 6px 14px;
+
+  border-radius: 14px;
+
+  font-size: 11.5px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+}
+
+
+
+.btn-delete-toggle:hover {
+
+  background: #e14b5a;
+
+  color: #ffffff;
+
+  transform: translateY(-1px);
+
+}
+
+
+
+.btn-delete-toggle:active {
+
+  transform: translateY(0);
+
+}
+
+
+
 .btn-icon-svg {
 
   width: 13px;

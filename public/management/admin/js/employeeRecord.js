@@ -753,9 +753,33 @@ async function handleDeleteEmployee() {
 
     const name = currentEmpData.full_name || 'this employee';
 
-    const confirmed = confirm(`Delete ${name}? This permanently removes their account, profile, and role assignment. This cannot be undone.`);
 
-    if (!confirmed) return;
+
+    const result = await Swal.fire({
+
+        title: 'Are you sure?',
+
+        text: `This will permanently remove ${name}'s account, profile, and role assignment. This cannot be undone.`,
+
+        icon: 'warning',
+
+        showCancelButton: true,
+
+        confirmButtonText: 'Yes, remove',
+
+        cancelButtonText: 'Cancel',
+
+        confirmButtonColor: '#e14b5a',
+
+        cancelButtonColor: '#b0b0b0',
+
+        reverseButtons: true
+
+    });
+
+
+
+    if (!result.isConfirmed) return;
 
 
 
@@ -781,9 +805,31 @@ async function handleDeleteEmployee() {
 
             fetchEmployeeRecordData();
 
+            Swal.fire({
+
+                title: 'Removed',
+
+                text: `${name} has been removed.`,
+
+                icon: 'success',
+
+                confirmButtonColor: '#e14b5a'
+
+            });
+
         } else {
 
-            alert('Failed to delete employee: ' + (data.message || 'Unknown error'));
+            Swal.fire({
+
+                title: 'Failed to remove employee',
+
+                text: data.message || 'Unknown error',
+
+                icon: 'error',
+
+                confirmButtonColor: '#e14b5a'
+
+            });
 
         }
 
@@ -791,7 +837,17 @@ async function handleDeleteEmployee() {
 
         console.error('Error deleting employee:', error);
 
-        alert('An error occurred while deleting the employee.');
+        Swal.fire({
+
+            title: 'Something went wrong',
+
+            text: 'An error occurred while removing the employee.',
+
+            icon: 'error',
+
+            confirmButtonColor: '#e14b5a'
+
+        });
 
     }
 
