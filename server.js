@@ -2030,7 +2030,7 @@ app.get('/api/admin/employee-records', async (req, res) => {
       .order('created_at', { ascending: false });
 
     const formattedEmployees = (employeesData || []).map(u => {
-      const empDetails = Array.isArray(u.employees) ? u.employees[0] : (u.employees || {});
+      const empDetails = Array.isArray(u.employees) ? (u.employees[0] || {}) : (u.employees || {});
 
       const position = (u.user_roles && u.user_roles.length > 0 && u.user_roles[0].roles)
         ? u.user_roles[0].roles.name
