@@ -2506,6 +2506,16 @@ app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
       return res.status(409).json({ status: 'error', message: 'That username is already taken.' });
     }
 
+    const { data: existingEmail } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existingEmail) {
+      return res.status(409).json({ status: 'error', message: 'That email is already registered.' });
+    }
+
     let passwordHash = password;
     if (bcrypt) {
       try {
@@ -2545,6 +2555,7 @@ app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
       .insert([{
         user_id: newUser.id,
         employee_code: employeeCode,
+        full_name: full_name,
         job_title: selectedRole.name,
         department: department || 'General',
         gender: gender || 'Not Specified'
@@ -2552,7 +2563,12 @@ app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
       .select()
       .single();
 
-    if (empErr) throw empErr;
+    if (empErr) {
+      // Roll back the orphaned user account so the username/email are
+      // freed up and a retry doesn't hit a false "already taken" error.
+      await supabase.from('users').delete().eq('id', newUser.id);
+      throw empErr;
+    }
 
     // 3. Link the account to its role via user_roles, so RBAC (dashboard
     // redirect, permissions) recognizes the role immediately on login.
@@ -2618,7 +2634,7 @@ app.post('/api/admin/edit-employee', employeeAvatarUpload, async (req, res) => {
       const employeeCode = 'EMP-' + String(user_id).padStart(3, '0');
       const { error: empErr } = await supabase
         .from('employees')
-        .insert([{ user_id: user_id, employee_code: employeeCode, ...empUpdates }]);
+        .insert([{ user_id: user_id, employee_code: employeeCode, full_name: full_name || '', ...empUpdates }]);
 
       if (empErr) throw empErr;
     }
