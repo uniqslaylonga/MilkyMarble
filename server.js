@@ -2046,18 +2046,17 @@ app.get('/api/admin/employee-records', async (req, res) => {
       .from('users')
       .select(`
         id, username, email, full_name, is_active, avatar, created_at,
-        employees(employee_code, job_title, department, gender),
-        user_roles(roles(name))
+        employees(id, employee_code, job_title, department, gender),
+        user_roles(role_id, roles(id, name))
       `)
       .eq('user_type', 'employee')
       .order('created_at', { ascending: false });
 
     const formattedEmployees = (employeesData || []).map(u => {
       const empDetails = Array.isArray(u.employees) ? (u.employees[0] || {}) : (u.employees || {});
+      const userRole = (u.user_roles && u.user_roles.length > 0) ? u.user_roles[0] : null;
 
-      const position = (u.user_roles && u.user_roles.length > 0 && u.user_roles[0].roles)
-        ? u.user_roles[0].roles.name
-        : null;
+      const position = (userRole && userRole.roles) ? userRole.roles.name : null;
 
       let empAvatar = '../images/account.png';
       if (u.avatar && !u.avatar.includes('account.png')) {
@@ -2072,12 +2071,21 @@ app.get('/api/admin/employee-records', async (req, res) => {
       return {
         id: u.id,
         user_id: u.id,
+        // The employees table has its own primary key, separate from
+        // users.id - this is the id edit-employee must use to update the
+        // right row (previously the frontend was sending users.id here,
+        // which silently failed to match any employees row on save).
+        emp_id: empDetails.id || null,
         employee_code: empDetails.employee_code || 'EMP-' + String(u.id).padStart(3, '0'),
         full_name: u.full_name,
         username: u.username,
         email: u.email,
         job_title: empDetails.job_title || 'Unassigned',
         position: position || empDetails.job_title || 'Unassigned',
+        role_name: position || empDetails.job_title || 'Unassigned',
+        // Current role_id, so the Job Title dropdown can be pre-selected
+        // to whatever role this employee actually has today.
+        role_id: userRole ? userRole.role_id : null,
         department: empDetails.department || 'General',
         gender: empDetails.gender || 'Not Specified',
         is_active: u.is_active ? 1 : 0,
@@ -2778,10 +2786,60 @@ app.post('/api/admin/edit-employee', employeeAvatarUpload, async (req, res) => {
   try {
     if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
 
-    const { emp_id, user_id, full_name, gender, job_title, department, username, email } = req.body;
+    const { emp_id, user_id, full_name, gender, department, username, email, role_id } = req.body;
 
     if (!user_id) {
       return res.status(400).json({ status: 'error', message: 'Missing user_id.' });
+    }
+
+    // 0. Validate everything up front so we never partially save a change
+    // (e.g. update the role but then fail on a duplicate username).
+
+    // The Job Title field is now a dropdown bound to the real `roles`
+    // table, exactly like Add Employee - so changing it also changes the
+    // employee's actual system role (RBAC / dashboard routing), not just
+    // a cosmetic label.
+    let selectedRole = null;
+    if (role_id) {
+      const { data: roleRow, error: roleErr } = await supabase
+        .from('roles')
+        .select('id, name')
+        .eq('id', role_id)
+        .maybeSingle();
+
+      if (roleErr) throw roleErr;
+      if (!roleRow) {
+        return res.status(400).json({ status: 'error', message: 'Selected role does not exist.' });
+      }
+      selectedRole = roleRow;
+    }
+
+    if (username) {
+      const { data: existingUsername, error: userLookupErr } = await supabase
+        .from('users')
+        .select('id')
+        .eq('username', username)
+        .neq('id', user_id)
+        .maybeSingle();
+
+      if (userLookupErr) throw userLookupErr;
+      if (existingUsername) {
+        return res.status(409).json({ status: 'error', message: 'That username is already taken.' });
+      }
+    }
+
+    if (email) {
+      const { data: existingEmail, error: emailLookupErr } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .neq('id', user_id)
+        .maybeSingle();
+
+      if (emailLookupErr) throw emailLookupErr;
+      if (existingEmail) {
+        return res.status(409).json({ status: 'error', message: 'That email is already in use by another account.' });
+      }
     }
 
     // 1. Update the base user account
@@ -2800,29 +2858,87 @@ app.post('/api/admin/edit-employee', employeeAvatarUpload, async (req, res) => {
       if (userErr) throw userErr;
     }
 
-    // 2. Update (or create, if missing) the linked employee profile
+    // 2. Update (or create, if missing) the linked employee profile.
+    // job_title always mirrors the selected role's name, the same way
+    // Add Employee derives it, so Job Title and the assigned role can
+    // never drift out of sync.
     const empUpdates = {};
-    if (job_title !== undefined) empUpdates.job_title = job_title;
+    if (selectedRole) empUpdates.job_title = selectedRole.name;
     if (department !== undefined) empUpdates.department = department;
     if (gender !== undefined) empUpdates.gender = gender;
 
-    if (emp_id) {
-      const { error: empErr } = await supabase
-        .from('employees')
-        .update(empUpdates)
-        .eq('id', emp_id);
+    if (Object.keys(empUpdates).length > 0) {
+      // Look up the employee row by id *and* user_id together first. This
+      // guards against a stale/mismatched emp_id ever being able to edit
+      // a different employee's row, and also covers the case where the
+      // id passed in doesn't correspond to an existing employees row.
+      let empRow = null;
+      if (emp_id) {
+        const { data } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('id', emp_id)
+          .eq('user_id', user_id)
+          .maybeSingle();
+        empRow = data;
+      }
+      if (!empRow) {
+        const { data } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('user_id', user_id)
+          .maybeSingle();
+        empRow = data;
+      }
 
-      if (empErr) throw empErr;
-    } else {
-      const employeeCode = 'EMP-' + String(user_id).padStart(3, '0');
-      const { error: empErr } = await supabase
-        .from('employees')
-        .insert([{ user_id: user_id, employee_code: employeeCode, ...empUpdates }]);
+      if (empRow) {
+        const { error: empErr } = await supabase
+          .from('employees')
+          .update(empUpdates)
+          .eq('id', empRow.id);
 
-      if (empErr) throw empErr;
+        if (empErr) throw empErr;
+      } else {
+        const employeeCode = 'EMP-' + String(user_id).padStart(3, '0');
+        const { error: empErr } = await supabase
+          .from('employees')
+          .insert([{ user_id: user_id, employee_code: employeeCode, ...empUpdates }]);
+
+        if (empErr) throw empErr;
+      }
+    }
+
+    // 3. Keep user_roles in sync so a Job Title change immediately takes
+    // effect for login routing and permissions, not just the label shown
+    // in the admin table.
+    if (selectedRole) {
+      const { data: existingUserRole, error: userRoleLookupErr } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', user_id)
+        .maybeSingle();
+
+      if (userRoleLookupErr) throw userRoleLookupErr;
+
+      if (existingUserRole) {
+        const { error: roleUpdateErr } = await supabase
+          .from('user_roles')
+          .update({ role_id: selectedRole.id })
+          .eq('id', existingUserRole.id);
+
+        if (roleUpdateErr) throw roleUpdateErr;
+      } else {
+        const { error: roleInsertErr } = await supabase
+          .from('user_roles')
+          .insert([{ user_id: user_id, role_id: selectedRole.id }]);
+
+        if (roleInsertErr) throw roleInsertErr;
+      }
     }
 
     const changedFields = [...Object.keys(userUpdates), ...Object.keys(empUpdates)];
+    if (selectedRole) changedFields.push('role');
+
     logActivity(supabase, {
       req,
       action: 'employee.updated',
@@ -2831,7 +2947,7 @@ app.post('/api/admin/edit-employee', employeeAvatarUpload, async (req, res) => {
       targetType: 'employee',
       targetId: user_id,
       targetLabel: full_name || null,
-      metadata: { fields: changedFields }
+      metadata: { fields: changedFields, role: selectedRole ? selectedRole.name : undefined }
     });
 
     return res.json({ status: 'success', message: 'Employee updated successfully.' });

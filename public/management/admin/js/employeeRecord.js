@@ -17,7 +17,7 @@ const MMSwal = Swal.mixin({
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchEmployeeRecordData();
-    populateRoleSelect();
+    populateRoleSelect(document.getElementById('addRoleSelect'));
 
     // Real-time search filter
     document.getElementById('employeeSearchInput')?.addEventListener('input', applyEmployeeFilters);
@@ -328,12 +328,12 @@ function openAddModal() {
     if (modal) {
         modal.classList.add('open');
         document.body.style.overflow = 'hidden';
-        populateRoleSelect();
+        populateRoleSelect(document.getElementById('addRoleSelect'));
     }
 }
 
-async function populateRoleSelect() {
-    const select = document.getElementById('addRoleSelect');
+async function populateRoleSelect(targetSelect, selectedRoleId) {
+    const select = targetSelect || document.getElementById('addRoleSelect');
     if (!select) return;
     try {
         const response = await fetch('/api/admin/roles');
@@ -341,6 +341,9 @@ async function populateRoleSelect() {
         if (data.status === 'success' && Array.isArray(data.roles) && data.roles.length > 0) {
             select.innerHTML = '<option value="">Select a role...</option>' +
                 data.roles.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
+            if (selectedRoleId !== undefined && selectedRoleId !== null && selectedRoleId !== '') {
+                select.value = String(selectedRoleId);
+            }
         } else {
             select.innerHTML = '<option value="">No roles available</option>';
         }
@@ -365,7 +368,10 @@ function openEmployeeModalByData(empId) {
     currentEmpData = empData;
 
     document.getElementById('editAvatarInput').value = '';
-    document.getElementById('mEmpDbId').value = empData.id;
+    // empData.id is the *users* table id - the employees table has its own
+    // id (empData.emp_id), which is what edit-employee needs to update the
+    // right row. Using empData.id here used to silently save nothing.
+    document.getElementById('mEmpDbId').value = empData.emp_id || '';
     document.getElementById('mUserDbId').value = empData.user_id || 0;
 
     document.getElementById('mEmpId').textContent = empData.employee_code || 'EMP-000';
@@ -388,7 +394,7 @@ function openEmployeeModalByData(empId) {
 
     document.getElementById('inputFullName').value = empData.full_name || '';
     document.getElementById('inputGender').value = empData.gender || 'Male';
-    document.getElementById('inputJobTitle').value = empData.job_title || '';
+    populateRoleSelect(document.getElementById('inputJobTitle'), empData.role_id);
     document.getElementById('inputDepartment').value = empData.department || '';
     document.getElementById('inputUsername').value = empData.username || '';
     document.getElementById('inputEmail').value = empData.email || '';

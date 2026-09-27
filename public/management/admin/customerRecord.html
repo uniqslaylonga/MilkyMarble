@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Milky Marble — Customer Accounts &amp; CRM Directory</title>
+    <title>Milky Marble — Employee Records &amp; Workforce Directory</title>
     <link rel="icon" type="image/png" href="/customer/images/logo.png">
-    <link rel="stylesheet" href="css/customerRecord.css">
+    <link rel="stylesheet" href="css/employeeRecord.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
@@ -32,8 +32,8 @@
                     <span>Dashboard</span>
                 </a>
 
-                <!-- 2. Employee Records -->
-                <a href="employeeRecord.html" class="nav-link">
+                <!-- 2. Employee Records (Active) -->
+                <a href="employeeRecord.html" class="nav-link active">
                     <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                         <circle cx="9" cy="7" r="4" />
@@ -43,8 +43,8 @@
                     <span>Employee Records</span>
                 </a>
 
-                <!-- 3. Customer Records (Active) -->
-                <a href="customerRecord.html" class="nav-link active">
+                <!-- 3. Customer Records -->
+                <a href="customerRecord.html" class="nav-link">
                     <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                         <circle cx="9" cy="7" r="4" />
@@ -79,7 +79,7 @@
             <!-- TOPBAR -->
             <header class="topbar">
                 <div class="search-box">
-                    <input type="text" id="customerSearchInput" placeholder="Search customer ID, name, or email...">
+                    <input type="text" id="employeeSearchInput" placeholder="Search employee code, name, job title, or department...">
                     <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                         <circle cx="11" cy="11" r="7" />
                         <path d="M21 21l-4.35-4.35" />
@@ -97,113 +97,99 @@
                 </div>
             </header>
 
-            <!-- CUSTOMER OVERVIEW KPIS (3 CARDS) -->
+            <!-- WORKFORCE SUMMARY CARDS -->
             <section class="section">
                 <div class="section-head-bar">
                     <div>
-                        <h2 class="section-title">Customer Portfolio Overview</h2>
-                        <p class="section-sub-text">Registered customer accounts, repeat order rates, and wholesale accounts.</p>
+                        <h2 class="section-title">Workforce Summary</h2>
+                        <p class="section-sub-text">Overview of registered employee credentials, roles, and duty status.</p>
                     </div>
+                    <button class="action-btn-primary" onclick="openAddModal()">
+                        <svg class="btn-action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>Add New Employee</span>
+                    </button>
                 </div>
 
                 <div class="overview-grid">
-                    <!-- 1. Total Customer Accounts -->
+                    <!-- 1. Total Headcount -->
                     <div class="stat-card">
                         <div class="stat-header">
-                            <span class="stat-title">Total Accounts</span>
+                            <span class="stat-title">Total Headcount</span>
                             <div class="stat-icon-wrap">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="#F69299" stroke-width="2">
                                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                                     <circle cx="9" cy="7" r="4" />
-                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                                 </svg>
                             </div>
                         </div>
                         <div class="stat-body">
-                            <span id="totalAccounts" class="stat-value">0</span>
+                            <span id="totalHeadcount" class="stat-value">0</span>
                         </div>
-                        <div class="stat-footer">Registered customer profiles</div>
+                        <div class="stat-footer">Registered workforce accounts</div>
                     </div>
 
-                    <!-- 2. Corporate & Wholesale Buyers -->
+                    <!-- 2. Active Staff on Duty -->
                     <div class="stat-card">
                         <div class="stat-header">
-                            <span class="stat-title">Corporate &amp; Wholesale</span>
+                            <span class="stat-title">Active Staff</span>
                             <div class="stat-icon-wrap">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="#7C4F38" stroke-width="2">
-                                    <rect x="2" y="7" width="20" height="14" rx="2" />
-                                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                    <polyline points="22 4 12 14.01 9 11.01" />
                                 </svg>
                             </div>
                         </div>
                         <div class="stat-body">
-                            <span id="corporateCount" class="stat-value">0</span>
+                            <span id="activeToday" class="stat-value" style="color: #2E7D32;">0</span>
                         </div>
-                        <div class="stat-footer">High-volume &amp; loyalty accounts</div>
-                    </div>
-
-                    <!-- 3. Repeat Customer Rate -->
-                    <div class="stat-card">
-                        <div class="stat-header">
-                            <span class="stat-title">Repeat Customer Rate</span>
-                            <div class="stat-icon-wrap">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2.5">
-                                    <path d="M17 1l4 4-4 4" />
-                                    <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-                                    <path d="M7 23l-4-4 4-4" />
-                                    <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="stat-body">
-                            <span id="repeatRate" class="stat-value" style="color: #2E7D32;">0.0%</span>
-                        </div>
-                        <div class="stat-footer">Loyal returning buyers</div>
+                        <div class="stat-footer">Active status employees</div>
                     </div>
                 </div>
             </section>
 
-            <!-- CUSTOMER DIRECTORY TABLE -->
+            <!-- STAFF DIRECTORY & PROFILES TABLE -->
             <section class="section">
                 <div class="directory-card">
                     <div class="panel-header-bar">
                         <div>
-                            <h2 class="section-title">Customer Account Directory</h2>
-                            <p class="section-sub-text"><span id="visibleCustomerCount">0</span> customers currently matching search filter</p>
+                            <h2 class="section-title">Staff Directory &amp; RBAC Profiles</h2>
+                            <p class="section-sub-text"><span id="visibleEmployeeCount">0</span> employee profiles currently active in registry</p>
                         </div>
                     </div>
 
                     <div class="table-container">
-                        <table class="cust-table" id="customerTable">
+                        <table class="cust-table" id="employeeTable">
                             <thead>
                                 <tr>
-                                    <th>Customer Info</th>
-                                    <th>Email &amp; Contact</th>
-                                    <th>Transaction Summary</th>
+                                    <th>Personal Profile</th>
+                                    <th>Job Title &amp; Department</th>
+                                    <th>Role Access</th>
                                     <th>Account Status</th>
                                     <th style="text-align: right;">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="customerTableBody">
+                            <tbody id="employeeTableBody">
                                 <tr>
-                                    <td colspan="5" class="loading-state-text">Loading customer records...</td>
+                                    <td colspan="5" class="loading-state-text">Loading employee records...</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
                     <!-- PERMANENT NUMBERED PAGINATION BAR -->
-                    <div class="tx-pagination-bar" id="customerPaginationBar">
-                        <span class="tx-page-info" id="custPageInfo">Showing 0 of 0 customers</span>
+                    <div class="tx-pagination-bar" id="employeePaginationBar">
+                        <span class="tx-page-info" id="empPageInfo">Showing 0 of 0 staff</span>
                         <div class="tx-pager-buttons">
-                            <button type="button" class="pager-btn" id="prevCustBtn" title="Previous Page" disabled>
+                            <button type="button" class="pager-btn" id="prevEmpBtn" title="Previous Page" disabled>
                                 <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
                             </button>
-                            <div class="pager-numbers" id="custPagerNumbers">
+                            <div class="pager-numbers" id="empPagerNumbers">
                                 <button type="button" class="pager-num-btn active" disabled>1</button>
                             </div>
-                            <button type="button" class="pager-btn" id="nextCustBtn" title="Next Page" disabled>
+                            <button type="button" class="pager-btn" id="nextEmpBtn" title="Next Page" disabled>
                                 <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
                             </button>
                         </div>
@@ -212,15 +198,161 @@
             </section>
         </main>
 
-        <!-- VIEW PROFILE MODAL -->
-        <div class="modal-overlay" id="profileModalOverlay">
+        <!-- MODAL 1: VIEW & EDIT PROFILE MODAL -->
+        <div class="modal-overlay" id="employeeModalOverlay">
+            <div class="profile-modal" id="profileModalCard" onclick="event.stopPropagation()">
+                <form id="editProfileForm" enctype="multipart/form-data">
+                    <input type="hidden" id="mEmpDbId" name="emp_id">
+                    <input type="hidden" id="mUserDbId" name="user_id">
+
+                    <div class="modal-header">
+                        <div class="modal-header-left">
+                            <h3 class="modal-title" id="modalTitleText">Employee Master Record</h3>
+                            <span class="modal-id-badge" id="mEmpId">EMP-ID</span>
+                        </div>
+                        <div class="modal-header-actions">
+                            <button type="button" class="btn-edit-toggle view-mode-only" onclick="enableEditMode(true)">
+                                <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                                <span>Edit Profile</span>
+                            </button>
+                            <button type="button" class="btn-delete-toggle view-mode-only" onclick="handleDeleteEmployee()">
+                                <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                                    <path d="M10 11v6"></path>
+                                    <path d="M14 11v6"></path>
+                                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+                                </svg>
+                                <span>Remove</span>
+                            </button>
+                            <button type="button" class="modal-close" onclick="closeModal()">
+                                <svg class="close-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="modal-body">
+                        <!-- AVATAR HEADER -->
+                        <div class="modal-section avatar-upload-container">
+                            <div class="avatar-wrapper">
+                                <img id="mAvatarImg" src="/customer/images/account.png" alt="Profile Avatar" class="modal-avatar-img">
+                                <label for="editAvatarInput" class="edit-avatar-badge" title="Change Photo">
+                                    <svg class="badge-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                        <circle cx="12" cy="13" r="4"></circle>
+                                    </svg>
+                                </label>
+                                <input type="file" name="avatar_file" id="editAvatarInput" accept="image/*" style="display: none;" onchange="previewAvatar(this)">
+                            </div>
+                            <div class="edit-mode-only avatar-spec-text">Click camera badge to upload new photo</div>
+                        </div>
+
+                        <!-- PERSONAL PROFILE -->
+                        <div class="modal-section">
+                            <div class="modal-label">Personal Profile</div>
+
+                            <div class="view-mode-only">
+                                <div class="modal-details-grid">
+                                    <div class="detail-box"><span class="detail-label">Full Name</span><strong class="detail-val" id="mFullName">-</strong></div>
+                                    <div class="detail-box"><span class="detail-label">Gender</span><strong class="detail-val" id="mGender">-</strong></div>
+                                </div>
+                            </div>
+
+                            <div class="edit-mode-only">
+                                <div class="form-grid">
+                                    <div class="form-group full">
+                                        <label>Full Name *</label>
+                                        <input type="text" name="full_name" id="inputFullName" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Gender</label>
+                                        <select name="gender" id="inputGender">
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- EMPLOYMENT DETAILS -->
+                        <div class="modal-section">
+                            <div class="modal-label">Employment &amp; Roles</div>
+
+                            <div class="view-mode-only">
+                                <div class="modal-details-grid">
+                                    <div class="detail-box"><span class="detail-label">Job Title</span><strong class="detail-val" id="mJobTitle">-</strong></div>
+                                    <div class="detail-box"><span class="detail-label">Department</span><strong class="detail-val" id="mDepartment">-</strong></div>
+                                    <div class="detail-box"><span class="detail-label">Account Created</span><strong class="detail-val" id="mDateCreated">-</strong></div>
+                                    <div class="detail-box"><span class="detail-label">Current Status</span><strong class="detail-val" id="mEmpStatus">-</strong></div>
+                                </div>
+                            </div>
+
+                            <div class="edit-mode-only">
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label>Job Title / Role *</label>
+                                        <select name="role_id" id="inputJobTitle" required>
+                                            <option value="">Loading roles...</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Department</label>
+                                        <input type="text" name="department" id="inputDepartment" placeholder="e.g. Operations">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ACCOUNT CREDENTIALS -->
+                        <div class="modal-section">
+                            <div class="modal-label">Account Credentials</div>
+
+                            <div class="view-mode-only">
+                                <div class="modal-details-grid">
+                                    <div class="detail-box"><span class="detail-label">Username</span><strong class="detail-val" id="mUsername">-</strong></div>
+                                    <div class="detail-box"><span class="detail-label">Email</span><strong class="detail-val" id="mEmail">-</strong></div>
+                                </div>
+                            </div>
+
+                            <div class="edit-mode-only">
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label>Username *</label>
+                                        <input type="text" name="username" id="inputUsername" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Email *</label>
+                                        <input type="email" name="email" id="inputEmail" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal-actions edit-mode-only">
+                            <button type="button" class="btn-secondary" onclick="enableEditMode(false)">Cancel Edit</button>
+                            <button type="submit" class="btn-primary">Save Changes</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- MODAL 2: ADD NEW EMPLOYEE MODAL -->
+        <div class="modal-overlay" id="addEmployeeModalOverlay">
             <div class="profile-modal" onclick="event.stopPropagation()">
                 <div class="modal-header">
                     <div class="modal-header-left">
-                        <h3 class="modal-title">Customer Profile Record</h3>
-                        <span class="modal-id-badge" id="mCustId">CUST-ID</span>
+                        <h3 class="modal-title">Register New Employee</h3>
+                        <span class="modal-id-badge">Staff Provisioning</span>
                     </div>
-                    <button type="button" class="modal-close" onclick="closeModal()">
+                    <button class="modal-close" onclick="closeAddModal()">
                         <svg class="close-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -228,59 +360,73 @@
                     </button>
                 </div>
 
-                <div class="modal-body">
-                    <div class="avatar-upload-container">
-                        <div class="avatar-wrapper">
-                            <img id="mAvatarImg" src="/customer/images/account.png" alt="Customer Avatar" class="modal-avatar-img" onerror="this.src='/customer/images/account.png';">
-                        </div>
-                    </div>
-
+                <form id="addEmployeeForm" enctype="multipart/form-data" class="modal-body">
                     <div class="modal-section">
-                        <div class="modal-label">Personal &amp; Contact Details</div>
-                        <div class="modal-details-grid">
-                            <div class="detail-box">
-                                <span class="detail-label">Full Name</span>
-                                <strong class="detail-val" id="mModalFullName">Customer Name</strong>
+                        <div class="modal-label">Account Credentials</div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Username *</label>
+                                <input type="text" name="username" placeholder="e.g. jdoe_sales" required>
                             </div>
-                            <div class="detail-box">
-                                <span class="detail-label">Account Status</span>
-                                <strong class="detail-val" id="mStatus">Active</strong>
+                            <div class="form-group">
+                                <label>Email *</label>
+                                <input type="email" name="email" placeholder="staff@milkymarble.com" required>
                             </div>
-                            <div class="detail-box">
-                                <span class="detail-label">Contact Number</span>
-                                <strong class="detail-val" id="mPhone">No Phone Number</strong>
-                            </div>
-                            <div class="detail-box">
-                                <span class="detail-label">Email Address</span>
-                                <strong class="detail-val" id="mEmail">email@example.com</strong>
+                            <div class="form-group full">
+                                <label>Initial Password *</label>
+                                <input type="password" name="password" placeholder="Create secure initial password" required>
                             </div>
                         </div>
                     </div>
 
                     <div class="modal-section">
-                        <div class="modal-label">Lifetime Order History</div>
-                        <div class="modal-details-grid">
-                            <div class="detail-box highlight-box">
-                                <span class="detail-label">Lifetime Spend</span>
-                                <strong class="detail-val" id="mTotalSpend">₱0.00</strong>
+                        <div class="modal-label">Employee Profile &amp; Role</div>
+                        <div class="form-grid">
+                            <div class="form-group full">
+                                <label>Full Name *</label>
+                                <input type="text" name="full_name" placeholder="First Name, Last Name" required>
                             </div>
-                            <div class="detail-box">
-                                <span class="detail-label">Total Completed Orders</span>
-                                <strong class="detail-val" id="mPastOrders">0 orders</strong>
+                            <div class="form-group">
+                                <label>Gender</label>
+                                <select name="gender">
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Avatar Photo (Optional)</label>
+                                <input type="file" name="avatar_file" accept="image/*">
+                            </div>
+                            <div class="form-group">
+                                <label>Role Assignment *</label>
+                                <select name="role_id" id="addRoleSelect" required>
+                                    <option value="">Loading roles...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Department</label>
+                                <input type="text" name="department" placeholder="e.g. Operations / Finance / Logistics">
                             </div>
                         </div>
                     </div>
 
                     <div class="modal-actions">
-                        <button type="button" class="btn-primary" onclick="closeModal()">Close Record</button>
+                        <button type="button" class="btn-secondary" onclick="closeAddModal()">Cancel</button>
+                        <button type="submit" class="btn-primary">
+                            <svg class="btn-action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            <span>Save Employee Record</span>
+                        </button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
 
     </div>
 
-    <script src="js/customerRecord.js"></script>
+    <script src="js/employeeRecord.js"></script>
     <script src="/shared/js/avatarUpload.js"></script>
 </body>
 </html>
