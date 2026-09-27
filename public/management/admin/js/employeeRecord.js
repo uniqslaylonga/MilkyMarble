@@ -745,6 +745,60 @@ function previewAvatar(input) {
 
 
 
+async function handleDeleteEmployee() {
+
+    if (!currentEmpData) return;
+
+
+
+    const name = currentEmpData.full_name || 'this employee';
+
+    const confirmed = confirm(`Delete ${name}? This permanently removes their account, profile, and role assignment. This cannot be undone.`);
+
+    if (!confirmed) return;
+
+
+
+    try {
+
+        const response = await fetch('/api/admin/delete-employee', {
+
+            method: 'POST',
+
+            headers: { 'Content-Type': 'application/json' },
+
+            body: JSON.stringify({ user_id: currentEmpData.user_id })
+
+        });
+
+
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+
+            closeModal();
+
+            fetchEmployeeRecordData();
+
+        } else {
+
+            alert('Failed to delete employee: ' + (data.message || 'Unknown error'));
+
+        }
+
+    } catch (error) {
+
+        console.error('Error deleting employee:', error);
+
+        alert('An error occurred while deleting the employee.');
+
+    }
+
+}
+
+
+
 function closeModal() {
 
     const modal = document.getElementById('employeeModalOverlay');

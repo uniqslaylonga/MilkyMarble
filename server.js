@@ -2591,6 +2591,52 @@ app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
   }
 });
 
+// ==========================================
+// MANAGEMENT ADMIN DELETE EMPLOYEE
+// ==========================================
+app.post('/api/admin/delete-employee', async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
+
+    const { user_id } = req.body;
+    if (!user_id) {
+      return res.status(400).json({ status: 'error', message: 'Missing user_id.' });
+    }
+
+    const { data: userRow, error: userLookupErr } = await supabase
+      .from('users')
+      .select('id, user_type')
+      .eq('id', user_id)
+      .maybeSingle();
+
+    if (userLookupErr) throw userLookupErr;
+    if (!userRow) {
+      return res.status(404).json({ status: 'error', message: 'Employee not found.' });
+    }
+    // Guard rail: this endpoint only ever deletes employee accounts, never
+    // an admin or CEO account, even if a bad id is passed in.
+    if (userRow.user_type !== 'employee') {
+      return res.status(403).json({ status: 'error', message: 'Only employee accounts can be deleted here.' });
+    }
+
+    // Remove dependent rows first (role link, employee profile), then the
+    // base account, in case the DB doesn't cascade these deletes itself.
+    const { error: userRoleErr } = await supabase.from('user_roles').delete().eq('user_id', user_id);
+    if (userRoleErr) console.error('[DELETE EMPLOYEE] user_roles cleanup failed:', userRoleErr.message);
+
+    const { error: empDeleteErr } = await supabase.from('employees').delete().eq('user_id', user_id);
+    if (empDeleteErr) console.error('[DELETE EMPLOYEE] employees cleanup failed:', empDeleteErr.message);
+
+    const { error: userDeleteErr } = await supabase.from('users').delete().eq('id', user_id);
+    if (userDeleteErr) throw userDeleteErr;
+
+    return res.json({ status: 'success', message: 'Employee deleted successfully.' });
+  } catch (error) {
+    console.error('Delete Employee Error:', error);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
 app.post('/api/admin/edit-employee', employeeAvatarUpload, async (req, res) => {
   try {
     if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
