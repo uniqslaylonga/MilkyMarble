@@ -769,11 +769,29 @@ async function handleDeleteEmployee() {
 
         cancelButtonText: 'Cancel',
 
-        confirmButtonColor: '#e14b5a',
+        reverseButtons: true,
 
-        cancelButtonColor: '#b0b0b0',
+        buttonsStyling: false,
 
-        reverseButtons: true
+        customClass: {
+
+            container: 'mm-swal-container-top',
+
+            popup: 'mm-swal-popup',
+
+            icon: 'mm-swal-icon',
+
+            title: 'mm-swal-title',
+
+            htmlContainer: 'mm-swal-html',
+
+            actions: 'mm-swal-actions',
+
+            confirmButton: 'mm-swal-confirm-btn',
+
+            cancelButton: 'mm-swal-cancel-btn'
+
+        }
 
     });
 
@@ -813,7 +831,25 @@ async function handleDeleteEmployee() {
 
                 icon: 'success',
 
-                confirmButtonColor: '#e14b5a'
+                buttonsStyling: false,
+
+                customClass: {
+
+                    container: 'mm-swal-container-top',
+
+                    popup: 'mm-swal-popup',
+
+                    icon: 'mm-swal-icon',
+
+                    title: 'mm-swal-title',
+
+                    htmlContainer: 'mm-swal-html',
+
+                    actions: 'mm-swal-actions',
+
+                    confirmButton: 'mm-swal-confirm-btn'
+
+                }
 
             });
 
@@ -827,7 +863,25 @@ async function handleDeleteEmployee() {
 
                 icon: 'error',
 
-                confirmButtonColor: '#e14b5a'
+                buttonsStyling: false,
+
+                customClass: {
+
+                    container: 'mm-swal-container-top',
+
+                    popup: 'mm-swal-popup',
+
+                    icon: 'mm-swal-icon',
+
+                    title: 'mm-swal-title',
+
+                    htmlContainer: 'mm-swal-html',
+
+                    actions: 'mm-swal-actions',
+
+                    confirmButton: 'mm-swal-confirm-btn'
+
+                }
 
             });
 
@@ -845,7 +899,25 @@ async function handleDeleteEmployee() {
 
             icon: 'error',
 
-            confirmButtonColor: '#e14b5a'
+            buttonsStyling: false,
+
+            customClass: {
+
+                container: 'mm-swal-container-top',
+
+                popup: 'mm-swal-popup',
+
+                icon: 'mm-swal-icon',
+
+                title: 'mm-swal-title',
+
+                htmlContainer: 'mm-swal-html',
+
+                actions: 'mm-swal-actions',
+
+                confirmButton: 'mm-swal-confirm-btn'
+
+            }
 
         });
 
