@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const supabase = require('../config/supabase');
-const { sendPromoWelcomeEmail } = require('../services/mailServices');
+const { sendPromoWelcomeEmail, sendSignupVerificationEmail } = require('../services/mailServices');
 const { setStaffCookie } = require('../middleware/staffAuth');
 const { logActivity } = require('../utils/activityLog');
 
@@ -16,17 +16,172 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
   || '1077352091553-6d77b0rtu3km8r1har7ra3lsmbf5en35.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-// 1. POST /api/auth/signup
-router.post('/signup', async (req, res) => {
+// ---------------------------------------------------------------------------
+// Signup email verification
+//
+// Flow: /signup/request-code validates the form, emails a 6-digit code and
+// returns a signed token. /signup only creates the account when it receives
+// that token together with the correct code, so an email address can't be
+// registered without proving the person owns it.
+//
+// The token is stateless (HMAC-signed, holds only a hash of the code), so it
+// works on Vercel serverless where in-memory state isn't shared between
+// instances. Set SESSION_SECRET in production for a strong signing key.
+// ---------------------------------------------------------------------------
+const VERIFY_SECRET = process.env.SESSION_SECRET
+  || (process.env.SMTP_PASS ? `mm-signup-${process.env.SMTP_PASS}` : 'mm-signup-dev-secret');
+const VERIFY_TTL_MS = 10 * 60 * 1000;
+const RESEND_COOLDOWN_MS = 30 * 1000;
+const MAX_CODE_ATTEMPTS = 5;
+
+// Best-effort throttles (per server instance).
+const resendTimes = new Map();
+const failedAttempts = new Map();
+
+const hmac = (data) => crypto.createHmac('sha256', VERIFY_SECRET).update(data).digest('base64url');
+const codeHash = (email, code) => hmac(`code:${email}:${code}`);
+const safeEqual = (a, b) => {
+  const x = Buffer.from(String(a));
+  const y = Buffer.from(String(b));
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+};
+
+function createVerifyToken(email, username, code) {
+  const payload = Buffer.from(JSON.stringify({
+    e: email,
+    u: username.toLowerCase(),
+    h: codeHash(email, code),
+    exp: Date.now() + VERIFY_TTL_MS
+  })).toString('base64url');
+  return `${payload}.${hmac(payload)}`;
+}
+
+function readVerifyToken(token) {
+  if (!token || typeof token !== 'string' || !token.includes('.')) return null;
+  const [payload, sig] = token.split('.');
+  if (!safeEqual(sig || '', hmac(payload))) return null;
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return data && data.exp > Date.now() ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const escapeLike = (v) => v.replace(/[%_\\]/g, '\\$&');
+
+// Returns an error message if the email/username is taken, otherwise null.
+async function findSignupConflict(email, username) {
+  const { data: byEmail, error: e1 } = await supabase
+    .from('users').select('id').ilike('email', escapeLike(email)).limit(1);
+  if (e1) throw e1;
+  if (byEmail && byEmail.length) return 'Email or username is already registered.';
+
+  const { data: byName, error: e2 } = await supabase
+    .from('users').select('id').ilike('username', escapeLike(username)).limit(1);
+  if (e2) throw e2;
+  if (byName && byName.length) return 'Email or username is already registered.';
+
+  return null;
+}
+
+function validateSignupFields({ fullname, username, email, password }) {
+  if (!fullname || !username || !email || !password) return 'All fields are required.';
+  if (!EMAIL_PATTERN.test(String(email).trim())) return 'Please enter a valid email address.';
+  if (String(password).length < 6) return 'Password must be at least 6 characters.';
+  return null;
+}
+
+// 1a. POST /api/auth/signup/request-code  (step 1: email a verification code)
+router.post('/signup/request-code', async (req, res) => {
   try {
     const { fullname, username, email, password } = req.body;
 
-    if (!fullname || !username || !email || !password) {
-      return res.status(400).json({
+    const fieldError = validateSignupFields({ fullname, username, email, password });
+    if (fieldError) return res.status(400).json({ status: 'error', message: fieldError });
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanUsername = username.trim();
+
+    const lastSent = resendTimes.get(cleanEmail) || 0;
+    const wait = RESEND_COOLDOWN_MS - (Date.now() - lastSent);
+    if (wait > 0) {
+      return res.status(429).json({
         status: 'error',
-        message: 'All fields are required.'
+        message: `Please wait ${Math.ceil(wait / 1000)}s before requesting another code.`
       });
     }
+
+    const conflict = await findSignupConflict(cleanEmail, cleanUsername);
+    if (conflict) return res.status(400).json({ status: 'error', message: conflict });
+
+    const code = String(crypto.randomInt(100000, 1000000));
+    const sent = await sendSignupVerificationEmail(cleanEmail, fullname.trim(), code);
+    if (!sent) {
+      return res.status(500).json({
+        status: 'error',
+        message: 'We could not send the verification email. Please check your email address and try again.'
+      });
+    }
+
+    resendTimes.set(cleanEmail, Date.now());
+    failedAttempts.delete(cleanEmail);
+
+    return res.json({
+      status: 'success',
+      message: `We sent a 6-digit code to ${cleanEmail}.`,
+      token: createVerifyToken(cleanEmail, cleanUsername, code)
+    });
+  } catch (err) {
+    console.error('[signup/request-code] Error:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Something went wrong. Please try again.' });
+  }
+});
+
+// 1b. POST /api/auth/signup  (step 2: verify the code, then create the account)
+router.post('/signup', async (req, res) => {
+  try {
+    const { fullname, username, email, password, code, token } = req.body;
+
+    const fieldError = validateSignupFields({ fullname, username, email, password });
+    if (fieldError) return res.status(400).json({ status: 'error', message: fieldError });
+
+    if (!code || !token) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Please verify your email with the 6-digit code we sent you.'
+      });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanUsername = username.trim();
+
+    if ((failedAttempts.get(cleanEmail) || 0) >= MAX_CODE_ATTEMPTS) {
+      return res.status(429).json({
+        status: 'error',
+        message: 'Too many incorrect attempts. Please request a new code.'
+      });
+    }
+
+    const data = readVerifyToken(token);
+    if (!data) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Your verification code has expired. Please request a new one.'
+      });
+    }
+
+    const matches = data.e === cleanEmail
+      && data.u === cleanUsername.toLowerCase()
+      && safeEqual(data.h, codeHash(cleanEmail, String(code).trim()));
+
+    if (!matches) {
+      failedAttempts.set(cleanEmail, (failedAttempts.get(cleanEmail) || 0) + 1);
+      return res.status(400).json({ status: 'error', message: 'Incorrect verification code.' });
+    }
+
+    failedAttempts.delete(cleanEmail);
 
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);

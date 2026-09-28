@@ -433,6 +433,46 @@ async function sendSecurityOtpEmail(toEmail, recipientName, otpCode, purpose = '
 }
 
 // -------------------------------------------------------------
+// SIGNUP EMAIL VERIFICATION (6-digit code)
+// -------------------------------------------------------------
+async function sendSignupVerificationEmail(toEmail, recipientName, otpCode) {
+    if (!toEmail) return false;
+
+    try {
+        const bodyContent = `
+        <p style='font-size: 14.5px; margin: 0 0 10px 0;'>Hello <b>${escapeHtml(recipientName)}</b>,</p>
+        <p style='font-size: 14px; line-height: 1.6; margin: 0 0 16px 0; color: #55443D;'>
+            Thanks for signing up! Enter this code on the sign-up page to verify your email and finish creating your Milky Marble account:
+        </p>
+
+        <div style='text-align: center; margin: 24px 0;'>
+            <div style='display: inline-block; padding: 12px 28px; background-color: #FFF5F4; border: 1.5px dashed #D9656B; border-radius: 12px; font-size: 30px; font-weight: 800; letter-spacing: 8px; color: #5C3B28;'>
+                ${escapeHtml(otpCode)}
+            </div>
+            <div style='font-size: 12px; color: #8C7A70; margin-top: 8px;'>This code is valid for 10 minutes.</div>
+        </div>
+
+        <p style='font-size: 12.5px; line-height: 1.5; color: #8C7A70;'>
+            If you didn't try to create a Milky Marble account, you can safely ignore this email.
+        </p>`;
+
+        await transporter.sendMail({
+            from: DEFAULT_FROM,
+            to: `"${recipientName || 'Valued Customer'}" <${toEmail}>`,
+            replyTo: DEFAULT_REPLY_TO,
+            subject: `${otpCode} is your Milky Marble sign-up verification code`,
+            html: renderEmailLayout('Sign Up · Verify Email', 'Verify Your Email', bodyContent),
+            text: `Hello ${recipientName},\n\nYour Milky Marble sign-up verification code is: ${otpCode}\nValid for 10 minutes. If you didn't request this, ignore this email.`
+        });
+
+        return true;
+    } catch (err) {
+        console.error('Nodemailer Signup Verification Error:', err.message);
+        return false;
+    }
+}
+
+// -------------------------------------------------------------
 // ORDER STATUS DISPATCHER
 // -------------------------------------------------------------
 async function dispatchOrderStatusEmail(toEmail, recipientName, orderRef, status, pickupSchedule = '', extraOrderData = {}) {
@@ -466,5 +506,6 @@ module.exports = {
     sendOrderCancelledEmail,
     sendPromoWelcomeEmail,
     sendSecurityOtpEmail,
+    sendSignupVerificationEmail,
     dispatchOrderStatusEmail
 };

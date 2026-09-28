@@ -17,7 +17,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const passwordError = document.getElementById('password-error');
   const confirmPasswordError = document.getElementById('confirm-password-error');
 
+  const otpInput = document.getElementById('otp');
+  const otpError = document.getElementById('otp-error');
+  const verifyEmailLabel = document.getElementById('verifyEmailLabel');
+  const resendBtn = document.getElementById('resendBtn');
+  const verifySubmitBtn = document.getElementById('verifySubmitBtn');
+
   let currentStep = 1;
+  let verifyToken = null;   // signed token returned when the code is emailed
+  let resendTimer = null;
 
   // SweetAlert modal wrapper
   function showSweetAlert(options) {
@@ -140,6 +148,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    if (stepNum === 4) {
+      if (!/^\d{6}$/.test(otpInput.value.trim())) {
+        setFieldError(otpInput, otpError, 'Please enter the 6-digit code.');
+        valid = false;
+      } else {
+        setFieldError(otpInput, otpError, '');
+      }
+    }
+
     return valid;
   }
 
@@ -199,63 +216,90 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('mm_user', JSON.stringify(customerData));
   }
 
-  // Handle signup submission (fires on step 3's submit button)
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+  async function postJson(url, body) {
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
 
-    if (!validateStep(3)) return;
+    const textData = await response.text();
+    let result;
+    try {
+      result = JSON.parse(textData);
+    } catch (parseErr) {
+      throw new Error(`Server error (${response.status}): Expected JSON response.`);
+    }
 
-    const payload = {
+    if (!response.ok || result.status !== 'success') {
+      throw new Error(result.message || 'Something went wrong. Please try again.');
+    }
+    return result;
+  }
+
+  function signupPayload() {
+    return {
       fullname: fullnameInput.value.trim(),
       username: usernameInput.value.trim(),
       email: emailInput.value.trim(),
       password: passwordInput.value
     };
+  }
+
+  function showServerError(message) {
+    if (serverError) {
+      serverError.textContent = message;
+      serverError.style.display = 'block';
+    }
+  }
+
+  // Disable "Resend code" for a short cooldown (matches the server's 30s limit)
+  function startResendCooldown(seconds = 30) {
+    clearInterval(resendTimer);
+    let left = seconds;
+    resendBtn.disabled = true;
+    resendBtn.textContent = `Resend in ${left}s`;
+    resendTimer = setInterval(() => {
+      left -= 1;
+      if (left <= 0) {
+        clearInterval(resendTimer);
+        resendBtn.disabled = false;
+        resendBtn.textContent = 'Resend code';
+      } else {
+        resendBtn.textContent = `Resend in ${left}s`;
+      }
+    }, 1000);
+  }
+
+  // Ask the server to email a verification code. Returns true on success.
+  async function requestVerificationCode() {
+    const result = await postJson('/api/auth/signup/request-code', signupPayload());
+    verifyToken = result.token;
+    verifyEmailLabel.textContent = emailInput.value.trim();
+    startResendCooldown();
+    return true;
+  }
+
+  // Step 3 submit: validate the form, then email the code and show step 4
+  async function handleRequestCode() {
+    if (!validateStep(3)) return;
 
     const originalText = submitBtn.innerHTML;
     submitBtn.disabled = true;
-    submitBtn.innerText = 'Creating account...';
+    submitBtn.innerText = 'Sending code...';
     if (serverError) serverError.style.display = 'none';
 
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const textData = await response.text();
-      let result;
-
-      try {
-        result = JSON.parse(textData);
-      } catch (parseErr) {
-        throw new Error(`Server error (${response.status}): Expected JSON response.`);
-      }
-
-      if (!response.ok || result.status !== 'success') {
-        throw new Error(result.message || 'Could not create your account.');
-      }
-
-      await syncAndSaveCustomerSession(result.user);
-
-      await showSweetAlert({
-        title: 'Welcome to Milky Marble!',
-        text: 'Your account has been created successfully.',
-        icon: 'success',
-        confirmButtonText: 'Sweet'
-      });
-
-      window.location.href = 'home.html?login=success';
-
+      await requestVerificationCode();
+      otpInput.value = '';
+      setFieldError(otpInput, otpError, '');
+      goToStep(4);
+      otpInput.focus();
     } catch (err) {
-      if (serverError) {
-        serverError.textContent = err.message;
-        serverError.style.display = 'block';
-      }
+      showServerError(err.message);
       showSweetAlert({
-        title: 'Sign Up Failed',
+        title: 'Could Not Send Code',
         text: err.message,
         icon: 'error',
         confirmButtonText: 'Try Again'
@@ -263,6 +307,81 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalText;
+    }
+  }
+
+  // Step 4 submit: verify the code and create the account
+  async function handleVerifyAndSignup() {
+    if (!validateStep(4)) return;
+
+    const originalText = verifySubmitBtn.innerHTML;
+    verifySubmitBtn.disabled = true;
+    verifySubmitBtn.innerText = 'Verifying...';
+    if (serverError) serverError.style.display = 'none';
+
+    try {
+      const result = await postJson('/api/auth/signup', {
+        ...signupPayload(),
+        code: otpInput.value.trim(),
+        token: verifyToken
+      });
+
+      await syncAndSaveCustomerSession(result.user);
+
+      await showSweetAlert({
+        title: 'Welcome to Milky Marble!',
+        text: 'Your email is verified and your account has been created.',
+        icon: 'success',
+        confirmButtonText: 'Sweet'
+      });
+
+      window.location.href = 'home.html?login=success';
+    } catch (err) {
+      setFieldError(otpInput, otpError, err.message);
+      showSweetAlert({
+        title: 'Verification Failed',
+        text: err.message,
+        icon: 'error',
+        confirmButtonText: 'Try Again'
+      });
+    } finally {
+      verifySubmitBtn.disabled = false;
+      verifySubmitBtn.innerHTML = originalText;
+    }
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (currentStep === 4) handleVerifyAndSignup();
+    else if (currentStep === 3) handleRequestCode();
+  });
+
+  // Only allow digits in the code field
+  otpInput.addEventListener('input', () => {
+    otpInput.value = otpInput.value.replace(/\D/g, '').slice(0, 6);
+  });
+
+  resendBtn.addEventListener('click', async () => {
+    if (resendBtn.disabled) return;
+    resendBtn.disabled = true;
+    resendBtn.textContent = 'Sending...';
+    try {
+      await requestVerificationCode();
+      showSweetAlert({
+        title: 'Code Sent',
+        text: `A new code was sent to ${emailInput.value.trim()}.`,
+        icon: 'success',
+        confirmButtonText: 'OK'
+      });
+    } catch (err) {
+      resendBtn.disabled = false;
+      resendBtn.textContent = 'Resend code';
+      showSweetAlert({
+        title: 'Could Not Resend',
+        text: err.message,
+        icon: 'error',
+        confirmButtonText: 'OK'
+      });
     }
   });
 

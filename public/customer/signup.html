@@ -38,6 +38,8 @@
           <span class="step-dot" data-dot="2"></span>
           <span class="step-line"></span>
           <span class="step-dot" data-dot="3"></span>
+          <span class="step-line"></span>
+          <span class="step-dot" data-dot="4"></span>
         </div>
 
         <div id="server-error-msg" class="server-error" style="display: none;"></div>
@@ -134,7 +136,26 @@
 
             <div class="step-actions">
               <button type="button" class="back-btn" data-back>← Back</button>
-              <button type="submit" class="login-btn" id="submitBtn">Get Started &nbsp;→</button>
+              <button type="submit" class="login-btn" id="submitBtn">Verify Email &nbsp;→</button>
+            </div>
+          </div>
+
+          <div class="form-step" data-step="4" hidden>
+            <p class="verify-hint">We sent a 6-digit code to <b id="verifyEmailLabel"></b>. Enter it below to finish creating your account.</p>
+
+            <label for="otp">Verification Code</label>
+            <div class="input-wrap">
+              <input type="text" id="otp" name="otp" class="otp-input" placeholder="000000" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required>
+            </div>
+            <div class="field-error" id="otp-error"></div>
+
+            <div class="resend-row">
+              Didn't get it? <button type="button" class="resend-btn" id="resendBtn">Resend code</button>
+            </div>
+
+            <div class="step-actions">
+              <button type="button" class="back-btn" data-back>← Back</button>
+              <button type="submit" class="login-btn" id="verifySubmitBtn">Get Started &nbsp;→</button>
             </div>
           </div>
         </form>

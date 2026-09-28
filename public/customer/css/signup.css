@@ -764,3 +764,42 @@ button.swal2-cancel.mm-swal-cancel-btn {
   border: none !important;
   cursor: pointer !important;
 }
+
+/* Email verification step */
+.verify-hint {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #7C4F38;
+  text-align: center;
+  word-break: break-word;
+}
+
+.otp-input {
+  text-align: center;
+  letter-spacing: 8px;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.resend-row {
+  margin: 10px 0 4px;
+  font-size: 13px;
+  color: #7C4F38;
+  text-align: center;
+}
+
+.resend-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 800;
+  color: #F48A8E;
+  cursor: pointer;
+}
+
+.resend-btn:disabled {
+  color: #B9A79E;
+  cursor: not-allowed;
+}
