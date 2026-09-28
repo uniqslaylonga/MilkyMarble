@@ -1171,11 +1171,53 @@ body {
   color: var(--text-dark);
   user-select: all;
 }
+/* PASSWORD FIELD + REVEAL BUTTON (matches the pink circular eye on the login pages) */
 .pw-field { position: relative; }
-.pw-field input { width: 100%; padding-right: 42px; }
+.pw-field input { width: 100%; box-sizing: border-box; padding-right: 44px; }
 .pw-toggle {
-    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-    background: none; border: 0; padding: 4px; cursor: pointer;
-    color: #7C4F38; display: flex; align-items: center; justify-content: center;
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: var(--accent-pink);
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(242, 139, 149, 0.35);
+  transition: background 0.15s ease, transform 0.15s ease;
 }
-.pw-toggle:hover { color: #F69299; }
+.pw-toggle:hover { background: var(--accent-pink-soft); transform: translateY(-50%) scale(1.06); }
+.pw-toggle:active { transform: translateY(-50%) scale(0.96); }
+.pw-toggle svg { width: 16px; height: 16px; stroke: #ffffff; }
+
+/* CHOOSE FILE BUTTON (avatar upload) */
+.form-group input[type="file"] {
+  padding: 5px 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.form-group input[type="file"]::file-selector-button {
+  background: var(--accent-pink);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 6px 14px;
+  margin-right: 10px;
+  font-family: var(--font-family-body);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(242, 139, 149, 0.3);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.form-group input[type="file"]::file-selector-button:hover {
+  background: var(--accent-pink-soft);
+  transform: translateY(-1px);
+}

@@ -5,6 +5,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('changeForm');
     if (!form) return;
 
+    // Show / hide password toggles
+    document.querySelectorAll('.toggle-password').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const input = document.getElementById(btn.dataset.target);
+            const eyeOpen = btn.querySelector('.eye-open');
+            const eyeClosed = btn.querySelector('.eye-closed');
+            const show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            eyeOpen.style.display = show ? 'block' : 'none';
+            eyeClosed.style.display = show ? 'none' : 'block';
+            btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        });
+    });
+
+    // Enter in any field submits the form
+    form.querySelectorAll('input').forEach(input => {
+        input.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter') {
+                ev.preventDefault();
+                form.requestSubmit();
+            }
+        });
+    });
+
     const submitBtn = document.getElementById('submitBtn');
     const errorEl = document.getElementById('errorMsg');
 
