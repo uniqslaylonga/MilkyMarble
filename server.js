@@ -2959,6 +2959,9 @@ app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
         full_name: full_name,
         user_type: 'employee',
         is_active: true,
+        // The admin-typed password is only an initial one: force the employee
+        // to choose their own at first login (see /api/staff/change-password).
+        must_change_password: true,
         avatar: avatarUrl
       }])
       .select()
