@@ -1171,3 +1171,11 @@ body {
   color: var(--text-dark);
   user-select: all;
 }
+.pw-field { position: relative; }
+.pw-field input { width: 100%; padding-right: 42px; }
+.pw-toggle {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    background: none; border: 0; padding: 4px; cursor: pointer;
+    color: #7C4F38; display: flex; align-items: center; justify-content: center;
+}
+.pw-toggle:hover { color: #F69299; }

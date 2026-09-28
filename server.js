@@ -2896,10 +2896,17 @@ app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
   try {
     if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
 
-    const { username, email, password, full_name, gender, role_id } = req.body;
+    const { username, email, password, confirm_password, gender, role_id } = req.body;
+    const full_name = String(req.body.full_name || '').trim();
 
     if (!username || !email || !password || !full_name || !role_id) {
       return res.status(400).json({ status: 'error', message: 'Missing required fields.' });
+    }
+    if (String(password).length < 8) {
+      return res.status(400).json({ status: 'error', message: 'Initial password must be at least 8 characters.' });
+    }
+    if (confirm_password !== undefined && String(confirm_password) !== String(password)) {
+      return res.status(400).json({ status: 'error', message: 'Initial password and confirmation do not match.' });
     }
 
     // Resolve the chosen role against the real `roles` table rather than
@@ -2966,6 +2973,7 @@ app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
       .from('employees')
       .insert([{
         user_id: newUser.id,
+        full_name: full_name, // employees.full_name is NOT NULL
         employee_code: employeeCode,
         job_title: selectedRole.name,
         department: 'General', // column kept in the DB, no longer shown or edited
@@ -2974,7 +2982,12 @@ app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
       .select()
       .single();
 
-    if (empErr) throw empErr;
+    if (empErr) {
+      // Don't leave a half-created account behind (it would block the
+      // username from being reused on the next attempt).
+      await supabase.from('users').delete().eq('id', newUser.id);
+      throw empErr;
+    }
 
     // 3. Link the account to its role via user_roles, so RBAC (dashboard
     // redirect, permissions) recognizes the role immediately on login.
@@ -3148,6 +3161,7 @@ app.post('/api/admin/edit-employee', employeeAvatarUpload, async (req, res) => {
     const empUpdates = {};
     if (selectedRole) empUpdates.job_title = selectedRole.name;
     if (gender !== undefined) empUpdates.gender = gender;
+    if (full_name) empUpdates.full_name = full_name;
 
     if (Object.keys(empUpdates).length > 0) {
       // Look up the employee row by id *and* user_id together first. This
@@ -3182,9 +3196,15 @@ app.post('/api/admin/edit-employee', employeeAvatarUpload, async (req, res) => {
         if (empErr) throw empErr;
       } else {
         const employeeCode = 'EMP-' + String(user_id).padStart(3, '0');
+        // employees.full_name is NOT NULL, so fall back to the users row.
+        let insertName = full_name;
+        if (!insertName) {
+          const { data: nameRow } = await supabase.from('users').select('full_name').eq('id', user_id).maybeSingle();
+          insertName = (nameRow && nameRow.full_name) || 'Employee';
+        }
         const { error: empErr } = await supabase
           .from('employees')
-          .insert([{ user_id: user_id, employee_code: employeeCode, ...empUpdates }]);
+          .insert([{ user_id: user_id, employee_code: employeeCode, ...empUpdates, full_name: insertName }]);
 
         if (empErr) throw empErr;
       }

@@ -40,6 +40,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Form Handlers
     document.getElementById('addEmployeeForm')?.addEventListener('submit', handleAddEmployee);
+
+    // Show / hide password toggles (initial password + confirmation)
+    document.querySelectorAll('.pw-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const input = document.getElementById(btn.dataset.target);
+            if (!input) return;
+            const show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            btn.querySelector('.eye-open').style.display = show ? 'none' : 'block';
+            btn.querySelector('.eye-closed').style.display = show ? 'block' : 'none';
+            btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        });
+    });
+
+    // Live "passwords match" hint
+    const pwEl = document.getElementById('addPassword');
+    const pw2El = document.getElementById('addConfirmPassword');
+    const pwMsg = document.getElementById('addPwMatchMsg');
+    const updateMatch = () => {
+        if (!pw2El || !pwMsg) return;
+        if (!pw2El.value) { pwMsg.style.display = 'none'; return; }
+        const ok = pwEl.value === pw2El.value;
+        pwMsg.textContent = ok ? 'Passwords match.' : 'Passwords do not match.';
+        pwMsg.style.color = ok ? '#2e7d32' : '#c62828';
+        pwMsg.style.display = 'block';
+    };
+    pwEl?.addEventListener('input', updateMatch);
+    pw2El?.addEventListener('input', updateMatch);
     document.getElementById('editProfileForm')?.addEventListener('submit', handleEditEmployee);
 
     // Pagination buttons
@@ -246,6 +274,18 @@ async function handleAddEmployee(e) {
     e.preventDefault();
 
     const form = document.getElementById('addEmployeeForm');
+
+    const pw = form.elements['password'].value;
+    const pw2 = form.elements['confirm_password'].value;
+    if (pw.length < 8) {
+        MMSwal.fire({ icon: 'warning', title: 'Password too short', text: 'Initial password must be at least 8 characters.' });
+        return;
+    }
+    if (pw !== pw2) {
+        MMSwal.fire({ icon: 'warning', title: 'Passwords do not match', text: 'Please make sure the initial password and its confirmation are the same.' });
+        return;
+    }
+
     const formData = new FormData(form);
 
     try {
@@ -356,6 +396,16 @@ function closeAddModal() {
     if (modal) {
         modal.classList.remove('open');
         document.body.style.overflow = '';
+        ['addPassword', 'addConfirmPassword'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.type = 'password';
+        });
+        modal.querySelectorAll('.pw-toggle').forEach(b => {
+            b.querySelector('.eye-open').style.display = 'block';
+            b.querySelector('.eye-closed').style.display = 'none';
+        });
+        const msg = document.getElementById('addPwMatchMsg');
+        if (msg) msg.style.display = 'none';
     }
 }
 
