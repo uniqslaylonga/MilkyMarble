@@ -108,7 +108,7 @@
                         <p class="welcome-sub">Command center overview: major capital approvals (&gt; ₱500), workforce deployment, and financial health.</p>
                     </div>
                     <div class="welcome-action-col">
-                        <button type="button" class="btn-export-pdf" onclick="exportExecutivePDF()">
+                        <button type="button" class="btn-export-pdf" onclick="previewExecutiveSummary()">
                             <svg class="btn-action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                                 <polyline points="7 10 12 15 17 10" />
@@ -460,6 +460,29 @@
 
             <div class="corp-doc-footer-note">
                 Milky Marble Enterprise ERP System &bull; Confidential Executive Summary &bull; Generated for official governance and DOA audit purposes.
+            </div>
+        </div>
+    </div>
+
+    <!-- EXECUTIVE SUMMARY PREVIEW MODAL (shown before the PDF is exported) -->
+    <div class="pdf-preview-overlay" id="pdfPreviewOverlay" style="display: none;">
+        <div class="pdf-preview-panel">
+            <div class="pdf-preview-toolbar">
+                <span class="pdf-preview-title">Executive Summary Preview</span>
+                <div class="pdf-preview-actions">
+                    <button type="button" class="btn-preview-close" id="pdfPreviewCloseBtn">Close</button>
+                    <button type="button" class="btn-preview-export" id="pdfPreviewExportBtn">
+                        <svg class="btn-action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        <span>Export PDF</span>
+                    </button>
+                </div>
+            </div>
+            <div class="pdf-preview-scroll" id="pdfPreviewScroll">
+                <!-- The hidden #corporatePdfRenderWrapper template is moved in here while previewing -->
             </div>
         </div>
     </div>

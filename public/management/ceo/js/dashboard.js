@@ -412,12 +412,9 @@ function initRevenueChart() {
 // renders it to a downloadable PDF (same html2pdf engine used across the
 // other officer report pages) instead of printing the raw dashboard page.
 // --------------------------------------------------------------------------
-async function exportExecutivePDF() {
+function populateExecutiveSummaryTemplate() {
     const wrapper = document.getElementById('corporatePdfRenderWrapper');
-    if (!wrapper) {
-        window.print();
-        return;
-    }
+    if (!wrapper) return null;
 
     const todayStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     const setText = (id, val) => {
@@ -533,6 +530,56 @@ async function exportExecutivePDF() {
         }
     }
 
+    return wrapper;
+}
+
+// --------------------------------------------------------------------------
+// PREVIEW MODAL — shows the filled-in summary before anything is exported.
+// The hidden template is reparented into the modal's scroll pane so the
+// preview and the eventual PDF are rendered from the exact same DOM node.
+// --------------------------------------------------------------------------
+function previewExecutiveSummary() {
+    const wrapper = populateExecutiveSummaryTemplate();
+    if (!wrapper) return;
+
+    const overlay = document.getElementById('pdfPreviewOverlay');
+    const scrollPane = document.getElementById('pdfPreviewScroll');
+    const closeBtn = document.getElementById('pdfPreviewCloseBtn');
+    const exportBtn = document.getElementById('pdfPreviewExportBtn');
+    if (!overlay || !scrollPane || !closeBtn || !exportBtn) return;
+
+    scrollPane.appendChild(wrapper);
+    wrapper.style.display = 'block';
+    overlay.style.display = 'flex';
+    scrollPane.scrollTop = 0;
+
+    function closePreview() {
+        overlay.style.display = 'none';
+        wrapper.style.display = 'none';
+        document.body.appendChild(wrapper);
+        closeBtn.removeEventListener('click', closePreview);
+        overlay.removeEventListener('click', onBackdropClick);
+        exportBtn.removeEventListener('click', onExportClick);
+    }
+
+    function onBackdropClick(e) {
+        if (e.target === overlay) closePreview();
+    }
+
+    async function onExportClick() {
+        await generateExecutivePdf(wrapper);
+        closePreview();
+    }
+
+    closeBtn.addEventListener('click', closePreview);
+    overlay.addEventListener('click', onBackdropClick);
+    exportBtn.addEventListener('click', onExportClick);
+}
+
+// --------------------------------------------------------------------------
+// ACTUAL PDF EXPORT — runs only once the officer confirms from the preview.
+// --------------------------------------------------------------------------
+async function generateExecutivePdf(wrapper) {
     MMSwal.fire({
         title: 'Compiling Executive Summary',
         html: 'Formatting KPIs, revenue and approvals into an official PDF summary...',
@@ -541,8 +588,6 @@ async function exportExecutivePDF() {
             MMSwal.showLoading();
         }
     });
-
-    wrapper.style.display = 'block';
 
     const opt = {
         margin: [8, 10, 8, 10],
@@ -554,7 +599,6 @@ async function exportExecutivePDF() {
 
     try {
         await html2pdf().set(opt).from(wrapper).save();
-        wrapper.style.display = 'none';
 
         MMSwal.fire({
             icon: 'success',
@@ -562,7 +606,6 @@ async function exportExecutivePDF() {
             text: 'Your CEO summary PDF has been downloaded.'
         });
     } catch (err) {
-        wrapper.style.display = 'none';
         console.error('Executive PDF export failed:', err);
         MMSwal.fire({
             icon: 'warning',
