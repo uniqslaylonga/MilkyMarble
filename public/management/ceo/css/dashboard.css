@@ -1161,6 +1161,15 @@ body {
   text-align: center;
 }
 
+.corp-signoff-single {
+  justify-content: center;
+}
+
+.corp-signoff-single .corp-sig-box {
+  width: 60%;
+  max-width: 320px;
+}
+
 .corp-sig-line {
   border-bottom: 1.5px solid #2b2b2b;
   margin-bottom: 5px;
