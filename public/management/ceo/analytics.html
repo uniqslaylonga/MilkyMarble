@@ -93,7 +93,7 @@
                         <div class="user-avatar" id="userAvatarContainer">
                             <img id="userAvatarImg" src="/customer/images/account.png" alt="CEO Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
                         </div>
-                        <span id="userFullNameDisplay">Gabriel Louis M. Espadilla</span>
+                        <span id="userFullNameDisplay">—</span>
                     </div>
                 </div>
             </header>
@@ -128,7 +128,7 @@
                             </svg>
                         </div>
                         <div class="stat-body">
-                            <span id="statSales" class="stat-value">₱46,567.00</span>
+                            <span id="statSales" class="stat-value">—</span>
                         </div>
                         <div class="stat-change">Total Reconciled Collections</div>
                     </div>
@@ -143,9 +143,9 @@
                             </svg>
                         </div>
                         <div class="stat-body">
-                            <span id="statPreOrders" class="stat-value">7</span>
+                            <span id="statPreOrders" class="stat-value">—</span>
                         </div>
-                        <div class="stat-change">Batch Release Pipeline</div>
+                        <div class="stat-change">Orders still in the pipeline</div>
                     </div>
 
                     <!-- 3. Total Realized Orders -->
@@ -158,9 +158,9 @@
                             </svg>
                         </div>
                         <div class="stat-body">
-                            <span id="statNewOrders" class="stat-value">185</span>
+                            <span id="statNewOrders" class="stat-value">—</span>
                         </div>
-                        <div class="stat-change">Total Fulfilled Cups</div>
+                        <div class="stat-change" id="statCupsNote">Cups across realized orders</div>
                     </div>
 
                     <!-- 4. Customer Satisfaction Index -->
@@ -172,9 +172,9 @@
                             </svg>
                         </div>
                         <div class="stat-body">
-                            <span id="statCsatScore" class="stat-value" style="color: #B26A00;">4.8 / 5.0</span>
+                            <span id="statCsatScore" class="stat-value" style="color: #B26A00;">—</span>
                         </div>
-                        <div class="stat-change">94% Positive Sentiment</div>
+                        <div class="stat-change" id="statCsatNote">No ratings yet</div>
                     </div>
                 </div>
             </section>
@@ -187,7 +187,7 @@
                         <div class="chart-header">
                             <div>
                                 <h3 class="chart-title">Flavor Sales Velocity &amp; Demand Trajectory</h3>
-                                <p class="chart-sub-text">Comparative revenue curve across Classic Coffee Jelly, Strawberry Marble, and Pandan Bliss</p>
+                                <p class="chart-sub-text">Revenue curve for the current year across Coffee Jelly, Strawberry Marble, Pandan Bliss and other flavors</p>
                             </div>
                             <div class="toggle-group">
                                 <button type="button" class="toggle-btn active" id="btnMonths">Months</button>
@@ -204,9 +204,9 @@
                         <div class="chart-header">
                             <div>
                                 <h3 class="chart-title">Customer Sentiment Pulse</h3>
-                                <p class="chart-sub-text">Automated analysis from daily Z-reading review ingest</p>
+                                <p class="chart-sub-text">Computed from customer ratings and written reviews</p>
                             </div>
-                            <span class="ai-badge-chip">AI Quality Pulse</span>
+                            <span class="ai-badge-chip">Ratings Pulse</span>
                         </div>
 
                         <div class="ai-card-body">
@@ -214,43 +214,44 @@
                             <div class="sentiment-meter-block">
                                 <div class="meter-head-row">
                                     <span class="meter-label">Overall Customer Sentiment</span>
-                                    <strong class="meter-score" id="aiPositivePct">94% Positive</strong>
+                                    <strong class="meter-score" id="aiPositivePct">—</strong>
                                 </div>
                                 <div class="sentiment-split-bar">
-                                    <div class="bar-fill positive" style="width: 94%;" title="Positive (94%)"></div>
-                                    <div class="bar-fill neutral" style="width: 4%;" title="Neutral (4%)"></div>
-                                    <div class="bar-fill negative" style="width: 2%;" title="Critical (2%)"></div>
+                                    <div class="bar-fill positive" id="barPositive" style="width: 0%;"></div>
+                                    <div class="bar-fill neutral" id="barNeutral" style="width: 0%;"></div>
+                                    <div class="bar-fill negative" id="barNegative" style="width: 0%;"></div>
                                 </div>
                             </div>
 
-                            <!-- Key Operating Themes from Reviews -->
+                            <!-- Latest real written reviews -->
                             <div class="ai-insights-block">
-                                <div class="ai-sub-heading">Operational Feedback Highlights:</div>
-                                <div class="feedback-quote-tile">
-                                    <svg class="quote-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                <div class="ai-sub-heading">Latest Customer Feedback:</div>
+                                <div class="feedback-quote-tile" id="quotePositiveTile" style="display: none;">
+                                    <svg class="quote-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                                     </svg>
                                     <div class="quote-content">
-                                        <p class="quote-text">&ldquo;Coffee Jelly sweetness balance was praised by 14 recent pre-order reviews.&rdquo;</p>
-                                        <span class="quote-meta">Taste Calibration &bull; Validated</span>
+                                        <p class="quote-text" id="quotePositiveText"></p>
+                                        <span class="quote-meta" id="quotePositiveMeta"></span>
                                     </div>
                                 </div>
 
-                                <div class="feedback-quote-tile alert-tile">
-                                    <svg class="quote-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                <div class="feedback-quote-tile alert-tile" id="quoteCriticalTile" style="display: none;">
+                                    <svg class="quote-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
                                     </svg>
                                     <div class="quote-content">
-                                        <p class="quote-text">&ldquo;3 buyers noted Thursday tapioca pearls were softer than usual.&rdquo;</p>
-                                        <span class="quote-meta">Kitchen Boil Duration &bull; Notice</span>
+                                        <p class="quote-text" id="quoteCriticalText"></p>
+                                        <span class="quote-meta" id="quoteCriticalMeta"></span>
                                     </div>
                                 </div>
+                                <p class="quote-text" id="quoteEmptyText" style="margin-top: 8px;">No written reviews yet.</p>
                             </div>
 
                             <div class="ai-card-footer">
-                                <small>Synthesized via Gemini 2.5 Flash API &bull; 1x daily batch review</small>
+                                <small id="sentimentFooter">Based on customer ratings</small>
                             </div>
                         </div>
                     </div>
@@ -265,7 +266,7 @@
                         <div class="chart-header">
                             <div>
                                 <h3 class="chart-title">Customer Segmentation &amp; Channel Mix</h3>
-                                <p class="chart-sub-text">Inflow distribution by buyer classification</p>
+                                <p class="chart-sub-text">Realized orders: registered members vs. guest checkouts</p>
                             </div>
                             <span class="section-badge-pink">Loyalty Mix</span>
                         </div>
@@ -278,23 +279,17 @@
                                     <span class="legend-bullet" style="background: #f28b95;"></span>
                                     <div class="legend-text">
                                         <span>Registered Members</span>
-                                        <strong id="legendRegisteredVal">66% (31)</strong>
+                                        <strong id="legendRegisteredVal">—</strong>
                                     </div>
                                 </div>
                                 <div class="legend-entry">
                                     <span class="legend-bullet" style="background: #EAA342;"></span>
                                     <div class="legend-text">
                                         <span>Guest Checkouts</span>
-                                        <strong id="legendGuestsVal">30% (14)</strong>
+                                        <strong id="legendGuestsVal">—</strong>
                                     </div>
                                 </div>
-                                <div class="legend-entry">
-                                    <span class="legend-bullet" style="background: #68B0AB;"></span>
-                                    <div class="legend-text">
-                                        <span>Corporate Accounts</span>
-                                        <strong id="legendCorporateVal">4% (2)</strong>
-                                    </div>
-                                </div>
+                                
                             </div>
                         </div>
                     </div>
@@ -310,60 +305,56 @@
                         </div>
 
                         <div class="benchmark-mini-grid">
-                            <!-- 1. DSO -->
-                            <div class="benchmark-cell">
+                            <div class="benchmark-cell" data-bm="dso">
                                 <div class="bm-header">
-                                    <span class="bm-label">DSO (Days Sales Out.)</span>
-                                    <span class="bm-pill optimal">Target: &lt; 45 Days</span>
+                                    <span class="bm-label">Days Sales Out. (DSO)</span>
+                                    <span class="bm-pill nodata" data-bm-status>No data</span>
                                 </div>
                                 <div class="bm-value-row">
-                                    <strong id="ceoDsoValue">12 Days</strong>
-                                    <small class="text-green">Compliant ✓</small>
+                                    <strong data-bm-value>—</strong>
+                                    <small>Target: &lt; 45 Days</small>
                                 </div>
-                                <div class="bm-progress-bar"><div class="bm-progress-fill" style="width: 27%;"></div></div>
-                                <span class="bm-desc">Optimal cash conversion; low liquidity risk.</span>
+                                <div class="bm-progress-bar"><div class="bm-progress-fill" style="width: 0%;"></div></div>
+                                <span class="bm-desc" data-bm-desc></span>
                             </div>
 
-                            <!-- 2. O2C -->
-                            <div class="benchmark-cell">
+                            <div class="benchmark-cell" data-bm="o2c">
                                 <div class="bm-header">
-                                    <span class="bm-label">Order-to-Cash (O2C)</span>
-                                    <span class="bm-pill optimal">Target: &lt; 5 Days</span>
+                                    <span class="bm-label">Order-to-Cash Cycle</span>
+                                    <span class="bm-pill nodata" data-bm-status>No data</span>
                                 </div>
                                 <div class="bm-value-row">
-                                    <strong>1.5 Days</strong>
-                                    <small class="text-green">Fast ✓</small>
+                                    <strong data-bm-value>—</strong>
+                                    <small>Target: &lt; 5 Days</small>
                                 </div>
-                                <div class="bm-progress-bar"><div class="bm-progress-fill" style="width: 30%;"></div></div>
-                                <span class="bm-desc">Checkout to counter handover velocity.</span>
+                                <div class="bm-progress-bar"><div class="bm-progress-fill" style="width: 0%;"></div></div>
+                                <span class="bm-desc" data-bm-desc></span>
                             </div>
 
-                            <!-- 3. OTD -->
-                            <div class="benchmark-cell">
+                            <div class="benchmark-cell" data-bm="otd">
                                 <div class="bm-header">
-                                    <span class="bm-label">On-Time Delivery (OTD)</span>
-                                    <span class="bm-pill optimal">Target: &gt; 95%</span>
+                                    <span class="bm-label">On-Time Fulfillment (OTD)</span>
+                                    <span class="bm-pill nodata" data-bm-status>No data</span>
                                 </div>
                                 <div class="bm-value-row">
-                                    <strong>98.4%</strong>
-                                    <small class="text-green">World-Class</small>
+                                    <strong data-bm-value>—</strong>
+                                    <small>Target: &gt; 95%</small>
                                 </div>
-                                <div class="bm-progress-bar"><div class="bm-progress-fill" style="width: 98.4%;"></div></div>
-                                <span class="bm-desc">Zero backlog during claim windows.</span>
+                                <div class="bm-progress-bar"><div class="bm-progress-fill" style="width: 0%;"></div></div>
+                                <span class="bm-desc" data-bm-desc></span>
                             </div>
 
-                            <!-- 4. FPY -->
-                            <div class="benchmark-cell">
+                            <div class="benchmark-cell" data-bm="fpy">
                                 <div class="bm-header">
                                     <span class="bm-label">First-Pass Yield (FPY)</span>
-                                    <span class="bm-pill optimal">Target: &gt; 90%</span>
+                                    <span class="bm-pill nodata" data-bm-status>No data</span>
                                 </div>
                                 <div class="bm-value-row">
-                                    <strong>96.2%</strong>
-                                    <small class="text-green">High Quality</small>
+                                    <strong data-bm-value>—</strong>
+                                    <small>Target: &gt; 90%</small>
                                 </div>
-                                <div class="bm-progress-bar"><div class="bm-progress-fill" style="width: 96.2%;"></div></div>
-                                <span class="bm-desc">Macro batch cooking accuracy.</span>
+                                <div class="bm-progress-bar"><div class="bm-progress-fill" style="width: 0%;"></div></div>
+                                <span class="bm-desc" data-bm-desc></span>
                             </div>
                         </div>
                     </div>
@@ -421,6 +412,7 @@
         </main>
     </div>
 
+    <script src="js/benchmarks.js"></script>
     <script src="js/analytics.js"></script>
     <script src="/shared/js/avatarUpload.js"></script>
     <script src="/shared/js/staffLogout.js"></script>

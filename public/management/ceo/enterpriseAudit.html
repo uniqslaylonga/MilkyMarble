@@ -92,7 +92,7 @@
                         <div class="user-avatar" id="userAvatarContainer">
                             <img id="userAvatarImg" src="/customer/images/account.png" alt="CEO Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
                         </div>
-                        <span id="userFullNameDisplay">Gabriel Louis M. Espadilla</span>
+                        <span id="userFullNameDisplay">—</span>
                     </div>
                 </div>
             </header>
@@ -107,7 +107,7 @@
                     </div>
                     <div class="audit-status-badge">
                         <span class="status-pulse-dot"></span>
-                        <span>General Treasury Synced</span>
+                        <span id="auditSyncText">Loading records…</span>
                     </div>
                 </div>
             </section>
@@ -174,7 +174,7 @@
                         <div class="stat-body">
                             <span id="statNetVariance" class="stat-value">₱0.00</span>
                         </div>
-                        <div class="stat-change" id="statVarianceFooter">Register Cash Balanced</div>
+                        <div class="stat-change" id="statVarianceFooter">Loading…</div>
                     </div>
                 </div>
             </section>
@@ -256,7 +256,7 @@
                     <div class="panel-header-bar">
                         <div>
                             <h2 class="section-title">Cash Register Turn-over &amp; Shift Reconciliation History</h2>
-                            <p class="section-sub-text">Formal Z-Reading records submitted by the Sales Officer and audited by Treasury.</p>
+                            <p class="section-sub-text">Z-Reading drawer reconciliations recorded by Finance.</p>
                         </div>
                         <span class="section-badge-pink">Z-Reading Ledger</span>
                     </div>
@@ -270,7 +270,7 @@
                                     <th>Expected Cash</th>
                                     <th>Physically Counted</th>
                                     <th>Variance / Discrepancy</th>
-                                    <th>Register Status</th>
+                                    <th>Recorded By</th>
                                     <th style="text-align: right;">Auditor Notes</th>
                                 </tr>
                             </thead>

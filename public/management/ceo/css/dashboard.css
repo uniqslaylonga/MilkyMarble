@@ -1311,3 +1311,12 @@ body {
     padding: 10px;
   }
 }
+.bm-pill.nodata {
+  background: rgba(124, 79, 56, 0.10);
+  color: #8C7A70;
+}
+
+.bm-pill.warn {
+  background: rgba(201, 48, 44, 0.12);
+  color: #C9302C;
+}

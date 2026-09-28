@@ -2,6 +2,7 @@ let currentAuditTab = 'fulfillment'; // 'fulfillment' | 'reconciliation'
 
 // 1. Customer Orders State
 let allFulfillmentOrders = [];
+let auditTotals = { settledTurnover: 0, orderCount: 0 };
 let filteredFulfillmentOrders = [];
 let currentFulfillPage = 1;
 const FULFILL_PAGE_SIZE = 5;
@@ -64,59 +65,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function fetchEnterpriseAuditData() {
     try {
-        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-        const headers = userId ? { 'x-user-id': userId } : {};
+        const response = await fetch('/api/ceo/enterprise-audit');
+        if (!response.ok) throw new Error('Failed to load enterprise audit data');
+        const data = await response.json();
 
-        // 1. Fetch Orders from Sales/CEO endpoint
-        const ordRes = await fetch('/api/sales-officer/dashboard', { headers });
-        if (ordRes.ok) {
-            const ordData = await ordRes.json();
-            allFulfillmentOrders = ordData.recentOrders || [];
-        } else {
-            allFulfillmentOrders = getFallbackFulfillmentOrders();
-        }
+        setText('userFullNameDisplay', data.user?.fullName || '—');
+        const avatarEl = document.getElementById('userAvatarImg');
+        if (avatarEl && data.user?.avatarSrc) avatarEl.src = data.user.avatarSrc;
 
-        // 2. Fetch Reconciliations from Finance endpoint
-        const payRes = await fetch('/api/finance-officer/payments', { headers });
-        if (payRes.ok) {
-            const payData = await payRes.json();
-            allShiftReconciliations = payData.reconciliationHistory || (payData.latestReconciliation ? [payData.latestReconciliation] : []);
-        }
-        
-        if (!allShiftReconciliations.length) {
-            allShiftReconciliations = getFallbackReconciliations();
-        }
+        allFulfillmentOrders = data.orders || [];
+        allShiftReconciliations = data.reconciliations || [];
+        auditTotals = data.totals || { settledTurnover: 0, orderCount: allFulfillmentOrders.length };
 
-        // Update Overview KPIs
-        const totalSettled = allFulfillmentOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0);
-        setText('statSettledTurnover', '₱' + formatAmount(totalSettled || 47446.00));
-        setText('statFulfilledCount', allFulfillmentOrders.length);
+        // Overview KPIs (all real, computed server-side over every realized order)
+        setText('statSettledTurnover', '₱' + formatAmount(auditTotals.settledTurnover));
+        setText('statFulfilledCount', Number(auditTotals.orderCount || 0).toLocaleString());
         setText('statShiftsClosed', allShiftReconciliations.length);
 
         const totalVariance = allShiftReconciliations.reduce((s, r) => s + Number(r.variance || 0), 0);
         const varEl = document.getElementById('statNetVariance');
         const varFoot = document.getElementById('statVarianceFooter');
         if (varEl) {
-            varEl.textContent = (totalVariance >= 0 ? '+' : '') + '₱' + formatAmount(Math.abs(totalVariance));
+            const sign = totalVariance > 0 ? '+' : (totalVariance < 0 ? '-' : '');
+            varEl.textContent = sign + '₱' + formatAmount(Math.abs(totalVariance));
             varEl.style.color = totalVariance === 0 ? '#2E7D32' : (totalVariance < 0 ? '#C9302C' : '#B26A00');
         }
         if (varFoot) {
-            varFoot.textContent = totalVariance === 0 
-                ? 'Register Cash Balanced' 
-                : (totalVariance < 0 ? 'Cash Shortage Detected' : 'Cash Overage Detected');
+            varFoot.textContent = !allShiftReconciliations.length
+                ? 'No shifts reconciled yet'
+                : (totalVariance === 0 ? 'Register Cash Balanced' : (totalVariance < 0 ? 'Cash Shortage Detected' : 'Cash Overage Detected'));
         }
 
-        // Update Tab Badges
-        setText('badgeFulfillCount', allFulfillmentOrders.length);
+        // Tab badges
+        setText('badgeFulfillCount', Number(auditTotals.orderCount || 0).toLocaleString());
         setText('badgeReconCount', allShiftReconciliations.length);
 
+        setText('auditSyncText', 'Live from database • ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
         applyCurrentTabFilter();
 
     } catch (err) {
+        // No made-up fallback rows: say plainly that the data could not be loaded.
         console.error('Error loading enterprise audit data:', err);
-        allFulfillmentOrders = getFallbackFulfillmentOrders();
-        allShiftReconciliations = getFallbackReconciliations();
+        setText('auditSyncText', 'Data unavailable');
+        setText('statVarianceFooter', '—');
+        allFulfillmentOrders = [];
+        allShiftReconciliations = [];
         applyCurrentTabFilter();
+        const msg = '<tr><td colspan="8" class="loading-state-text" style="color:#C9302C;">Could not load audit records from the database.</td></tr>';
+        const f = document.getElementById('fulfillmentTableBody'); if (f) f.innerHTML = msg;
+        const r = document.getElementById('reconciliationTableBody'); if (r) r.innerHTML = msg.replace('colspan="8"', 'colspan="7"');
+        MMSwal.fire({ icon: 'warning', title: 'System Notice', text: err.message || 'Could not load enterprise audit data.' });
     }
 }
 
@@ -161,9 +159,10 @@ function applyCurrentTabFilter() {
     } else {
         filteredShiftReconciliations = allShiftReconciliations.filter(rec => {
             if (!q) return true;
-            const dateStr = (rec.date || rec.created_at || '').toLowerCase();
+            const dateStr = formatShiftDate(rec).toLowerCase();
             const notes = (rec.notes || '').toLowerCase();
-            return dateStr.includes(q) || notes.includes(q);
+            const who = (rec.recorded_by_name || '').toLowerCase();
+            return dateStr.includes(q) || notes.includes(q) || who.includes(q);
         });
         currentReconPage = 1;
         renderReconciliationTable();
@@ -207,26 +206,27 @@ function renderFulfillmentTable() {
     tbody.innerHTML = pageItems.map(ord => {
         const dateFmt = ord.placed_at ? new Date(ord.placed_at).toLocaleDateString('en-US', {
             month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit'
-        }) : 'Recent Window';
+        }) : '—';
 
-        const amountStr = '₱' + formatAmount(ord.total_amount || 15.00);
+        const amountStr = '₱' + formatAmount(ord.total_amount);
         const isDone = ord.status === 'COMPLETED' || ord.status === 'PAID_VERIFIED';
-        const channelLabel = ord.payment_method === 'cash' ? 'Cash on Pick-Up' : 'E-Wallet (GCash)';
+        const isCash = String(ord.payment_method || '').toLowerCase().includes('cash');
+        const channelLabel = ord.payment_method || '—';
 
         return `
             <tr>
                 <td><strong style="color: var(--brown-soft); font-size: 13px;">${escapeHtml(ord.order_number)}</strong></td>
-                <td><strong>${escapeHtml(ord.customer_name || 'Walk-in Guest')}</strong></td>
+                <td><strong>${escapeHtml(ord.customer_name || '—')}</strong></td>
                 <td>
-                    <span class="badge-channel ${ord.payment_method === 'cash' ? 'channel-cash' : 'channel-ewallet'}">
+                    <span class="badge-channel ${isCash ? 'channel-cash' : 'channel-ewallet'}">
                         ${escapeHtml(channelLabel)}
                     </span>
                 </td>
-                <td><span style="font-family: monospace; font-size: 12px;">${escapeHtml(ord.transaction_id || ord.ref_id || 'COUNTER-POS')}</span></td>
+                <td><span style="font-family: monospace; font-size: 12px;">${escapeHtml(ord.transaction_id || '—')}</span></td>
                 <td><span style="font-size: 11.5px; color: var(--text-muted); font-weight: 600;">${dateFmt}</span></td>
                 <td><strong style="color: var(--brown-soft); font-family: var(--font-family-heading); font-size: 13.5px;">${amountStr}</strong></td>
                 <td>
-                    <span class="badge-status ${isDone ? 'completed' : 'active'}">${escapeHtml(ord.status || 'COMPLETED')}</span>
+                    <span class="badge-status ${isDone ? 'completed' : 'active'}">${escapeHtml(ord.status || '—')}</span>
                 </td>
                 <td style="text-align: right;">
                     <button type="button" class="btn-inspect-audit" onclick="inspectOrderAudit('${escapeHtml(ord.order_number)}')">
@@ -264,18 +264,20 @@ function inspectOrderAudit(orderNum) {
     const ord = allFulfillmentOrders.find(o => o.order_number === orderNum);
     if (!ord) return;
 
+    const placed = ord.placed_at ? new Date(ord.placed_at).toLocaleString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    }) : '—';
+
     MMSwal.fire({
         title: `Sales Audit: ${ord.order_number}`,
         html: `
             <div style="text-align: left; font-size: 13px; line-height: 1.6; color: var(--text-dark);">
-                <div><strong>Customer:</strong> ${escapeHtml(ord.customer_name || 'Guest')}</div>
-                <div><strong>Claim Window:</strong> Tuesday &amp; Thursday Release</div>
-                <div><strong>Channel:</strong> ${ord.payment_method === 'cash' ? 'Counter Cash Drawer' : 'Digital GCash Transfer'}</div>
-                <div><strong>Transaction ID:</strong> ${escapeHtml(ord.transaction_id || ord.ref_id || 'SETTLED-DIRECT')}</div>
-                <div><strong>Settled Amount:</strong> ₱${formatAmount(ord.total_amount || 15.00)}</div>
-                <div style="background: var(--bg-main); padding: 10px 12px; border-radius: 10px; margin-top: 10px; border-left: 3px solid var(--accent-pink);">
-                    <strong>Audit Verification:</strong> Confirmed at Sales Counter and settled into general enterprise revenue.
-                </div>
+                <div><strong>Customer:</strong> ${escapeHtml(ord.customer_name || '—')}</div>
+                <div><strong>Payment Method:</strong> ${escapeHtml(ord.payment_method || '—')}</div>
+                <div><strong>Transaction ID:</strong> ${escapeHtml(ord.transaction_id || '—')}</div>
+                <div><strong>Placed:</strong> ${escapeHtml(placed)}</div>
+                <div><strong>Status:</strong> ${escapeHtml(ord.status || '—')}</div>
+                <div><strong>Settled Amount:</strong> ₱${formatAmount(ord.total_amount)}</div>
             </div>
         `,
         confirmButtonText: 'Close Audit'
@@ -316,6 +318,8 @@ function renderReconciliationTable() {
 
     renderReconPagerButtons(totalPages, currentReconPage);
 
+    const money = (v) => (v === null || v === undefined) ? '—' : '₱' + formatAmount(v);
+
     tbody.innerHTML = pageItems.map(rec => {
         const variance = Number(rec.variance || 0);
         let badgeClass = 'badge-variance zero';
@@ -328,29 +332,38 @@ function renderReconciliationTable() {
             varText = `+₱${formatAmount(variance)} (Overage)`;
         }
 
-        const dateStr = rec.date || (rec.created_at ? new Date(rec.created_at).toLocaleDateString('en-US', {
-            month: 'short', day: 'numeric', year: 'numeric'
-        }) : 'Recent Shift');
-
         return `
             <tr>
                 <td>
-                    <strong style="color: var(--brown-soft); font-size: 13px;">${escapeHtml(dateStr)}</strong>
-                    <div style="font-size: 11px; color: var(--text-muted);">10:00 AM – 3:00 PM Release</div>
+                    <strong style="color: var(--brown-soft); font-size: 13px;">${escapeHtml(formatShiftDate(rec))}</strong>
+                    <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(formatShiftWindow(rec))}</div>
                 </td>
-                <td><span style="font-size: 12.5px; font-weight: 700;">₱1,000.00</span></td>
-                <td><strong style="color: var(--text-dark);">₱${formatAmount(rec.expected_amount || 4250.00)}</strong></td>
-                <td><strong style="color: var(--brown-soft); font-family: var(--font-family-heading); font-size: 13.5px;">₱${formatAmount(rec.counted_amount || 4250.00)}</strong></td>
+                <td><span style="font-size: 12.5px; font-weight: 700;">${money(rec.opening_float)}</span></td>
+                <td><strong style="color: var(--text-dark);">${money(rec.expected_amount)}</strong></td>
+                <td><strong style="color: var(--brown-soft); font-family: var(--font-family-heading); font-size: 13.5px;">${money(rec.counted_amount)}</strong></td>
                 <td><span class="${badgeClass}">${varText}</span></td>
-                <td><span class="settle-status-pill settled">Register Unlocked</span></td>
+                <td><span style="font-size: 12px; font-weight: 700;">${escapeHtml(rec.recorded_by_name || '—')}</span></td>
                 <td style="text-align: right;">
                     <span style="font-size: 11.5px; color: var(--text-muted); font-style: italic;">
-                        ${escapeHtml(rec.notes || 'Audited by Treasury Officer')}
+                        ${escapeHtml(rec.notes || '—')}
                     </span>
                 </td>
             </tr>
         `;
     }).join('');
+}
+
+function formatShiftDate(rec) {
+    const d = rec.period_end || rec.created_at;
+    return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+}
+
+function formatShiftWindow(rec) {
+    const t = (v) => new Date(v).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    if (rec.period_start && rec.period_end && !isNaN(new Date(rec.period_start)) && !isNaN(new Date(rec.period_end))) {
+        return `${t(rec.period_start)} – ${t(rec.period_end)}`;
+    }
+    return '';
 }
 
 function renderReconPagerButtons(totalPages, activePage) {
@@ -373,27 +386,6 @@ function renderReconPagerButtons(totalPages, activePage) {
             }
         });
     });
-}
-
-// --------------------------------------------------------------------------
-// FALLBACK DATA HELPERS
-// --------------------------------------------------------------------------
-function getFallbackFulfillmentOrders() {
-    return [
-        { order_number: 'MM-758864', customer_name: 'Garrett Kila', payment_method: 'cash', transaction_id: 'POS-CASH-091', total_amount: 15.00, status: 'COMPLETED', placed_at: '2026-09-26T21:35:00' },
-        { order_number: 'MM-161344', customer_name: 'Garrett Kila', payment_method: 'ewallet', transaction_id: 'GC-994821', total_amount: 18.00, status: 'COMPLETED', placed_at: '2026-09-26T10:19:00' },
-        { order_number: 'MM-979249', customer_name: 'Garrett Kila', payment_method: 'cash', transaction_id: 'POS-CASH-088', total_amount: 18.00, status: 'COMPLETED', placed_at: '2026-09-26T10:16:00' },
-        { order_number: 'MM-035292', customer_name: 'Garrett Kila', payment_method: 'ewallet', transaction_id: 'GC-994702', total_amount: 15.00, status: 'COMPLETED', placed_at: '2026-09-26T08:53:00' },
-        { order_number: 'MM-343491', customer_name: 'Garrett Kila', payment_method: 'cash', transaction_id: 'POS-CASH-081', total_amount: 18.00, status: 'COMPLETED', placed_at: '2026-09-25T17:25:00' }
-    ];
-}
-
-function getFallbackReconciliations() {
-    return [
-        { date: 'Thursday Release (Sep 24, 2026)', expected_amount: 4250.00, counted_amount: 4250.00, variance: 0, notes: 'Shift closed and drawer balanced' },
-        { date: 'Tuesday Release (Sep 22, 2026)', expected_amount: 3840.00, counted_amount: 3840.00, variance: 0, notes: 'Verified with Sales Officer Reeze' },
-        { date: 'Thursday Release (Sep 17, 2026)', expected_amount: 4100.00, counted_amount: 4095.00, variance: -5.00, notes: '₱5 coin shortage resolved with counter' }
-    ];
 }
 
 function formatAmount(val) {

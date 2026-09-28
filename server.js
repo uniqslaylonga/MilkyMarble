@@ -2503,110 +2503,295 @@ app.get('/api/admin/activity-logs', async (req, res) => {
 });
 
 // ==========================================
+// MANAGEMENT CEO SHARED HELPERS
+// Every CEO number comes from the database. Anything the system does not
+// track (yet) is returned as null so the UI can show "—" instead of an
+// invented value.
+// ==========================================
+const CEO_SALE_STATUSES = ['PAID_VERIFIED', 'COMPLETED'];   // same definition of "realized revenue" the Finance Officer uses
+const CEO_MAJOR_THRESHOLD = 500;                             // > PHP 500 needs CEO sign-off (see routeForAmount in employeeRoutes.js)
+const CEO_PH_OFFSET_MS = 8 * 60 * 60 * 1000;                 // Asia/Manila, so month/year buckets match what staff see
+
+function ceoPhParts(value) {
+  const t = new Date(value).getTime();
+  if (isNaN(t)) return null;
+  const d = new Date(t + CEO_PH_OFFSET_MS);
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() };
+}
+
+function ceoPeso(n) {
+  return '₱' + (parseFloat(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Supabase returns at most 1000 rows per request, which silently truncates
+// totals once the business grows. Page through everything instead.
+async function ceoFetchAll(buildQuery, pageSize = 1000) {
+  const rows = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
+
+// The logged-in CEO, taken from the signed session cookie (req.staff).
+async function getCeoProfile(req) {
+  const id = req.staff && req.staff.id;
+  let fullName = '';
+  let avatarSrc = null;
+  if (id) {
+    const { data: row } = await supabase
+      .from('users')
+      .select('id, full_name, avatar')
+      .eq('id', id)
+      .maybeSingle();
+    if (row) {
+      fullName = row.full_name || '';
+      if (row.avatar && !row.avatar.includes('account.png')) {
+        const cleanAvatar = row.avatar.replace(/^\/PHP/, '');
+        avatarSrc = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
+      }
+    }
+  }
+  return { fullName, avatar: avatarSrc || '../images/account.png', avatarSrc };
+}
+
+function ceoCleanLabel(raw) {
+  const c = String(raw || '')
+    .replace(/\s*\((8oz|12oz)\)/gi, '')
+    .replace(/(\+.*|\[.*\])/g, '')
+    .replace(/^(8oz|12oz)\s*/gi, '')
+    .trim();
+  return c || 'Custom drink';
+}
+
+// Anything that is not clearly one of the three core flavors goes to "other"
+// instead of being silently counted as Coffee Jelly.
+function ceoFlavorKey(item) {
+  const label = String(item.item_label || '').toLowerCase();
+  const fId = parseInt(item.flavor_value_id, 10);
+  if (label.includes('strawberr') || fId === 3) return 'strawberry';
+  if (label.includes('pandan') || fId === 4) return 'pandan';
+  if (label.includes('coffee')) return 'coffee';
+  return 'other';
+}
+
+async function ceoLoadSaleOrders() {
+  return ceoFetchAll(() => supabase
+    .from('orders')
+    .select('id, placed_at, total_amount, guest_name, order_items(line_total, quantity, item_label, flavor_value_id)')
+    .in('status', CEO_SALE_STATUSES)
+    .order('id', { ascending: true }));
+}
+
+function ceoAggregateSales(orders) {
+  const nowParts = ceoPhParts(Date.now());
+  const curYear = nowParts.year;
+  const years = [curYear - 3, curYear - 2, curYear - 1, curYear];
+  const keys = ['coffee', 'strawberry', 'pandan', 'other'];
+
+  const monthlyRev = {}, yearlyRev = {}, monthlyUnits = {};
+  keys.forEach(k => {
+    monthlyRev[k] = new Array(12).fill(0);
+    monthlyUnits[k] = new Array(12).fill(0);
+    yearlyRev[k] = [0, 0, 0, 0];
+  });
+
+  let totalSales = 0, guestOrders = 0, totalCups = 0;
+  const flavorMap = new Map();
+
+  orders.forEach(o => {
+    totalSales += parseFloat(o.total_amount) || 0;
+    if (o.guest_name) guestOrders++;
+    const parts = ceoPhParts(o.placed_at);
+
+    (o.order_items || []).forEach(it => {
+      const amt = parseFloat(it.line_total) || 0;
+      const qty = parseInt(it.quantity, 10) || 0;
+      const key = ceoFlavorKey(it);
+      totalCups += qty;
+
+      if (parts) {
+        if (parts.year === curYear) {
+          monthlyRev[key][parts.month] += amt;
+          monthlyUnits[key][parts.month] += qty;
+        }
+        const yi = years.indexOf(parts.year);
+        if (yi >= 0) yearlyRev[key][yi] += amt;
+      }
+
+      const name = ceoCleanLabel(it.item_label);
+      const fk = name.toLowerCase();
+      if (!flavorMap.has(fk)) flavorMap.set(fk, { flavor: name, sold: 0, revenue: 0 });
+      const f = flavorMap.get(fk);
+      f.sold += qty;
+      f.revenue += amt;
+    });
+  });
+
+  const flavorContributions = [...flavorMap.values()]
+    .sort((a, b) => b.revenue - a.revenue || b.sold - a.sold)
+    .map(f => ({
+      flavor: f.flavor,
+      category: null,   // the menu has no category on order lines
+      sold: f.sold,
+      revenue: Math.round(f.revenue * 100) / 100,
+      cogs: null,       // COGS is only tracked as a lump sum in expenses, not per flavor
+      margin: null
+    }));
+
+  return {
+    curYear, years, totalSales, guestOrders, totalCups,
+    orderCount: orders.length,
+    monthlyRev, yearlyRev, monthlyUnits, flavorContributions
+  };
+}
+
+// Net margin, computed the same way the Finance Officer revenue page does it.
+// null when there is no COGS on record (so we never show an invented margin).
+async function ceoComputeMargin(totalRevenue) {
+  const expenses = await ceoFetchAll(() => supabase
+    .from('expenses')
+    .select('amount, status, category')
+    .order('id', { ascending: true }));
+  const cogs = expenses
+    .filter(e => e.category === 'cogs' && ['APPROVED', 'PURCHASED'].includes(e.status))
+    .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+  if (cogs > 0 && totalRevenue > 0) {
+    return Math.round(((totalRevenue - cogs) / totalRevenue) * 1000) / 10;
+  }
+  return null;
+}
+
+// ERP benchmark KPIs. Only DSO can be derived from data we actually store:
+// unpaid orders / last-30-day realized revenue * 30. O2C, OTD and FPY need
+// timestamps / QC records that the system does not capture, so they are null.
+async function ceoComputeBenchmarks(orders) {
+  let dso = null;
+  try {
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const revenue30 = orders
+      .filter(o => new Date(o.placed_at).getTime() >= cutoff)
+      .reduce((s, o) => s + (parseFloat(o.total_amount) || 0), 0);
+    const unpaidRows = await ceoFetchAll(() => supabase
+      .from('orders')
+      .select('total_amount')
+      .eq('status', 'PENDING_PAYMENT')
+      .order('id', { ascending: true }));
+    const unpaid = unpaidRows.reduce((s, o) => s + (parseFloat(o.total_amount) || 0), 0);
+    if (revenue30 > 0) dso = Math.round((unpaid / revenue30) * 30 * 10) / 10;
+  } catch (e) {
+    console.warn('[ceo] could not compute DSO:', e.message);
+  }
+  return { dso, o2c: null, otd: null, fpy: null };
+}
+
+// id -> { name, role } for a set of user ids
+async function ceoRequesterMap(ids) {
+  const map = {};
+  const unique = [...new Set((ids || []).filter(Boolean))];
+  if (!unique.length) return map;
+  const { data } = await supabase
+    .from('users')
+    .select('id, full_name, user_roles(roles(name))')
+    .in('id', unique);
+  (data || []).forEach(u => {
+    const ur = Array.isArray(u.user_roles) ? u.user_roles[0] : u.user_roles;
+    const roleObj = ur && ur.roles;
+    const role = Array.isArray(roleObj) ? (roleObj[0] && roleObj[0].name) : (roleObj && roleObj.name);
+    map[u.id] = { name: u.full_name || '', role: role || '' };
+  });
+  return map;
+}
+
+function ceoCustomerNameFromOrder(o) {
+  const userObj = Array.isArray(o.customers) ? (o.customers[0] && o.customers[0].users) : (o.customers && o.customers.users);
+  const u = Array.isArray(userObj) ? userObj[0] : userObj;
+  return (u && u.full_name) || o.guest_name || 'Walk-in Counter';
+}
+
+// ==========================================
 // MANAGEMENT CEO ANALYTICS API (Supabase)
 // ==========================================
 app.get('/api/ceo/analytics', async (req, res) => {
   try {
     if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
 
-    let userFullName = 'Gabriel Louis M. Espadilla';
-    let userAvatar = '../images/account.png';
+    const user = await getCeoProfile(req);
+    const orders = await ceoLoadSaleOrders();
+    const agg = ceoAggregateSales(orders);
 
-    // Fetch CEO Profile
-    const { data: userRows } = await supabase
-      .from('users')
-      .select('id, full_name, avatar')
-      .eq('username', 'ceo1')
-      .limit(1)
-      .maybeSingle();
+    // Orders still moving through the pipeline (not finished, not cancelled)
+    const { count: activePreOrders } = await supabase
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .not('status', 'in', '(COMPLETED,CANCELLED)');
 
-    if (userRows) {
-      if (userRows.full_name) userFullName = userRows.full_name;
-      if (userRows.avatar && !userRows.avatar.includes('account.png')) {
-        const cleanAvatar = userRows.avatar.replace(/^\/PHP/, '');
-        userAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
-      }
-    }
-
-    // Fetch Overview Stats
-    const { count: newOrders } = await supabase.from('orders').select('*', { count: 'exact', head: true }).in('status', ['PENDING', 'PENDING_PAYMENT']);
-    const { count: preOrders } = await supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'PREPARING');
-    const { count: finishedGoods } = await supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'READY_FOR_PICKUP');
-    const { data: orders } = await supabase.from('orders').select('id, placed_at, total_amount, guest_name').eq('status', 'COMPLETED');
-
-    let totalSales = 0;
-    let guestCount = 0;
-    const orderDates = {};
-
-    if (orders) {
-      orders.forEach(o => {
-        totalSales += (parseFloat(o.total_amount) || 0);
-        orderDates[o.id] = new Date(o.placed_at);
-        if (o.guest_name) guestCount++; // Count orders made by guests
-      });
-    }
-
-    const { count: registeredCount } = await supabase.from('customers').select('*', { count: 'exact', head: true });
-
-    // Initialize chart arrays
-    let monthlyRevCoffee = new Array(12).fill(0), monthlyRevStrawberry = new Array(12).fill(0), monthlyRevPandan = new Array(12).fill(0);
-    let yearlyRevCoffee = [0, 0, 0, 0], yearlyRevStrawberry = [0, 0, 0, 0], yearlyRevPandan = [0, 0, 0, 0];
-    let salesCoffee = new Array(12).fill(0), salesStrawberry = new Array(12).fill(0), salesPandan = new Array(12).fill(0);
-
-    // Fetch Items to calculate Revenue and Unit Sales volume
+    // Customer satisfaction: straight from the ratings table
+    let sentiment = null;
     try {
-      const { data: items } = await supabase.from('order_items').select('line_total, quantity, order_id, item_label, flavor_value_id');
-
-      if (items && orders) {
-        items.forEach(item => {
-          if (orderDates[item.order_id]) {
-            const date = orderDates[item.order_id];
-            const month = date.getMonth();
-            const yearIndex = date.getFullYear() - 2024;
-
-            const amt = parseFloat(item.line_total) || 0;
-            const qty = parseInt(item.quantity, 10) || 1;
-            const label = (item.item_label || '').toLowerCase();
-            const fId = parseInt(item.flavor_value_id, 10);
-
-            if (label.includes('strawberr') || fId === 3) {
-              monthlyRevStrawberry[month] += amt;
-              salesStrawberry[month] += qty; // Track units sold
-              if (yearIndex >= 0 && yearIndex <= 3) yearlyRevStrawberry[yearIndex] += amt;
-            } else if (label.includes('pandan') || fId === 4) {
-              monthlyRevPandan[month] += amt;
-              salesPandan[month] += qty; // Track units sold
-              if (yearIndex >= 0 && yearIndex <= 3) yearlyRevPandan[yearIndex] += amt;
-            } else {
-              monthlyRevCoffee[month] += amt;
-              salesCoffee[month] += qty; // Track units sold
-              if (yearIndex >= 0 && yearIndex <= 3) yearlyRevCoffee[yearIndex] += amt;
-            }
-          }
-        });
+      const ratings = await ceoFetchAll(() => supabase
+        .from('ratings')
+        .select('id, rating_score, review_text, product_title, created_at')
+        .order('id', { ascending: false }));
+      const scored = ratings.filter(r => Number.isFinite(parseFloat(r.rating_score)));
+      if (scored.length) {
+        const pct = n => Math.round((n / scored.length) * 1000) / 10;
+        const positive = scored.filter(r => r.rating_score >= 4);
+        const neutral = scored.filter(r => r.rating_score === 3);
+        const negative = scored.filter(r => r.rating_score <= 2);
+        const snippet = r => r ? {
+          text: String(r.review_text).trim().slice(0, 180),
+          product: r.product_title || '',
+          score: r.rating_score,
+          created_at: r.created_at
+        } : null;
+        sentiment = {
+          count: scored.length,
+          average: Math.round((scored.reduce((s, r) => s + Number(r.rating_score), 0) / scored.length) * 10) / 10,
+          positivePct: pct(positive.length),
+          neutralPct: pct(neutral.length),
+          negativePct: pct(negative.length),
+          latestPositive: snippet(positive.find(r => r.review_text && String(r.review_text).trim())),
+          latestCritical: snippet(negative.find(r => r.review_text && String(r.review_text).trim()))
+        };
       }
     } catch (e) {
-      console.warn('Could not parse order_items for analytics breakdown', e);
+      console.warn('[ceo analytics] could not read ratings:', e.message);
     }
+
+    const benchmarks = await ceoComputeBenchmarks(orders);
+    const registeredOrders = Math.max(0, agg.orderCount - agg.guestOrders);
 
     return res.json({
       status: 'success',
-      user: { fullName: userFullName, avatar: userAvatar },
+      user,
       overview: {
-        newOrders: newOrders || 0,
-        preOrders: preOrders || 0,
-        finishedGoods: finishedGoods || 0,
-        totalSales
+        totalSales: agg.totalSales,
+        activePreOrders: activePreOrders || 0,
+        realizedCups: agg.totalCups,
+        realizedOrders: agg.orderCount
       },
+      sentiment,
+      benchmarks,
       charts: {
         monthsLabels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        yearsLabels: ['2024', '2025', '2026', '2027'],
-        monthlyRevCoffee, monthlyRevStrawberry, monthlyRevPandan,
-        yearlyRevCoffee, yearlyRevStrawberry, yearlyRevPandan,
-        salesCoffee, salesStrawberry, salesPandan, // Volumes for the bottom-left chart
-        customerLabels: ['Registered', 'Guests', 'Corporate'],
-        customerData: [registeredCount || 0, guestCount || 0, 0] // Pie chart data
-      }
+        yearsLabels: agg.years.map(String),
+        monthlyRevCoffee: agg.monthlyRev.coffee,
+        monthlyRevStrawberry: agg.monthlyRev.strawberry,
+        monthlyRevPandan: agg.monthlyRev.pandan,
+        monthlyRevOther: agg.monthlyRev.other,
+        yearlyRevCoffee: agg.yearlyRev.coffee,
+        yearlyRevStrawberry: agg.yearlyRev.strawberry,
+        yearlyRevPandan: agg.yearlyRev.pandan,
+        yearlyRevOther: agg.yearlyRev.other,
+        // share of realized orders by who placed them (no corporate accounts exist in the data model)
+        customerLabels: ['Registered', 'Guests'],
+        customerData: [registeredOrders, agg.guestOrders]
+      },
+      flavorContributions: agg.flavorContributions
     });
   } catch (error) {
     console.error('CEO analytics fetch error:', error);
@@ -2616,85 +2801,114 @@ app.get('/api/ceo/analytics', async (req, res) => {
 
 // ==========================================
 // MANAGEMENT CEO BUDGET APPROVAL API
+// Real workflow: Procurement raises an expense; > PHP 500 becomes PENDING_CEO.
+// Sales Officer pitches a promo; it sits at PENDING_APPROVAL until the CEO acts.
 // ==========================================
 app.get('/api/ceo/budget-approval', async (req, res) => {
   try {
     if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
 
-    let userFullName = 'Gabriel Louis M. Espadilla';
-    let userAvatar = '../images/account.png';
+    const user = await getCeoProfile(req);
 
-    // Fetch CEO Profile
-    const { data: userRows } = await supabase
-      .from('users')
-      .select('id, full_name, avatar')
-      .eq('username', 'ceo1')
-      .limit(1)
-      .maybeSingle();
-
-    if (userRows) {
-      if (userRows.full_name) userFullName = userRows.full_name;
-      if (userRows.avatar && !userRows.avatar.includes('account.png')) {
-        const cleanAvatar = userRows.avatar.replace(/^\/PHP/, '');
-        userAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
-      }
-    }
-
-    // Fetch Expense Overview Stats
-    const { count: pendingCount } = await supabase.from('expenses').select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
-    const { count: approvedCount } = await supabase.from('expenses').select('*', { count: 'exact', head: true }).eq('status', 'APPROVED');
-    const { count: rejectedCount } = await supabase.from('expenses').select('*', { count: 'exact', head: true }).eq('status', 'REJECTED');
-
-    // Fetch Pending Requests
-    const { data: pendingData } = await supabase
+    // Major-tier expenses (pending + already decided)
+    const allExpenses = await ceoFetchAll(() => supabase
       .from('expenses')
-      .select('id, amount, purpose, notes, status, receipt_url, created_at, requested_by')
-      .eq('status', 'PENDING')
-      .order('created_at', { ascending: false });
+      .select('*')
+      .in('status', ['PENDING_CEO', 'APPROVED', 'PURCHASED', 'REJECTED'])
+      .order('id', { ascending: false }));
+    const majorExpenses = allExpenses.filter(e => (parseFloat(e.amount) || 0) > CEO_MAJOR_THRESHOLD);
 
-    // Resolve the real requester (name + department/role) from the users table.
-    // If a request has no requested_by, or that user can't be found, leave it blank.
-    const requesterIds = [...new Set((pendingData || []).map(e => e.requested_by).filter(Boolean))];
-    let requesterMap = {};
-    if (requesterIds.length) {
-      const { data: requesterUsers } = await supabase
-        .from('users')
-        .select('id, full_name, user_roles(roles(name))')
-        .in('id', requesterIds);
+    const promoRows = await ceoFetchAll(() => supabase
+      .from('promotions')
+      .select('*')
+      .order('id', { ascending: false }));
 
-      (requesterUsers || []).forEach(u => {
-        const role = u.user_roles && u.user_roles.length > 0 && u.user_roles[0].roles
-          ? u.user_roles[0].roles.name
-          : '';
-        requesterMap[u.id] = { name: u.full_name || '', role };
+    const requesterMap = await ceoRequesterMap(majorExpenses.map(e => e.requested_by));
+
+    const prCode = e => `PR-${1000 + e.id}`;
+
+    const inventoryRequests = majorExpenses
+      .filter(e => e.status === 'PENDING_CEO')
+      .map(e => {
+        const r = requesterMap[e.requested_by] || { name: '', role: '' };
+        return {
+          id: e.id,
+          pr_code: prCode(e),
+          name: e.item_name || '',
+          item_name: e.item_name || '',
+          supplier: e.store_name || '',
+          store_name: e.store_name || '',
+          requester_name: r.name,
+          requester_role: r.role,
+          amount: parseFloat(e.amount) || 0,
+          notes: e.notes || '',
+          expense_date: e.expense_date || null,
+          created_at: e.created_at || null
+        };
       });
-    }
 
-    // Format for the frontend grid
-    const formattedRequests = (pendingData || []).map(exp => {
-      const requester = requesterMap[exp.requested_by] || { name: '', role: '' };
-      return {
-        id: exp.id,
-        name: requester.name,
-        role: requester.role,
-        amount: `₱${parseFloat(exp.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        amount_raw: parseFloat(exp.amount || 0),
-        purpose: exp.purpose || 'General Expense',
-        notes: exp.notes || 'No additional notes provided.',
-        filename: exp.receipt_url ? exp.receipt_url.split('/').pop() : 'No attached file',
-        filesize: ''
-      };
+    const promotionRequests = promoRows
+      .filter(p => p.status === 'PENDING_APPROVAL')
+      .map(p => ({
+        id: p.id,
+        code: p.code,
+        title: p.title || '',
+        pitch_note: p.pitch_note || '',
+        target_segment: p.target_segment || 'all',
+        discount_type: p.discount_type,
+        discount_value: parseFloat(p.discount_value) || 0,
+        min_spend: p.min_spend,
+        usage_cap: p.usage_cap,
+        created_at: p.created_at || null
+      }));
+
+    const promoValue = p => p.discount_type === 'percent'
+      ? `${parseFloat(p.discount_value) || 0}% OFF`
+      : `${ceoPeso(p.discount_value)} Flat`;
+
+    const history = [];
+    majorExpenses.filter(e => e.status !== 'PENDING_CEO').forEach(e => {
+      const r = requesterMap[e.requested_by] || { name: '', role: '' };
+      history.push({
+        type: 'Purchase Requisition',
+        type_label: 'Purchase Requisition',
+        reference: `${prCode(e)} · ${e.item_name || ''}`.trim(),
+        title: e.item_name || '',
+        value_display: ceoPeso(e.amount),
+        requester: r.name,
+        status: e.status === 'REJECTED' ? 'REJECTED' : 'APPROVED',
+        decided_at: e.updated_at || e.created_at || null
+      });
     });
+    // Only promos that went through a pitch (they carry a pitch note) are CEO decisions
+    promoRows
+      .filter(p => ['ACTIVE', 'EXPIRED', 'REJECTED'].includes(p.status) && p.pitch_note)
+      .forEach(p => {
+        history.push({
+          type: 'Promo Campaign',
+          type_label: 'Promo Campaign',
+          reference: p.code,
+          title: p.title || p.code,
+          value_display: promoValue(p),
+          requester: 'Sales Officer',
+          status: p.status === 'REJECTED' ? 'REJECTED' : 'APPROVED',
+          decided_at: p.updated_at || p.created_at || null
+        });
+      });
+    history.sort((a, b) => new Date(b.decided_at || 0) - new Date(a.decided_at || 0));
 
     return res.json({
       status: 'success',
-      user: { fullName: userFullName, avatar: userAvatar },
+      user,
       overview: {
-        pending: pendingCount || 0,
-        approved: approvedCount || 0,
-        rejected: rejectedCount || 0
+        pendingInventory: inventoryRequests.length,
+        pendingPromos: promotionRequests.length,
+        approved: history.filter(h => h.status === 'APPROVED').length,
+        rejected: history.filter(h => h.status === 'REJECTED').length
       },
-      pendingRequests: formattedRequests
+      inventoryRequests,
+      promotionRequests,
+      decisionHistory: history
     });
   } catch (error) {
     console.error('Budget approval fetch error:', error);
@@ -2704,22 +2918,138 @@ app.get('/api/ceo/budget-approval', async (req, res) => {
 
 app.post('/api/ceo/budget-approval/action', async (req, res) => {
   try {
-    const { expense_id, action } = req.body;
-    if (!expense_id || !action) {
-      return res.status(400).json({ status: 'error', message: 'Missing expense_id or action.' });
+    if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
+
+    const body = req.body || {};
+    const type = body.type || 'expense';
+    const id = body.id !== undefined && body.id !== null ? body.id : body.expense_id;
+    const act = String(body.action || '').toLowerCase();
+    const reason = String(body.rejection_reason || '').trim();
+
+    if (!id || !['approve', 'reject'].includes(act)) {
+      return res.status(400).json({ status: 'error', message: 'Missing id or a valid action (approve / reject).' });
+    }
+    if (act === 'reject' && !reason) {
+      return res.status(400).json({ status: 'error', message: 'A justification is required to reject a request.' });
     }
 
-    const newStatus = action.toLowerCase() === 'approve' ? 'APPROVED' : 'REJECTED';
+    let label = '';
+    if (type === 'expense') {
+      const newStatus = act === 'approve' ? 'APPROVED' : 'REJECTED';
+      const { data: row, error } = await supabase
+        .from('expenses')
+        .update({ status: newStatus })
+        .eq('id', id)
+        .eq('status', 'PENDING_CEO')           // can only act on requests that are actually waiting for the CEO
+        .select('id, item_name, amount')
+        .maybeSingle();
+      if (error) throw error;
+      if (!row) return res.status(409).json({ status: 'error', message: 'This requisition is no longer awaiting CEO approval.' });
+      label = `PR-${1000 + row.id} ${row.item_name || ''}`.trim();
+    } else if (type === 'promotion') {
+      const patch = act === 'approve' ? { status: 'ACTIVE' } : { status: 'REJECTED', rejection_reason: reason };
+      const { data: row, error } = await supabase
+        .from('promotions')
+        .update(patch)
+        .eq('id', id)
+        .eq('status', 'PENDING_APPROVAL')
+        .select('id, code')
+        .maybeSingle();
+      if (error) throw error;
+      if (!row) return res.status(409).json({ status: 'error', message: 'This promotion is no longer awaiting CEO approval.' });
+      label = row.code;
+    } else {
+      return res.status(400).json({ status: 'error', message: 'Unknown approval type.' });
+    }
 
-    const { error } = await supabase
-      .from('expenses')
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq('id', expense_id);
+    logActivity(supabase, {
+      req,
+      action: `${type === 'expense' ? 'expense' : 'promotion'}.${act === 'approve' ? 'approved' : 'rejected'}`,
+      category: 'approval',
+      description: `${act === 'approve' ? 'Approved' : 'Rejected'} ${type === 'expense' ? 'purchase requisition' : 'promotion'} "${label}"${reason ? ` — ${reason}` : ''}`,
+      targetType: type,
+      targetId: id,
+      targetLabel: label
+    });
 
-    if (error) throw error;
-
-    return res.json({ status: 'success', message: `Expense successfully ${newStatus.toLowerCase()}.` });
+    return res.json({ status: 'success', message: `Successfully ${act === 'approve' ? 'approved' : 'rejected'}.` });
   } catch (error) {
+    console.error('Budget approval action error:', error);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// ==========================================
+// MANAGEMENT CEO ENTERPRISE AUDIT API
+// Real realized orders + real drawer reconciliations (Z-readings).
+// ==========================================
+app.get('/api/ceo/enterprise-audit', async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
+
+    const user = await getCeoProfile(req);
+
+    const saleOrders = await ceoFetchAll(() => supabase
+      .from('orders')
+      .select('id, order_number, status, total_amount, placed_at, guest_name, payment_method, transaction_id, customers(users(full_name))')
+      .in('status', CEO_SALE_STATUSES)
+      .order('id', { ascending: false }));
+
+    const settledTurnover = saleOrders.reduce((s, o) => s + (parseFloat(o.total_amount) || 0), 0);
+
+    const orders = saleOrders
+      .sort((a, b) => new Date(b.placed_at || 0) - new Date(a.placed_at || 0))
+      .slice(0, 500)
+      .map(o => ({
+        id: o.id,
+        order_number: o.order_number,
+        customer_name: ceoCustomerNameFromOrder(o),
+        payment_method: o.payment_method || null,
+        transaction_id: o.transaction_id || null,
+        total_amount: parseFloat(o.total_amount) || 0,
+        status: o.status,
+        placed_at: o.placed_at
+      }));
+
+    const { data: reconRows, error: reconErr } = await supabase
+      .from('drawer_reconciliations')
+      .select('id, counted_amount, expected_amount, variance, period_start, period_end, notes, created_at, recorded_by')
+      .order('period_end', { ascending: false })
+      .limit(200);
+    if (reconErr) throw reconErr;
+
+    const recorderMap = await ceoRequesterMap((reconRows || []).map(r => r.recorded_by));
+
+    const reconciliations = (reconRows || []).map(r => {
+      const expected = r.expected_amount !== null && r.expected_amount !== undefined ? parseFloat(r.expected_amount) : null;
+      // The Finance Officer's Z-reading stores "Walk-in Cash: ₱X" in the notes; expected = float + walk-in cash.
+      const m = /Walk-in Cash:\s*₱\s*([\d,]+(?:\.\d+)?)/.exec(r.notes || '');
+      const walkinCash = m ? parseFloat(m[1].replace(/,/g, '')) : null;
+      const opening = (expected !== null && walkinCash !== null) ? Math.round((expected - walkinCash) * 100) / 100 : null;
+      const rec = recorderMap[r.recorded_by];
+      return {
+        id: r.id,
+        period_start: r.period_start,
+        period_end: r.period_end,
+        created_at: r.created_at,
+        opening_float: opening,
+        expected_amount: expected,
+        counted_amount: r.counted_amount !== null && r.counted_amount !== undefined ? parseFloat(r.counted_amount) : null,
+        variance: parseFloat(r.variance) || 0,
+        notes: r.notes || '',
+        recorded_by_name: rec ? rec.name : ''
+      };
+    });
+
+    return res.json({
+      status: 'success',
+      user,
+      totals: { settledTurnover, orderCount: saleOrders.length },
+      orders,
+      reconciliations
+    });
+  } catch (error) {
+    console.error('CEO enterprise audit fetch error:', error);
     return res.status(500).json({ status: 'error', message: error.message });
   }
 });
@@ -2731,24 +3061,7 @@ app.get('/api/ceo/staff-directory', async (req, res) => {
   try {
     if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
 
-    let userFullName = 'Gabriel Louis M. Espadilla';
-    let userAvatar = '../images/account.png';
-
-    // Fetch CEO Profile
-    const { data: userRows } = await supabase
-      .from('users')
-      .select('id, full_name, avatar')
-      .eq('username', 'ceo1')
-      .limit(1)
-      .maybeSingle();
-
-    if (userRows) {
-      if (userRows.full_name) userFullName = userRows.full_name;
-      if (userRows.avatar && !userRows.avatar.includes('account.png')) {
-        const cleanAvatar = userRows.avatar.replace(/^\/PHP/, '');
-        userAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
-      }
-    }
+    const user = await getCeoProfile(req);
 
     // 1. Fetch available departments/roles (excluding CEO)
     const { data: rolesData } = await supabase.from('roles').select('name').neq('name', 'CEO').order('id', { ascending: true });
@@ -2796,7 +3109,7 @@ app.get('/api/ceo/staff-directory', async (req, res) => {
 
     return res.json({
       status: 'success',
-      user: { fullName: userFullName, avatar: userAvatar },
+      user,
       departments: departments,
       employees: staffEmployees
     });
@@ -3266,103 +3579,87 @@ app.get('/api/ceo/dashboard', async (req, res) => {
   try {
     if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
 
-    const userId = req.headers['x-user-id'] || req.query.user_id;
-    let userFullName = 'Gabriel Louis M. Espadilla';
-    let userAvatar = '../images/account.png';
+    const user = await getCeoProfile(req);
 
-    // 1. Fetch logged-in CEO profile (fallback to the default ceo1 account)
-    let userRows = null;
-    if (userId) {
-      const { data: foundUser } = await supabase
-        .from('users')
-        .select('id, full_name, avatar')
-        .eq('id', userId)
-        .maybeSingle();
-      if (foundUser) userRows = foundUser;
-    }
-    if (!userRows) {
-      const { data: defaultCeo } = await supabase
-        .from('users')
-        .select('id, full_name, avatar')
-        .eq('username', 'ceo1')
-        .limit(1)
-        .maybeSingle();
-      if (defaultCeo) userRows = defaultCeo;
-    }
-
-    if (userRows) {
-      if (userRows.full_name) userFullName = userRows.full_name;
-      if (userRows.avatar && !userRows.avatar.includes('account.png')) {
-        const cleanAvatar = userRows.avatar.replace(/^\/PHP/, '');
-        userAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
-      }
-    }
-
-    // 2. Top-level KPIs
-    const { data: completedOrders } = await supabase
-      .from('orders')
-      .select('id, placed_at, total_amount')
-      .eq('status', 'COMPLETED');
-
-    let totalSales = 0;
-    const orderDates = {};
-    (completedOrders || []).forEach(o => {
-      totalSales += (parseFloat(o.total_amount) || 0);
-      orderDates[o.id] = new Date(o.placed_at);
-    });
+    // 1. Realized revenue, per-flavor chart series, margin, benchmarks
+    const orders = await ceoLoadSaleOrders();
+    const agg = ceoAggregateSales(orders);
+    const margin = await ceoComputeMargin(agg.totalSales);
+    const benchmarks = await ceoComputeBenchmarks(orders);
 
     const { count: totalCustomers } = await supabase
       .from('customers')
       .select('*', { count: 'exact', head: true });
 
-    // 3. Revenue chart data (monthly + yearly, by flavor)
-    let monthlyCoffee = new Array(12).fill(0), monthlyStrawberry = new Array(12).fill(0), monthlyPandan = new Array(12).fill(0);
-    let yearlyCoffee = [0, 0, 0, 0], yearlyStrawberry = [0, 0, 0, 0], yearlyPandan = [0, 0, 0, 0];
+    // 2. Major requisitions (> PHP 500) actually waiting on the CEO
+    const pendingExpenses = await ceoFetchAll(() => supabase
+      .from('expenses')
+      .select('*')
+      .eq('status', 'PENDING_CEO')
+      .order('id', { ascending: false }));
+    const pendingMajor = pendingExpenses.filter(e => (parseFloat(e.amount) || 0) > CEO_MAJOR_THRESHOLD);
+    const requesterMap = await ceoRequesterMap(pendingMajor.map(e => e.requested_by));
 
-    try {
-      const { data: items } = await supabase
-        .from('order_items')
-        .select('line_total, order_id, item_label, flavor_value_id');
+    const pendingApprovals = pendingMajor.map(e => {
+      const r = requesterMap[e.requested_by] || { name: '', role: '' };
+      return {
+        id: e.id,
+        pr_code: `PR-${1000 + e.id}`,
+        item_name: e.item_name || '',
+        department: r.role || '',
+        requester_name: r.name,
+        supplier: e.store_name || '',
+        amount: parseFloat(e.amount) || 0,
+        created_at: e.created_at || null
+      };
+    });
 
-      if (items) {
-        items.forEach(item => {
-          if (orderDates[item.order_id]) {
-            const date = orderDates[item.order_id];
-            const month = date.getMonth();
-            const yearIndex = date.getFullYear() - 2024;
-            const amt = parseFloat(item.line_total) || 0;
-            const label = (item.item_label || '').toLowerCase();
-            const fId = parseInt(item.flavor_value_id, 10);
+    // 3. Active workforce: real active employee accounts (there is no shift/clock-in tracking)
+    const { data: staffRows, error: staffErr } = await supabase
+      .from('users')
+      .select('id, full_name, avatar, is_active, user_roles(roles(name))')
+      .eq('user_type', 'employee')
+      .order('id', { ascending: true });
+    if (staffErr) throw staffErr;
 
-            if (label.includes('strawberr') || fId === 3) {
-              monthlyStrawberry[month] += amt;
-              if (yearIndex >= 0 && yearIndex <= 3) yearlyStrawberry[yearIndex] += amt;
-            } else if (label.includes('pandan') || fId === 4) {
-              monthlyPandan[month] += amt;
-              if (yearIndex >= 0 && yearIndex <= 3) yearlyPandan[yearIndex] += amt;
-            } else {
-              monthlyCoffee[month] += amt;
-              if (yearIndex >= 0 && yearIndex <= 3) yearlyCoffee[yearIndex] += amt;
-            }
-          }
-        });
-      }
-    } catch (e) {
-      console.warn('Could not compute CEO dashboard chart breakdown', e);
-    }
+    const roster = (staffRows || [])
+      .filter(u => u.is_active !== false)
+      .map(u => {
+        const ur = Array.isArray(u.user_roles) ? u.user_roles[0] : u.user_roles;
+        const roleObj = ur && ur.roles;
+        const role = Array.isArray(roleObj) ? (roleObj[0] && roleObj[0].name) : (roleObj && roleObj.name);
+        let avatar = null;
+        if (u.avatar && !u.avatar.includes('account.png')) {
+          const clean = u.avatar.replace(/^\/PHP/, '');
+          avatar = /^(https?:|data:|\/)/i.test(clean) ? clean : '/' + clean;
+        }
+        return { id: u.id, name: u.full_name || '', role: role || 'Employee', avatar };
+      });
 
     return res.json({
       status: 'success',
-      user: { fullName: userFullName, avatar: userAvatar },
+      user,
       stats: {
-        totalSales,
-        totalCustomers: totalCustomers || 0
+        totalSales: agg.totalSales,
+        totalCustomers: totalCustomers || 0,
+        netMarginPct: margin,
+        pendingApprovals: pendingApprovals.length,
+        activeStaff: roster.length
       },
+      benchmarks,
+      pendingApprovals,
+      roster,
       chart: {
         months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        years: ['2024', '2025', '2026', '2027'],
-        monthlyCoffee, monthlyStrawberry, monthlyPandan,
-        yearlyCoffee, yearlyStrawberry, yearlyPandan
+        years: agg.years.map(String),
+        monthlyCoffee: agg.monthlyRev.coffee,
+        monthlyStrawberry: agg.monthlyRev.strawberry,
+        monthlyPandan: agg.monthlyRev.pandan,
+        monthlyOther: agg.monthlyRev.other,
+        yearlyCoffee: agg.yearlyRev.coffee,
+        yearlyStrawberry: agg.yearlyRev.strawberry,
+        yearlyPandan: agg.yearlyRev.pandan,
+        yearlyOther: agg.yearlyRev.other
       }
     });
   } catch (error) {

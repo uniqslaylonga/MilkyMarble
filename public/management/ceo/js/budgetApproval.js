@@ -40,15 +40,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function fetchCeoBudgetApprovals() {
     try {
-        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-        const headers = userId ? { 'x-user-id': userId } : {};
-
         const response = await fetch('/api/ceo/budget-approval', {
             method: 'GET',
-            headers: {
-                ...headers,
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Content-Type': 'application/json' }
         });
 
         if (!response.ok) throw new Error('Failed to retrieve budget approvals queue');
@@ -57,8 +51,8 @@ async function fetchCeoBudgetApprovals() {
         // 1. Profile Header
         const userFullNameEl = document.getElementById('userFullNameDisplay');
         const userAvatarEl = document.getElementById('userAvatarImg');
-        if (userFullNameEl && data.user?.fullName) {
-            userFullNameEl.textContent = data.user.fullName;
+        if (userFullNameEl) {
+            userFullNameEl.textContent = data.user?.fullName || '—';
         }
         if (userAvatarEl && data.user?.avatarSrc) {
             userAvatarEl.src = data.user.avatarSrc;
@@ -183,17 +177,17 @@ function renderInventoryTable() {
     tbody.innerHTML = pageItems.map(item => {
         const prCode = item.pr_code || `PR-${item.id}`;
         const amount = Number(item.amount || item.total_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const dateFmt = item.expense_date || (item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recent');
+        const dateFmt = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : (item.expense_date || '—');
 
         return `
             <tr>
                 <td><strong style="color: var(--brown-soft); font-size: 13px;">${escapeHtml(prCode)}</strong></td>
                 <td>
                     <strong>${escapeHtml(item.item_name || item.name)}</strong>
-                    <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(item.notes || 'Emergency Batch Restock')}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(item.notes || '')}</div>
                 </td>
-                <td><span style="font-size: 12px;">${escapeHtml(item.store_name || item.supplier || 'Vendor Store')}</span></td>
-                <td><span style="font-size: 12px; color: var(--text-muted);">${escapeHtml(item.requester_name || 'Procurement')}</span></td>
+                <td><span style="font-size: 12px;">${escapeHtml(item.store_name || item.supplier || '—')}</span></td>
+                <td><span style="font-size: 12px; color: var(--text-muted);">${escapeHtml(item.requester_name || '—')}${item.requester_role ? `<div style="font-size: 10.5px;">${escapeHtml(item.requester_role)}</div>` : ''}</span></td>
                 <td><strong style="color: #C9302C; font-family: var(--font-family-heading); font-size: 14px;">₱${amount}</strong></td>
                 <td><span style="font-size: 11.5px; color: var(--text-muted);">${dateFmt}</span></td>
                 <td style="text-align: right;">
@@ -258,10 +252,10 @@ function renderPromosTable() {
             <tr>
                 <td><strong style="color: var(--accent-pink); font-size: 13px; letter-spacing: 0.5px;">${escapeHtml(item.code)}</strong></td>
                 <td>
-                    <strong>${escapeHtml(item.title || 'Campaign Promo')}</strong>
-                    <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(item.pitch_note || 'Pitched by Sales Desk')}</div>
+                    <strong>${escapeHtml(item.title || item.code)}</strong>
+                    <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(item.pitch_note || '')}</div>
                 </td>
-                <td><span style="font-size: 12px;">${escapeHtml(item.target_segment || 'All Customers')}</span></td>
+                <td><span style="font-size: 12px;">${escapeHtml(!item.target_segment || String(item.target_segment).toLowerCase() === 'all' ? 'All Customers' : item.target_segment)}</span></td>
                 <td><strong style="color: var(--brown-soft);">${discountText}</strong></td>
                 <td><span style="font-size: 11.5px; color: var(--text-muted);">${minSpendText} • ${capText}</span></td>
                 <td><span style="font-size: 12px; color: var(--text-muted);">${escapeHtml(item.pitched_by || 'Sales Officer')}</span></td>
@@ -318,14 +312,14 @@ function renderHistoryTable() {
 
     tbody.innerHTML = pageItems.map(item => {
         const isApproved = item.status === 'APPROVED' || item.status === 'ACTIVE';
-        const dateFmt = item.decided_at ? new Date(item.decided_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recent';
+        const dateFmt = item.decided_at ? new Date(item.decided_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
 
         return `
             <tr>
-                <td><span style="font-size: 12px; font-weight: 700; color: var(--text-muted);">${escapeHtml(item.type_label || 'Expense')}</span></td>
+                <td><span style="font-size: 12px; font-weight: 700; color: var(--text-muted);">${escapeHtml(item.type_label || '—')}</span></td>
                 <td><strong>${escapeHtml(item.reference || item.title)}</strong></td>
                 <td><strong style="color: var(--brown-soft);">${escapeHtml(item.value_display || '—')}</strong></td>
-                <td><span style="font-size: 12px;">${escapeHtml(item.requester || 'Staff')}</span></td>
+                <td><span style="font-size: 12px;">${escapeHtml(item.requester || '—')}</span></td>
                 <td><span style="font-size: 11.5px; color: var(--text-muted);">${dateFmt}</span></td>
                 <td>
                     <span class="badge-status ${isApproved ? 'approved' : 'rejected'}">${isApproved ? 'APPROVED' : 'REJECTED'}</span>
@@ -448,7 +442,6 @@ async function handleExecutiveDecision(type, id, action) {
 
 async function submitDecisionPayload(type, id, action, reason) {
     try {
-        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
         const payload = {
             type,
             id,
@@ -458,10 +451,7 @@ async function submitDecisionPayload(type, id, action, reason) {
 
         const response = await fetch('/api/ceo/budget-approval/action', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-user-id': userId || ''
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 

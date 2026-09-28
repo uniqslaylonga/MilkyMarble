@@ -2,15 +2,17 @@ let revenueAnalyticsChart = null;
 let customerDonutChart = null;
 
 let chartAnalyticsData = {
-    monthsLabels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-    yearsLabels: ['2024', '2025', '2026', '2027'],
-    monthlyCoffee: [2400, 3100, 2800, 4200, 3900, 4800, 5200, 4900, 6100, 5800, 6400, 7200],
-    monthlyStrawberry: [1800, 2400, 2200, 3400, 3100, 3800, 4100, 3900, 4900, 4600, 5200, 5900],
-    monthlyPandan: [1400, 1900, 1700, 2600, 2400, 2900, 3200, 3100, 3800, 3600, 4100, 4600],
-    yearlyCoffee: [28000, 39000, 54000, 68000],
-    yearlyStrawberry: [21000, 29000, 42000, 53000],
-    yearlyPandan: [16000, 23000, 33000, 41000],
-    customerSegments: [31, 14, 2]
+    monthsLabels: [],
+    yearsLabels: [],
+    monthlyCoffee: [],
+    monthlyStrawberry: [],
+    monthlyPandan: [],
+    monthlyOther: [],
+    yearlyCoffee: [],
+    yearlyStrawberry: [],
+    yearlyPandan: [],
+    yearlyOther: [],
+    customerSegments: [0, 0]
 };
 
 // Table & Pagination State
@@ -57,97 +59,113 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+const peso = (n) => '₱' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function setText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+}
+
 async function fetchCeoAnalyticsData() {
     try {
-        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-        const headers = userId ? { 'x-user-id': userId } : {};
-
-        const response = await fetch('/api/ceo/analytics', {
-            method: 'GET',
-            headers: {
-                ...headers,
-                'Content-Type': 'application/json'
-            }
-        });
-
+        const response = await fetch('/api/ceo/analytics');
         if (!response.ok) throw new Error('Failed to load CEO analytics data');
         const data = await response.json();
 
-        // 1. Profile Header
-        const userFullNameEl = document.getElementById('userFullNameDisplay');
+        // 1. Profile Header (real logged-in CEO)
+        setText('userFullNameDisplay', data.user?.fullName || '—');
         const userAvatarEl = document.getElementById('userAvatarImg');
-        if (userFullNameEl && data.user?.fullName) {
-            userFullNameEl.textContent = data.user.fullName;
-        }
-        if (userAvatarEl && data.user?.avatarSrc) {
-            userAvatarEl.src = data.user.avatarSrc;
-        }
+        if (userAvatarEl && data.user?.avatarSrc) userAvatarEl.src = data.user.avatarSrc;
 
         // 2. Overview Stats
-        if (data.overview) {
-            document.getElementById('statNewOrders').textContent = Number(data.overview.newOrders || 185).toLocaleString();
-            document.getElementById('statPreOrders').textContent = Number(data.overview.preOrders || 7).toLocaleString();
-            document.getElementById('statSales').textContent = '₱' + Number(data.overview.totalSales || 46567).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
+        const ov = data.overview || {};
+        setText('statSales', peso(ov.totalSales));
+        setText('statPreOrders', Number(ov.activePreOrders || 0).toLocaleString());
+        setText('statNewOrders', Number(ov.realizedCups || 0).toLocaleString());
+        setText('statCupsNote', `Cups across ${Number(ov.realizedOrders || 0).toLocaleString()} realized orders`);
 
-        // 3. DSO Calculation (45-Day Benchmark)
-        const cycleStartDate = localStorage.getItem('mm_cycle_start_date') || '2026-10-08';
-        const start = new Date(cycleStartDate);
-        const today = new Date();
-        start.setHours(0, 0, 0, 0);
-        today.setHours(0, 0, 0, 0);
-        const daysElapsed = Math.max(1, Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1);
-        const ceoDso = Math.min(daysElapsed, 12);
-        document.getElementById('ceoDsoValue').textContent = `${ceoDso} Days`;
+        // 3. Customer satisfaction + sentiment (real ratings)
+        renderSentiment(data.sentiment);
 
-        // 4. Line Chart & Donut Chart Setup
-        if (data.charts) {
-            chartAnalyticsData.monthsLabels = data.charts.monthsLabels || chartAnalyticsData.monthsLabels;
-            chartAnalyticsData.yearsLabels = data.charts.yearsLabels || chartAnalyticsData.yearsLabels;
-            if (data.charts.monthlyRevCoffee?.length) chartAnalyticsData.monthlyCoffee = data.charts.monthlyRevCoffee;
-            if (data.charts.monthlyRevStrawberry?.length) chartAnalyticsData.monthlyStrawberry = data.charts.monthlyRevStrawberry;
-            if (data.charts.monthlyRevPandan?.length) chartAnalyticsData.monthlyPandan = data.charts.monthlyRevPandan;
-            if (data.charts.customerData?.length) chartAnalyticsData.customerSegments = data.charts.customerData;
-        }
+        // 4. Benchmarks (only what the system can measure)
+        if (typeof applyBenchmarks === 'function') applyBenchmarks(data.benchmarks || null);
+
+        // 5. Charts
+        const ch = data.charts || {};
+        chartAnalyticsData.monthsLabels = ch.monthsLabels || [];
+        chartAnalyticsData.yearsLabels = ch.yearsLabels || [];
+        chartAnalyticsData.monthlyCoffee = ch.monthlyRevCoffee || [];
+        chartAnalyticsData.monthlyStrawberry = ch.monthlyRevStrawberry || [];
+        chartAnalyticsData.monthlyPandan = ch.monthlyRevPandan || [];
+        chartAnalyticsData.monthlyOther = ch.monthlyRevOther || [];
+        chartAnalyticsData.yearlyCoffee = ch.yearlyRevCoffee || [];
+        chartAnalyticsData.yearlyStrawberry = ch.yearlyRevStrawberry || [];
+        chartAnalyticsData.yearlyPandan = ch.yearlyRevPandan || [];
+        chartAnalyticsData.yearlyOther = ch.yearlyRevOther || [];
+        chartAnalyticsData.customerSegments = ch.customerData || [0, 0];
 
         initRevenueAnalyticsChart();
         initCustomerDonutChart();
 
-        // 5. Populate Detailed Flavor Velocity Table
-        await fetchFlavorAnalyticsTable();
+        // 6. Flavor contribution table (real order lines)
+        allFlavorAnalytics = data.flavorContributions || [];
+        applyAnalyticsFilter();
 
     } catch (error) {
+        // No made-up fallback: tell the CEO the data could not be loaded.
         console.error('Error loading CEO Analytics:', error);
-        initRevenueAnalyticsChart();
-        initCustomerDonutChart();
-        await fetchFlavorAnalyticsTable();
+        ['statSales', 'statPreOrders', 'statNewOrders', 'statCsatScore'].forEach(id => setText(id, '—'));
+        if (typeof applyBenchmarks === 'function') applyBenchmarks(null);
+        allFlavorAnalytics = [];
+        applyAnalyticsFilter();
+        const tbody = document.getElementById('analyticsTableBody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="loading-state-text" style="color:#C9302C;">Could not load analytics from the database.</td></tr>';
+        MMSwal.fire({ icon: 'warning', title: 'System Notice', text: error.message || 'Could not load analytics data.' });
     }
 }
 
-async function fetchFlavorAnalyticsTable() {
-    try {
-        const response = await fetch('/api/finance-officer/revenue');
-        if (response.ok) {
-            const data = await response.json();
-            allFlavorAnalytics = data.flavorContributions || getSampleFlavorContributions();
-        } else {
-            allFlavorAnalytics = getSampleFlavorContributions();
-        }
-    } catch (e) {
-        allFlavorAnalytics = getSampleFlavorContributions();
-    }
-    applyAnalyticsFilter();
-}
+// Customer satisfaction card + sentiment pulse, all from the `ratings` table.
+function renderSentiment(sentiment) {
+    const showTile = (tileId, textId, metaId, item, fallbackMeta) => {
+        const tile = document.getElementById(tileId);
+        if (!tile) return false;
+        if (!item || !item.text) { tile.style.display = 'none'; return false; }
+        setText(textId, `“${item.text}”`);
+        const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+        setText(metaId, [item.product, `${item.score}/5`, dateStr].filter(Boolean).join(' • ') || fallbackMeta);
+        tile.style.display = '';
+        return true;
+    };
 
-function getSampleFlavorContributions() {
-    return [
-        { flavor: 'Classic Coffee Jelly Pearl', category: 'Pearl Milk Tea', sold: 68, revenue: 1020.00, cogs: 544.00, margin: 46.7, status: 'High Yield' },
-        { flavor: 'Strawberry Marble Supreme', category: 'Specialty Latte', sold: 54, revenue: 864.00, cogs: 463.00, margin: 46.4, status: 'High Yield' },
-        { flavor: 'Buko Pandan Bliss Jelly', category: 'Specialty Latte', sold: 45, revenue: 675.00, cogs: 382.50, margin: 43.3, status: 'High Yield' },
-        { flavor: 'Brown Sugar Marble Jelly', category: 'Pearl Milk Tea', sold: 32, revenue: 480.00, cogs: 288.00, margin: 40.0, status: 'Moderate' },
-        { flavor: 'Matcha Milk Tea Presets', category: 'Specialty Latte', sold: 26, revenue: 416.00, cogs: 257.90, margin: 38.1, status: 'Moderate' },
-        { flavor: 'Wintermelon Marble Sips', category: 'Pearl Milk Tea', sold: 18, revenue: 270.00, cogs: 172.00, margin: 36.3, status: 'Moderate' }
-    ];
+    if (!sentiment) {
+        setText('statCsatScore', '—');
+        setText('statCsatNote', 'No ratings yet');
+        setText('aiPositivePct', '—');
+        ['barPositive', 'barNeutral', 'barNegative'].forEach(id => { const el = document.getElementById(id); if (el) el.style.width = '0%'; });
+        showTile('quotePositiveTile', 'quotePositiveText', 'quotePositiveMeta', null);
+        showTile('quoteCriticalTile', 'quoteCriticalText', 'quoteCriticalMeta', null);
+        const empty = document.getElementById('quoteEmptyText'); if (empty) empty.style.display = '';
+        setText('sentimentFooter', 'No customer ratings recorded yet');
+        return;
+    }
+
+    setText('statCsatScore', `${sentiment.average.toFixed(1)} / 5.0`);
+    setText('statCsatNote', `${sentiment.positivePct}% positive • ${sentiment.count} rating${sentiment.count === 1 ? '' : 's'}`);
+    setText('aiPositivePct', `${sentiment.positivePct}% Positive`);
+
+    const setBar = (id, pct, label) => {
+        const el = document.getElementById(id);
+        if (el) { el.style.width = pct + '%'; el.title = `${label} (${pct}%)`; }
+    };
+    setBar('barPositive', sentiment.positivePct, 'Positive');
+    setBar('barNeutral', sentiment.neutralPct, 'Neutral');
+    setBar('barNegative', sentiment.negativePct, 'Critical');
+
+    const hasPos = showTile('quotePositiveTile', 'quotePositiveText', 'quotePositiveMeta', sentiment.latestPositive);
+    const hasNeg = showTile('quoteCriticalTile', 'quoteCriticalText', 'quoteCriticalMeta', sentiment.latestCritical);
+    const empty = document.getElementById('quoteEmptyText');
+    if (empty) empty.style.display = (hasPos || hasNeg) ? 'none' : '';
+    setText('sentimentFooter', `Based on ${sentiment.count} customer rating${sentiment.count === 1 ? '' : 's'} (4–5★ positive, 3★ neutral, 1–2★ critical)`);
 }
 
 function applyAnalyticsFilter() {
@@ -195,14 +213,18 @@ function renderAnalyticsTable() {
 
     renderAnalyticsPaginationControls(totalPages, currentAnalyticsPage);
 
+    const money = (n) => Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
     tbody.innerHTML = pageItems.map(item => {
-        const name = item.flavor || item.flavor_name || 'Milk Tea Flavor';
-        const category = item.category || item.category_label || 'Pearl Milk Tea';
-        const sold = item.sold || item.cups_sold || 0;
-        const revenue = Number(item.revenue || item.gross_sales || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const cogs = Number(item.cogs || (item.unit_cogs ? item.unit_cogs * sold : 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const margin = item.margin || item.net_margin_pct || 42.0;
-        const isHigh = margin >= 42;
+        const name = item.flavor || item.flavor_name || '—';
+        const category = item.category || item.category_label || '—';
+        const sold = Number(item.sold || item.cups_sold || 0);
+        const revenue = money(item.revenue || item.gross_sales || 0);
+        // COGS / margin are not recorded per flavor, so they are shown as "—" rather than guessed
+        const hasCogs = item.cogs !== null && item.cogs !== undefined;
+        const hasMargin = item.margin !== null && item.margin !== undefined;
+        const margin = hasMargin ? Number(item.margin) : null;
+        const isHigh = hasMargin && margin >= 42;
 
         return `
             <tr>
@@ -210,10 +232,12 @@ function renderAnalyticsTable() {
                 <td><span style="font-size: 12px; color: var(--text-dark);">${escapeHtml(category)}</span></td>
                 <td><strong>${sold} cups</strong></td>
                 <td><strong style="color: var(--brown-soft); font-family: var(--font-family-heading);">₱${revenue}</strong></td>
-                <td><span style="color: var(--text-muted);">₱${cogs}</span></td>
-                <td><strong style="color: ${isHigh ? '#2E7D32' : '#B26A00'};">${margin}%</strong></td>
+                <td><span style="color: var(--text-muted);">${hasCogs ? '₱' + money(item.cogs) : '—'}</span></td>
+                <td><strong style="color: ${hasMargin ? (isHigh ? '#2E7D32' : '#B26A00') : 'var(--text-muted)'};">${hasMargin ? margin + '%' : '—'}</strong></td>
                 <td style="text-align: right;">
-                    <span class="badge-perf ${isHigh ? 'perf-high' : 'perf-mid'}">${isHigh ? 'High Yield' : 'Moderate'}</span>
+                    ${hasMargin
+                        ? `<span class="badge-perf ${isHigh ? 'perf-high' : 'perf-mid'}">${isHigh ? 'High Yield' : 'Moderate'}</span>`
+                        : '<span style="font-size: 11.5px; color: var(--text-muted);">Margin not tracked</span>'}
                 </td>
             </tr>
         `;
@@ -285,6 +309,17 @@ function initRevenueAnalyticsChart() {
                     pointBackgroundColor: '#fff',
                     pointBorderColor: '#38c8db',
                     tension: 0.25
+                },
+                {
+                    label: 'Other Flavors',
+                    data: chartAnalyticsData.monthlyOther,
+                    borderColor: '#9a8f88',
+                    backgroundColor: '#9a8f88',
+                    borderWidth: 2.2,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#9a8f88',
+                    tension: 0.25
                 }
             ]
         },
@@ -325,6 +360,7 @@ function initRevenueAnalyticsChart() {
         revenueAnalyticsChart.data.datasets[0].data = chartAnalyticsData.monthlyCoffee;
         revenueAnalyticsChart.data.datasets[1].data = chartAnalyticsData.monthlyStrawberry;
         revenueAnalyticsChart.data.datasets[2].data = chartAnalyticsData.monthlyPandan;
+        revenueAnalyticsChart.data.datasets[3].data = chartAnalyticsData.monthlyOther;
         revenueAnalyticsChart.update();
     });
 
@@ -335,6 +371,7 @@ function initRevenueAnalyticsChart() {
         revenueAnalyticsChart.data.datasets[0].data = chartAnalyticsData.yearlyCoffee;
         revenueAnalyticsChart.data.datasets[1].data = chartAnalyticsData.yearlyStrawberry;
         revenueAnalyticsChart.data.datasets[2].data = chartAnalyticsData.yearlyPandan;
+        revenueAnalyticsChart.data.datasets[3].data = chartAnalyticsData.yearlyOther;
         revenueAnalyticsChart.update();
     });
 }
@@ -345,21 +382,20 @@ function initCustomerDonutChart() {
 
     if (customerDonutChart) customerDonutChart.destroy();
 
-    const dataPoints = chartAnalyticsData.customerSegments || [31, 14, 2];
+    const dataPoints = chartAnalyticsData.customerSegments || [0, 0];
     const total = dataPoints.reduce((a, b) => a + b, 0);
     const pct = v => total > 0 ? Math.round((v / total) * 100) : 0;
 
-    document.getElementById('legendRegisteredVal').textContent = `${pct(dataPoints[0])}% (${dataPoints[0]})`;
-    document.getElementById('legendGuestsVal').textContent = `${pct(dataPoints[1])}% (${dataPoints[1]})`;
-    document.getElementById('legendCorporateVal').textContent = `${pct(dataPoints[2])}% (${dataPoints[2]})`;
+    document.getElementById('legendRegisteredVal').textContent = total > 0 ? `${pct(dataPoints[0])}% (${dataPoints[0]})` : '—';
+    document.getElementById('legendGuestsVal').textContent = total > 0 ? `${pct(dataPoints[1])}% (${dataPoints[1]})` : '—';
 
     customerDonutChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Registered Members', 'Guest Checkouts', 'Corporate Accounts'],
+            labels: ['Registered Members', 'Guest Checkouts'],
             datasets: [{
                 data: dataPoints,
-                backgroundColor: ['#f28b95', '#EAA342', '#68B0AB'],
+                backgroundColor: ['#f28b95', '#EAA342'],
                 borderWidth: 0
             }]
         },

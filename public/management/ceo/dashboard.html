@@ -94,7 +94,7 @@
                         <div class="user-avatar" id="userAvatarContainer">
                             <img id="userAvatarImg" src="/customer/images/account.png" alt="CEO Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
                         </div>
-                        <span id="userFullNameDisplay">Gabriel Louis M. Espadilla</span>
+                        <span id="userFullNameDisplay">—</span>
                     </div>
                 </div>
             </header>
@@ -104,7 +104,7 @@
                 <div class="welcome-card-flex">
                     <div>
                         <div class="executive-pill-tag">Executive Suite • DOA Governance</div>
-                        <h1 id="welcomeHeading">Glad to have you here, <span id="greetingName">Gabriel</span>!</h1>
+                        <h1 id="welcomeHeading">Glad to have you here<span id="greetingName"></span>!</h1>
                         <p class="welcome-sub">Command center overview: major capital approvals (&gt; ₱500), workforce deployment, and financial health.</p>
                     </div>
                     <div class="welcome-action-col">
@@ -148,9 +148,9 @@
                         </svg>
                     </div>
                     <div class="stat-body">
-                        <span id="statMargin" class="stat-value" style="color: #2E7D32;">68.8%</span>
+                        <span id="statMargin" class="stat-value">—</span>
                     </div>
-                    <div class="stat-change">Liquidity Buffer Healthy</div>
+                    <div class="stat-change" id="statMarginNote">Net of recorded COGS</div>
                 </div>
 
                 <!-- 3. Pending DOA Major Escalations (> ₱500) -->
@@ -180,9 +180,9 @@
                         </svg>
                     </div>
                     <div class="stat-body">
-                        <span id="statActiveRoster" class="stat-value">5</span>
+                        <span id="statActiveRoster" class="stat-value">—</span>
                     </div>
-                    <div class="stat-change">Enterprise stations manned</div>
+                    <div class="stat-change">Active employee accounts</div>
                 </div>
             </section>
 
@@ -240,13 +240,13 @@
                     <div class="panel-header-bar">
                         <div>
                             <h2 class="section-title">Active Workforce Deployment</h2>
-                            <p class="section-sub-text">Staff currently on operational shift duty</p>
+                            <p class="section-sub-text">Active employee accounts by role</p>
                         </div>
-                        <span class="badge-status completed">100% Deployed</span>
+                        <span class="badge-status completed" id="rosterBadge">—</span>
                     </div>
 
                     <div class="roster-list-container" id="activeRosterList">
-                        <div class="loading-state-text">Loading workforce deployment...</div>
+                        <div class="loading-state-text">Loading workforce...</div>
                     </div>
 
                     <div class="roster-card-footer">
@@ -284,68 +284,64 @@
                 </div>
 
                 <div class="benchmark-grid">
-                    <!-- 1. DSO -->
-                    <div class="benchmark-cell">
+                    <div class="benchmark-cell" data-bm="dso">
                         <div class="bm-header">
                             <span class="bm-label">Days Sales Out. (DSO)</span>
-                            <span class="bm-pill optimal">Optimal</span>
+                            <span class="bm-pill nodata" data-bm-status>No data</span>
                         </div>
                         <div class="bm-value-row">
-                            <strong id="ceoDsoValue">12 Days</strong>
+                            <strong data-bm-value>—</strong>
                             <small>Target: &lt; 45 Days</small>
                         </div>
                         <div class="bm-progress-bar">
-                            <div class="bm-progress-fill" style="width: 27%;"></div>
+                            <div class="bm-progress-fill" style="width: 0%;"></div>
                         </div>
-                        <span class="bm-desc">Low liquidity risk; fast receivable turnover.</span>
+                        <span class="bm-desc" data-bm-desc></span>
                     </div>
 
-                    <!-- 2. O2C -->
-                    <div class="benchmark-cell">
+                    <div class="benchmark-cell" data-bm="o2c">
                         <div class="bm-header">
                             <span class="bm-label">Order-to-Cash Cycle</span>
-                            <span class="bm-pill optimal">Frictionless</span>
+                            <span class="bm-pill nodata" data-bm-status>No data</span>
                         </div>
                         <div class="bm-value-row">
-                            <strong>1.5 Days</strong>
+                            <strong data-bm-value>—</strong>
                             <small>Target: &lt; 5 Days</small>
                         </div>
                         <div class="bm-progress-bar">
-                            <div class="bm-progress-fill" style="width: 30%;"></div>
+                            <div class="bm-progress-fill" style="width: 0%;"></div>
                         </div>
-                        <span class="bm-desc">Pre-order checkout to counter release fulfillment.</span>
+                        <span class="bm-desc" data-bm-desc></span>
                     </div>
 
-                    <!-- 3. OTD -->
-                    <div class="benchmark-cell">
+                    <div class="benchmark-cell" data-bm="otd">
                         <div class="bm-header">
                             <span class="bm-label">On-Time Fulfillment (OTD)</span>
-                            <span class="bm-pill optimal">World-Class</span>
+                            <span class="bm-pill nodata" data-bm-status>No data</span>
                         </div>
                         <div class="bm-value-row">
-                            <strong>98.4%</strong>
+                            <strong data-bm-value>—</strong>
                             <small>Target: &gt; 95%</small>
                         </div>
                         <div class="bm-progress-bar">
-                            <div class="bm-progress-fill" style="width: 98.4%;"></div>
+                            <div class="bm-progress-fill" style="width: 0%;"></div>
                         </div>
-                        <span class="bm-desc">Zero queue backlog during active operating windows.</span>
+                        <span class="bm-desc" data-bm-desc></span>
                     </div>
 
-                    <!-- 4. FPY -->
-                    <div class="benchmark-cell">
+                    <div class="benchmark-cell" data-bm="fpy">
                         <div class="bm-header">
                             <span class="bm-label">First-Pass Yield (FPY)</span>
-                            <span class="bm-pill optimal">High Quality</span>
+                            <span class="bm-pill nodata" data-bm-status>No data</span>
                         </div>
                         <div class="bm-value-row">
-                            <strong>96.2%</strong>
+                            <strong data-bm-value>—</strong>
                             <small>Target: &gt; 90%</small>
                         </div>
                         <div class="bm-progress-bar">
-                            <div class="bm-progress-fill" style="width: 96.2%;"></div>
+                            <div class="bm-progress-fill" style="width: 0%;"></div>
                         </div>
-                        <span class="bm-desc">Batch brewing accuracy with minimal ingredient scrap.</span>
+                        <span class="bm-desc" data-bm-desc></span>
                     </div>
                 </div>
             </section>
@@ -400,6 +396,7 @@
                             <th>Coffee Jelly</th>
                             <th>Strawberry Marble</th>
                             <th>Pandan Bliss</th>
+                            <th>Other Flavors</th>
                             <th>Monthly Total</th>
                         </tr>
                     </thead>
@@ -429,13 +426,12 @@
 
             <!-- 4. Active Workforce Roster -->
             <div class="corp-section-wrap">
-                <h3 class="corp-section-title">4. ACTIVE DUTY WORKFORCE ROSTER</h3>
+                <h3 class="corp-section-title">4. ACTIVE EMPLOYEE ROSTER</h3>
                 <table class="corp-data-table">
                     <thead>
                         <tr>
                             <th>Name</th>
                             <th>Role</th>
-                            <th>Station</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -448,7 +444,7 @@
             <div class="corp-signoff-row corp-signoff-single">
                 <div class="corp-sig-box">
                     <div class="corp-sig-line"></div>
-                    <span class="corp-sig-name" id="pdfSignOfficer">Gabriel Louis M. Espadilla</span>
+                    <span class="corp-sig-name" id="pdfSignOfficer"></span>
                     <span class="corp-sig-role">Chief Executive Officer</span>
                 </div>
             </div>
@@ -482,6 +478,7 @@
         </div>
     </div>
 
+    <script src="js/benchmarks.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="/shared/js/avatarUpload.js"></script>
     <script src="/shared/js/staffLogout.js"></script>
