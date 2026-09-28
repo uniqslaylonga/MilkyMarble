@@ -72,7 +72,14 @@ function setText(id, val) {
 async function fetchCeoDashboardData() {
     try {
         const response = await fetch('/api/ceo/dashboard');
-        if (!response.ok) throw new Error('Failed to load CEO dashboard data');
+        if (!response.ok) {
+            if (response.status === 401) {
+                window.location.href = '/management/managementlogin.html?error=login_required';
+                return;
+            }
+            const errBody = await response.json().catch(() => ({}));
+            throw new Error(`Dashboard API error ${response.status}: ${errBody.message || 'Failed to load CEO dashboard data'}`);
+        }
         const data = await response.json();
 
         // 1. Profile Header (real logged-in CEO; nothing is invented if it is missing)
