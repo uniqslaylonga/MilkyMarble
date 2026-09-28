@@ -369,7 +369,7 @@ router.post('/employee-login', async (req, res) => {
 
     const { data: account, error: userErr } = await supabase
       .from('users')
-      .select('id, username, email, password_hash, full_name, user_type, is_active')
+      .select('id, username, email, password_hash, full_name, user_type, is_active, must_change_password')
       .eq('username', cleanUsername)
       .in('user_type', ['employee', 'admin', 'ceo'])
       .maybeSingle();
@@ -448,7 +448,8 @@ router.post('/employee-login', async (req, res) => {
       .eq('id', account.id);
 
     // Signed httpOnly cookie - the staff API routes check this (401 without it).
-    setStaffCookie(res, { id: account.id, type: account.user_type, roles: roleNames });
+    const mustChangePassword = account.must_change_password === true;
+    setStaffCookie(res, { id: account.id, type: account.user_type, roles: roleNames, mustChangePassword });
 
     logActivity(supabase, {
       req,
@@ -487,7 +488,10 @@ router.post('/employee-login', async (req, res) => {
     return res.json({
       status: 'success',
       message: 'Login successful.',
-      redirectUrl: targetUrl,
+      // Temporary password: send them to the change-password page first.
+      mustChangePassword,
+      nextUrl: targetUrl,
+      redirectUrl: mustChangePassword ? 'changePassword.html' : targetUrl,
       user: {
         id: account.id,
         username: account.username,

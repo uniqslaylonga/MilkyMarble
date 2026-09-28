@@ -56,6 +56,11 @@ async function handleLogin(e) {
         if (response.ok && result.status === 'success') {
             // Save the ID so all dashboards know who is logged in!
             localStorage.setItem('userId', result.user.id);
+            // Temporary password -> change-password page first.
+            if (result.mustChangePassword) {
+                try { sessionStorage.setItem('mmNextUrl', result.nextUrl || ''); } catch (e) {}
+                try { sessionStorage.setItem('mmTempUser', result.user.username || username); } catch (e) {}
+            }
             window.location.href = result.redirectUrl;
         } else {
             showError(result.message || 'Login failed. Please check your credentials.');

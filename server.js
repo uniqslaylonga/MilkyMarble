@@ -279,7 +279,7 @@ app.post('/api/admin/password-tickets/:id/resolve', async (req, res) => {
 
     const { data: updatedRows, error: updErr } = await supabase
       .from('users')
-      .update({ password_hash: newHash })
+      .update({ password_hash: newHash, must_change_password: true })
       .eq('id', ticket.user_id)
       .eq('user_type', 'employee')
       .select('id');
@@ -316,6 +316,85 @@ app.post('/api/admin/password-tickets/:id/resolve', async (req, res) => {
   } catch (err) {
     console.error('[password-ticket] resolve failed:', err.message);
     return res.status(500).json({ status: 'error', message: 'Could not reset the password.' });
+  }
+});
+
+// LOGGED-IN STAFF: replace a temporary password with one of their own.
+// Not behind requireStaff on purpose - a temporary-password session is
+// blocked there, and this is the one call it must be able to make.
+app.post('/api/staff/change-password', async (req, res) => {
+  try {
+    if (!supabase) return res.status(503).json({ status: 'error', message: 'Database service unavailable.' });
+    if (!bcrypt) return res.status(500).json({ status: 'error', message: 'Password hashing is not available on the server.' });
+
+    const session = readToken(req.cookies && req.cookies[COOKIE_NAME]);
+    if (!session) return res.status(401).json({ status: 'error', message: 'Authentication required. Please log in.' });
+
+    const currentPassword = String((req.body && req.body.current_password) || '');
+    const newPassword = String((req.body && req.body.new_password) || '');
+    const confirmPassword = String((req.body && req.body.confirm_password) || '');
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ status: 'error', message: 'Please fill in all password fields.' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ status: 'error', message: 'Your new password must be at least 8 characters.' });
+    }
+    if (confirmPassword && confirmPassword !== newPassword) {
+      return res.status(400).json({ status: 'error', message: 'The new passwords do not match.' });
+    }
+    if (newPassword === currentPassword) {
+      return res.status(400).json({ status: 'error', message: 'Your new password must be different from the temporary one.' });
+    }
+
+    const { data: account, error: lookupErr } = await supabase
+      .from('users')
+      .select('id, username, full_name, user_type, password_hash, is_active')
+      .eq('id', session.id)
+      .maybeSingle();
+    if (lookupErr) throw lookupErr;
+    if (!account || !account.is_active) {
+      return res.status(403).json({ status: 'error', message: 'This account is not available.' });
+    }
+
+    let currentOk = false;
+    try {
+      const normalized = String(account.password_hash || '').replace(/^\$2y\$/, '$2a$').replace(/^\$2b\$/, '$2a$');
+      currentOk = await bcrypt.compare(currentPassword, normalized);
+    } catch (e) {
+      currentOk = false;
+    }
+    if (!currentOk) {
+      return res.status(400).json({ status: 'error', message: 'Your current (temporary) password is incorrect.' });
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    const { error: updErr } = await supabase
+      .from('users')
+      .update({ password_hash: newHash, must_change_password: false })
+      .eq('id', account.id);
+    if (updErr) throw updErr;
+
+    // Fresh cookie without the "must change password" flag.
+    setStaffCookie(res, { id: session.id, type: session.type, roles: session.roles || [] });
+
+    logActivity(supabase, {
+      req,
+      actorId: account.id,
+      actorType: account.user_type,
+      actorName: account.full_name,
+      action: 'auth.password_changed',
+      category: 'auth',
+      description: `${account.full_name || account.username} replaced their temporary password with a new one`,
+      targetType: 'user',
+      targetId: account.id
+    });
+
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({ status: 'success', message: 'Password updated.' });
+  } catch (err) {
+    console.error('[change-password] failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Could not update your password. Please try again.' });
   }
 });
 
@@ -394,6 +473,12 @@ app.use((req, res, next) => {
   if (!session || !allowed.includes(session.type)) {
     res.setHeader('Cache-Control', 'private, no-store');
     return res.redirect(302, loginUrl);
+  }
+  // Still on a temporary password: the only page they may open is the
+  // change-password page.
+  if (session.mcp && p !== '/employee/changepassword.html') {
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.redirect(302, '/employee/changePassword.html');
   }
   next();
 });

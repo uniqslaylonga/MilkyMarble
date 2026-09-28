@@ -23,8 +23,11 @@ if (!SECRET) {
 const b64 = (s) => Buffer.from(s).toString('base64url');
 const sign = (payload) => crypto.createHmac('sha256', SECRET).update(payload).digest('base64url');
 
-function createToken({ id, type, roles }) {
-  const payload = b64(JSON.stringify({ id, type, roles: roles || [], exp: Date.now() + MAX_AGE_MS }));
+function createToken({ id, type, roles, mustChangePassword }) {
+  const data = { id, type, roles: roles || [], exp: Date.now() + MAX_AGE_MS };
+  // Set while the account still uses an admin-issued temporary password.
+  if (mustChangePassword) data.mcp = true;
+  const payload = b64(JSON.stringify(data));
   return `${payload}.${sign(payload)}`;
 }
 
@@ -44,8 +47,8 @@ function readToken(token) {
   }
 }
 
-function setStaffCookie(res, { id, type, roles }) {
-  res.cookie(COOKIE_NAME, createToken({ id, type, roles }), {
+function setStaffCookie(res, { id, type, roles, mustChangePassword }) {
+  res.cookie(COOKIE_NAME, createToken({ id, type, roles, mustChangePassword }), {
     httpOnly: true,
     sameSite: 'lax',
     secure: !!process.env.VERCEL || process.env.NODE_ENV === 'production',
@@ -68,6 +71,15 @@ function requireStaff(...allowedTypes) {
     }
     if (allowedTypes.length && !allowedTypes.includes(session.type)) {
       return res.status(403).json({ status: 'error', message: 'You do not have access to this section.' });
+    }
+    // Temporary-password accounts can't use any staff API until they choose
+    // their own password (POST /api/staff/change-password is not behind this).
+    if (session.mcp) {
+      return res.status(403).json({
+        status: 'error',
+        code: 'PASSWORD_CHANGE_REQUIRED',
+        message: 'You must change your temporary password before continuing.'
+      });
     }
     req.staff = session;
     // Existing routes read "who is this" from x-user-id. Overwrite whatever the

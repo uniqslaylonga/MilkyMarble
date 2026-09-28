@@ -111,7 +111,7 @@ async function resolveTicket(ticket) {
             html: `
                 <p style="font-size:13.5px;color:#7C4F38;margin:0;">
                     Give this to <b>${ticketEsc(data.full_name || data.username)}</b> in person.
-                    It is shown only once.
+                    It is shown only once. They will be asked to choose their own password right after they log in with it.
                 </p>
                 <div class="temp-pw-box">${ticketEsc(data.temp_password)}</div>
             `,
