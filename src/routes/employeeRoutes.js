@@ -1704,7 +1704,11 @@ router.get('/finance-officer/revenue', async (req, res) => {
     while (tuesdayTotals.length < 4) tuesdayTotals.unshift(0);
     while (thursdayTotals.length < 4) thursdayTotals.unshift(0);
 
-    const { data: expenseRows } = await supabase.from('expenses').select('amount, status, expense_date, category');
+    let { data: expenseRows, error: expErr } = await supabase.from('expenses').select('amount, status, expense_date, category');
+    if (expErr && expErr.code === '42703') {
+      // category column not migrated yet: keep totals working, COGS stays 0
+      ({ data: expenseRows } = await supabase.from('expenses').select('amount, status, expense_date'));
+    }
     const totalExpenses = (expenseRows || [])
       .filter(e => ['APPROVED', 'PURCHASED'].includes(e.status))
       .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);

@@ -2652,10 +2652,20 @@ function ceoAggregateSales(orders) {
 // Net margin, computed the same way the Finance Officer revenue page does it.
 // null when there is no COGS on record (so we never show an invented margin).
 async function ceoComputeMargin(totalRevenue) {
-  const expenses = await ceoFetchAll(() => supabase
-    .from('expenses')
-    .select('amount, status, category')
-    .order('id', { ascending: true }));
+  let expenses;
+  try {
+    expenses = await ceoFetchAll(() => supabase
+      .from('expenses')
+      .select('amount, status, category')
+      .order('id', { ascending: true }));
+  } catch (e) {
+    // expenses.category not migrated yet (Postgres 42703): no COGS can be identified, so margin stays null.
+    if (e && e.code === '42703') {
+      console.warn('[ceo] expenses.category column is missing; run the migration to enable net margin.');
+      return null;
+    }
+    throw e;
+  }
   const cogs = expenses
     .filter(e => e.category === 'cogs' && ['APPROVED', 'PURCHASED'].includes(e.status))
     .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
