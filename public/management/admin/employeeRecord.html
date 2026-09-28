@@ -79,7 +79,7 @@
             <!-- TOPBAR -->
             <header class="topbar">
                 <div class="search-box">
-                    <input type="text" id="employeeSearchInput" placeholder="Search employee code, name, job title, or department...">
+                    <input type="text" id="employeeSearchInput" placeholder="Search employee code, name, job title, or email...">
                     <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                         <circle cx="11" cy="11" r="7" />
                         <path d="M21 21l-4.35-4.35" />
@@ -171,7 +171,7 @@
                             <thead>
                                 <tr>
                                     <th>Personal Profile</th>
-                                    <th>Job Title &amp; Department</th>
+                                    <th>Job Title</th>
                                     <th>Role Access</th>
                                     <th>Account Status</th>
                                     <th style="text-align: right;">Action</th>
@@ -294,7 +294,6 @@
                             <div class="view-mode-only">
                                 <div class="modal-details-grid">
                                     <div class="detail-box"><span class="detail-label">Job Title</span><strong class="detail-val" id="mJobTitle">-</strong></div>
-                                    <div class="detail-box"><span class="detail-label">Department</span><strong class="detail-val" id="mDepartment">-</strong></div>
                                     <div class="detail-box"><span class="detail-label">Account Created</span><strong class="detail-val" id="mDateCreated">-</strong></div>
                                     <div class="detail-box"><span class="detail-label">Current Status</span><strong class="detail-val" id="mEmpStatus">-</strong></div>
                                 </div>
@@ -307,8 +306,11 @@
                                         <input type="text" name="job_title" id="inputJobTitle" placeholder="e.g. Sales Officer">
                                     </div>
                                     <div class="form-group">
-                                        <label>Department</label>
-                                        <input type="text" name="department" id="inputDepartment" placeholder="e.g. Operations">
+                                        <label>Account Status</label>
+                                        <select name="is_active" id="inputStatus">
+                                            <option value="1">Active</option>
+                                            <option value="0">Inactive</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -428,10 +430,6 @@
                                 <select name="role_id" id="addRoleSelect" required>
                                     <option value="">Loading roles...</option>
                                 </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Department</label>
-                                <input type="text" name="department" placeholder="e.g. Operations / Finance / Logistics">
                             </div>
                         </div>
                     </div>

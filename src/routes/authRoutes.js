@@ -463,17 +463,22 @@ router.post('/employee-login', async (req, res) => {
       targetId: account.id
     });
 
+    // The assigned role (user_roles) decides the dashboard. The old seeded
+    // usernames are only a fallback for accounts that have no role at all;
+    // otherwise changing an employee's role in Employee Records would be
+    // ignored for those accounts.
+    const hasRole = roleNames.length > 0;
     let targetUrl = 'login.html';
-    if (roleNames.includes('Sales Officer') || cleanUsername === 'salesofficer1') {
+    if (roleNames.includes('Sales Officer') || (!hasRole && cleanUsername === 'salesofficer1')) {
       targetUrl = 'salesOfficer/dashboard.html';
-    } else if (roleNames.includes('Finance Officer') || cleanUsername === 'financeofficer1') {
+    } else if (roleNames.includes('Finance Officer') || (!hasRole && cleanUsername === 'financeofficer1')) {
       targetUrl = 'financeOfficer/dashboard.html';
-    } else if (roleNames.includes('Production Supervisor') || cleanUsername === 'productionofficer1') {
+    } else if (roleNames.includes('Production Supervisor') || (!hasRole && cleanUsername === 'productionofficer1')) {
       targetUrl = 'productionSupervisor/dashboard.html';
-    } else if (roleNames.includes('Procurement & Inventory') || cleanUsername === 'inventoryofficer1') {
+    } else if (roleNames.includes('Procurement & Inventory') || (!hasRole && cleanUsername === 'inventoryofficer1')) {
       targetUrl = 'inventoryOfficer/dashboard.html';
     } else if (account.user_type === 'admin' || account.user_type === 'ceo') {
-      // No dedicated admin/CEO dashboard exists yet — reuse the finance
+      // No dedicated admin/CEO dashboard exists yet - reuse the finance
       // dashboard for now since it's the closest thing to a company-wide
       // overview (revenue, budget, expenses) among the existing pages.
       targetUrl = 'financeOfficer/dashboard.html';

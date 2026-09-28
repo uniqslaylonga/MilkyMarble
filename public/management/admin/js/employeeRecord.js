@@ -104,9 +104,8 @@ function applyEmployeeFilters() {
             const name = (emp.full_name || '').toLowerCase();
             const code = (emp.employee_code || '').toLowerCase();
             const pos = (emp.position || emp.job_title || '').toLowerCase();
-            const dept = (emp.department || '').toLowerCase();
             const email = (emp.email || '').toLowerCase();
-            if (!name.includes(q) && !code.includes(q) && !pos.includes(q) && !dept.includes(q) && !email.includes(q)) {
+            if (!name.includes(q) && !code.includes(q) && !pos.includes(q) && !email.includes(q)) {
                 return false;
             }
         }
@@ -171,7 +170,6 @@ function renderEmployeeTable() {
                 </td>
                 <td>
                     <div class="role-text">${escapeHtml(emp.position || emp.job_title || 'Unassigned')}</div>
-                    <div class="dept-sub">${escapeHtml(emp.department || 'Operations')}</div>
                 </td>
                 <td>
                     <span class="role-pill-badge">${escapeHtml(roleName)}</span>
@@ -378,7 +376,6 @@ function openEmployeeModalByData(empId) {
     document.getElementById('mFullName').textContent = empData.full_name || '';
     document.getElementById('mGender').textContent = empData.gender || 'Male';
     document.getElementById('mJobTitle').textContent = empData.position || empData.job_title || 'Unassigned';
-    document.getElementById('mDepartment').textContent = empData.department || 'Operations';
     document.getElementById('mDateCreated').textContent = empData.created_at ? new Date(empData.created_at).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -395,7 +392,7 @@ function openEmployeeModalByData(empId) {
     document.getElementById('inputFullName').value = empData.full_name || '';
     document.getElementById('inputGender').value = empData.gender || 'Male';
     populateRoleSelect(document.getElementById('inputJobTitle'), empData.role_id);
-    document.getElementById('inputDepartment').value = empData.department || '';
+    document.getElementById('inputStatus').value = parseInt(empData.is_active || 0, 10) === 1 ? '1' : '0';
     document.getElementById('inputUsername').value = empData.username || '';
     document.getElementById('inputEmail').value = empData.email || '';
 

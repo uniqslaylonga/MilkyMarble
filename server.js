@@ -2811,7 +2811,7 @@ app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
   try {
     if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
 
-    const { username, email, password, full_name, gender, role_id, department } = req.body;
+    const { username, email, password, full_name, gender, role_id } = req.body;
 
     if (!username || !email || !password || !full_name || !role_id) {
       return res.status(400).json({ status: 'error', message: 'Missing required fields.' });
@@ -2883,7 +2883,7 @@ app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
         user_id: newUser.id,
         employee_code: employeeCode,
         job_title: selectedRole.name,
-        department: department || 'General',
+        department: 'General', // column kept in the DB, no longer shown or edited
         gender: gender || 'Not Specified'
       }])
       .select()
@@ -2909,7 +2909,7 @@ app.post('/api/admin/add-employee', employeeAvatarUpload, async (req, res) => {
       targetType: 'employee',
       targetId: newUser.id,
       targetLabel: full_name,
-      metadata: { role: selectedRole.name, department: department || 'General', username: cleanUsername }
+      metadata: { role: selectedRole.name, username: cleanUsername }
     });
 
     return res.json({
@@ -2983,7 +2983,7 @@ app.post('/api/admin/edit-employee', employeeAvatarUpload, async (req, res) => {
   try {
     if (!supabase) return res.status(500).json({ status: 'error', message: 'Database disconnected.' });
 
-    const { emp_id, user_id, full_name, gender, department, username, email, role_id } = req.body;
+    const { emp_id, user_id, full_name, gender, username, email, role_id, is_active } = req.body;
 
     if (!user_id) {
       return res.status(400).json({ status: 'error', message: 'Missing user_id.' });
@@ -3044,6 +3044,7 @@ app.post('/api/admin/edit-employee', employeeAvatarUpload, async (req, res) => {
     if (full_name) userUpdates.full_name = full_name;
     if (username) userUpdates.username = username;
     if (email) userUpdates.email = email;
+    if (is_active !== undefined && is_active !== '') userUpdates.is_active = (String(is_active) === '1' || String(is_active) === 'true');
     if (req.file) userUpdates.avatar = await uploadAvatarToSupabase(req.file.buffer, req.file.originalname, req.file.mimetype);
 
     if (Object.keys(userUpdates).length > 0) {
@@ -3061,7 +3062,6 @@ app.post('/api/admin/edit-employee', employeeAvatarUpload, async (req, res) => {
     // never drift out of sync.
     const empUpdates = {};
     if (selectedRole) empUpdates.job_title = selectedRole.name;
-    if (department !== undefined) empUpdates.department = department;
     if (gender !== undefined) empUpdates.gender = gender;
 
     if (Object.keys(empUpdates).length > 0) {
@@ -3109,22 +3109,19 @@ app.post('/api/admin/edit-employee', employeeAvatarUpload, async (req, res) => {
     // effect for login routing and permissions, not just the label shown
     // in the admin table.
     if (selectedRole) {
-      const { data: existingUserRole, error: userRoleLookupErr } = await supabase
+      // An employee has exactly one role. Update every existing user_roles
+      // row for this user (this also self-heals accounts that ended up with
+      // duplicate rows, which used to make this whole save fail), and only
+      // insert when there is none yet.
+      const { data: updatedRoleRows, error: roleUpdateErr } = await supabase
         .from('user_roles')
-        .select('id')
+        .update({ role_id: selectedRole.id })
         .eq('user_id', user_id)
-        .maybeSingle();
+        .select('user_id');
 
-      if (userRoleLookupErr) throw userRoleLookupErr;
+      if (roleUpdateErr) throw roleUpdateErr;
 
-      if (existingUserRole) {
-        const { error: roleUpdateErr } = await supabase
-          .from('user_roles')
-          .update({ role_id: selectedRole.id })
-          .eq('id', existingUserRole.id);
-
-        if (roleUpdateErr) throw roleUpdateErr;
-      } else {
+      if (!updatedRoleRows || updatedRoleRows.length === 0) {
         const { error: roleInsertErr } = await supabase
           .from('user_roles')
           .insert([{ user_id: user_id, role_id: selectedRole.id }]);
