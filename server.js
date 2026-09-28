@@ -1910,7 +1910,7 @@ app.get('/api/admin/dashboard', async (req, res) => {
       if (userRows.full_name) userFullName = userRows.full_name;
       if (userRows.avatar && !userRows.avatar.includes('account.png')) {
         const cleanAvatar = userRows.avatar.replace(/^\/PHP/, '');
-        userAvatar = cleanAvatar.startsWith('/') ? cleanAvatar : '/' + cleanAvatar;
+        userAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
       }
     }
 
@@ -1992,7 +1992,7 @@ app.get('/api/admin/customer-records', async (req, res) => {
           if (cleanAvatar.startsWith('http') || cleanAvatar.startsWith('data:')) {
              userAvatar = cleanAvatar;
           } else {
-             userAvatar = cleanAvatar.startsWith('/') ? cleanAvatar : '/' + cleanAvatar;
+             userAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
           }
         }
       }
@@ -2031,7 +2031,7 @@ app.get('/api/admin/customer-records', async (req, res) => {
         if (cleanAvatar.startsWith('http') || cleanAvatar.startsWith('data:')) {
           custAvatar = cleanAvatar;
         } else {
-          custAvatar = cleanAvatar.startsWith('/') ? cleanAvatar : '/' + cleanAvatar;
+          custAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
         }
       }
 
@@ -2088,7 +2088,7 @@ app.get('/api/admin/production-planning', async (req, res) => {
           if (cleanAvatar.startsWith('http') || cleanAvatar.startsWith('data:')) {
             userAvatar = cleanAvatar;
           } else {
-            userAvatar = cleanAvatar.startsWith('/') ? cleanAvatar : '/' + cleanAvatar;
+            userAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
           }
         }
       }
@@ -2203,7 +2203,7 @@ app.get('/api/admin/employee-records', async (req, res) => {
           if (cleanAvatar.startsWith('http') || cleanAvatar.startsWith('data:')) {
             userAvatar = cleanAvatar;
           } else {
-            userAvatar = cleanAvatar.startsWith('/') ? cleanAvatar : '/' + cleanAvatar;
+            userAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
           }
         }
       }
@@ -2241,7 +2241,7 @@ app.get('/api/admin/employee-records', async (req, res) => {
         if (cleanAvatar.startsWith('http') || cleanAvatar.startsWith('data:')) {
           empAvatar = cleanAvatar;
         } else {
-          empAvatar = cleanAvatar.startsWith('/') ? cleanAvatar : '/' + cleanAvatar;
+          empAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
         }
       }
 
@@ -2378,7 +2378,7 @@ app.get('/api/admin/activity-logs', async (req, res) => {
       if (!rawAvatar || rawAvatar.includes('account.png')) return null;
       const cleanAvatar = rawAvatar.replace(/^\/PHP/, '');
       if (cleanAvatar.startsWith('http') || cleanAvatar.startsWith('data:')) return cleanAvatar;
-      return cleanAvatar.startsWith('/') ? cleanAvatar : '/' + cleanAvatar;
+      return /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
     };
 
     const formatted = (logs || []).map(l => {
@@ -2439,7 +2439,7 @@ app.get('/api/ceo/analytics', async (req, res) => {
       if (userRows.full_name) userFullName = userRows.full_name;
       if (userRows.avatar && !userRows.avatar.includes('account.png')) {
         const cleanAvatar = userRows.avatar.replace(/^\/PHP/, '');
-        userAvatar = cleanAvatar.startsWith('/') ? cleanAvatar : '/' + cleanAvatar;
+        userAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
       }
     }
 
@@ -2551,7 +2551,7 @@ app.get('/api/ceo/budget-approval', async (req, res) => {
       if (userRows.full_name) userFullName = userRows.full_name;
       if (userRows.avatar && !userRows.avatar.includes('account.png')) {
         const cleanAvatar = userRows.avatar.replace(/^\/PHP/, '');
-        userAvatar = cleanAvatar.startsWith('/') ? cleanAvatar : '/' + cleanAvatar;
+        userAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
       }
     }
 
@@ -2661,7 +2661,7 @@ app.get('/api/ceo/staff-directory', async (req, res) => {
       if (userRows.full_name) userFullName = userRows.full_name;
       if (userRows.avatar && !userRows.avatar.includes('account.png')) {
         const cleanAvatar = userRows.avatar.replace(/^\/PHP/, '');
-        userAvatar = cleanAvatar.startsWith('/') ? cleanAvatar : '/' + cleanAvatar;
+        userAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
       }
     }
 
@@ -2692,7 +2692,7 @@ app.get('/api/ceo/staff-directory', async (req, res) => {
       let empAvatar = '../images/account.png';
       if (row.avatar && !row.avatar.includes('account.png')) {
         const cleanAvatar = row.avatar.replace(/^\/PHP/, '');
-        empAvatar = cleanAvatar.startsWith('/') ? cleanAvatar : '/' + cleanAvatar;
+        empAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
         if (empAvatar.startsWith('/images/')) {
           empAvatar = '..' + empAvatar; // Format relative path for CEO subfolder
         }
@@ -3189,7 +3189,7 @@ app.get('/api/ceo/dashboard', async (req, res) => {
       if (userRows.full_name) userFullName = userRows.full_name;
       if (userRows.avatar && !userRows.avatar.includes('account.png')) {
         const cleanAvatar = userRows.avatar.replace(/^\/PHP/, '');
-        userAvatar = cleanAvatar.startsWith('/') ? cleanAvatar : '/' + cleanAvatar;
+        userAvatar = /^(https?:|data:|\/)/i.test(cleanAvatar) ? cleanAvatar : '/' + cleanAvatar;
       }
     }
 
