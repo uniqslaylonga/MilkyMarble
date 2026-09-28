@@ -162,6 +162,183 @@ app.use(
 );
 
 // ==========================================
+// EMPLOYEE PASSWORD TICKETS
+// An employee who forgot their password submits a ticket from the employee
+// login page. An admin sees it in Employee Records, verifies the person, and
+// issues a new temporary password. Table: sql/password_reset_tickets.sql
+// ==========================================
+const TICKET_PW_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'; // no look-alikes (0/O, 1/l/I)
+function generateTempPassword(length = 10) {
+  const crypto = require('crypto');
+  let out = '';
+  for (let i = 0; i < length; i++) out += TICKET_PW_ALPHABET[crypto.randomInt(TICKET_PW_ALPHABET.length)];
+  return out;
+}
+
+// PUBLIC (employee is logged out): submit a ticket.
+app.post('/api/staff/password-ticket', async (req, res) => {
+  try {
+    if (!supabase) return res.status(503).json({ status: 'error', message: 'Database service unavailable.' });
+
+    const username = String((req.body && req.body.username) || '').trim();
+    const note = String((req.body && req.body.note) || '').trim().slice(0, 300);
+    if (!username) {
+      return res.status(400).json({ status: 'error', message: 'Please enter your username.' });
+    }
+
+    const { data: account, error: lookupErr } = await supabase
+      .from('users')
+      .select('id, username, full_name, is_active')
+      .eq('username', username)
+      .eq('user_type', 'employee')
+      .maybeSingle();
+    if (lookupErr) throw lookupErr;
+
+    if (!account) {
+      return res.status(404).json({ status: 'error', message: 'We could not find an employee account with that username.' });
+    }
+    if (!account.is_active) {
+      return res.status(403).json({ status: 'error', message: 'This account has been deactivated. Contact an administrator.' });
+    }
+
+    // One open ticket per employee, so the admin's list can't be spammed.
+    const { data: existing, error: existingErr } = await supabase
+      .from('password_reset_tickets')
+      .select('id')
+      .eq('user_id', String(account.id))
+      .eq('status', 'open')
+      .limit(1);
+    if (existingErr) throw existingErr;
+    if (existing && existing.length > 0) {
+      return res.json({ status: 'success', already_pending: true, message: 'You already have a pending request. Please let your admin know.' });
+    }
+
+    const { error: insertErr } = await supabase.from('password_reset_tickets').insert({
+      user_id: String(account.id),
+      username: account.username,
+      full_name: account.full_name || null,
+      note: note || null
+    });
+    if (insertErr) throw insertErr;
+
+    logActivity(supabase, {
+      req,
+      actorId: account.id,
+      actorType: 'employee',
+      actorName: account.full_name,
+      action: 'employee.password_ticket_created',
+      category: 'employee',
+      description: `Password reset ticket submitted by "${account.full_name || account.username}"`,
+      targetType: 'employee',
+      targetId: account.id,
+      targetLabel: account.full_name || account.username
+    });
+
+    return res.json({ status: 'success', message: 'Your request was sent. Your admin will give you a new password.' });
+  } catch (err) {
+    console.error('[password-ticket] create failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Could not send your request. Please try again.' });
+  }
+});
+
+// ADMIN / CEO: list open tickets (already behind requireStaff('admin','ceo') via /api/admin).
+app.get('/api/admin/password-tickets', async (req, res) => {
+  try {
+    if (!supabase) return res.status(503).json({ status: 'error', message: 'Database disconnected.' });
+    const { data, error } = await supabase
+      .from('password_reset_tickets')
+      .select('id, user_id, username, full_name, note, status, created_at')
+      .eq('status', 'open')
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.json({ status: 'success', tickets: data || [] });
+  } catch (err) {
+    console.error('[password-ticket] list failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Could not load password requests.' });
+  }
+});
+
+// ADMIN / CEO: issue a new temporary password and close the ticket.
+app.post('/api/admin/password-tickets/:id/resolve', async (req, res) => {
+  try {
+    if (!supabase) return res.status(503).json({ status: 'error', message: 'Database disconnected.' });
+    if (!bcrypt) return res.status(500).json({ status: 'error', message: 'Password hashing is not available on the server.' });
+
+    const { data: ticket, error: ticketErr } = await supabase
+      .from('password_reset_tickets')
+      .select('id, user_id, username, full_name, status')
+      .eq('id', req.params.id)
+      .maybeSingle();
+    if (ticketErr) throw ticketErr;
+    if (!ticket) return res.status(404).json({ status: 'error', message: 'Ticket not found.' });
+    if (ticket.status !== 'open') return res.status(409).json({ status: 'error', message: 'This ticket was already handled.' });
+
+    const tempPassword = generateTempPassword(10);
+    const newHash = await bcrypt.hash(tempPassword, 10);
+
+    const { data: updatedRows, error: updErr } = await supabase
+      .from('users')
+      .update({ password_hash: newHash })
+      .eq('id', ticket.user_id)
+      .eq('user_type', 'employee')
+      .select('id');
+    if (updErr) throw updErr;
+    if (!updatedRows || updatedRows.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'That employee account no longer exists.' });
+    }
+
+    const { error: closeErr } = await supabase
+      .from('password_reset_tickets')
+      .update({ status: 'resolved', resolved_at: new Date().toISOString(), resolved_by: String(req.staff.id) })
+      .eq('id', ticket.id)
+      .eq('status', 'open');
+    if (closeErr) console.error('[password-ticket] password changed but ticket not closed:', closeErr.message);
+
+    // The password itself is never written to the activity log.
+    logActivity(supabase, {
+      req,
+      action: 'employee.password_reset',
+      category: 'employee',
+      description: `Issued a new temporary password to "${ticket.full_name || ticket.username}" (ticket #${ticket.id})`,
+      targetType: 'employee',
+      targetId: ticket.user_id,
+      targetLabel: ticket.full_name || ticket.username
+    });
+
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({
+      status: 'success',
+      temp_password: tempPassword,
+      username: ticket.username,
+      full_name: ticket.full_name
+    });
+  } catch (err) {
+    console.error('[password-ticket] resolve failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Could not reset the password.' });
+  }
+});
+
+// ADMIN / CEO: close a ticket without changing anything (e.g. employee remembered it).
+app.post('/api/admin/password-tickets/:id/dismiss', async (req, res) => {
+  try {
+    if (!supabase) return res.status(503).json({ status: 'error', message: 'Database disconnected.' });
+    const { data, error } = await supabase
+      .from('password_reset_tickets')
+      .update({ status: 'dismissed', resolved_at: new Date().toISOString(), resolved_by: String(req.staff.id) })
+      .eq('id', req.params.id)
+      .eq('status', 'open')
+      .select('id');
+    if (error) throw error;
+    if (!data || data.length === 0) return res.status(409).json({ status: 'error', message: 'This ticket was already handled.' });
+    return res.json({ status: 'success' });
+  } catch (err) {
+    console.error('[password-ticket] dismiss failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Could not dismiss the ticket.' });
+  }
+});
+
+// ==========================================
 // 1. STATIC FILE SERVING & ROUTE ALIASES
 // ==========================================
 // Cache-Control tuned per asset type. This is what lets Vercel's Edge

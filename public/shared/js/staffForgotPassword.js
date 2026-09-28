@@ -16,9 +16,15 @@
         const forgotPasswordLink = document.getElementById('forgotPasswordLink');
         if (!forgotPasswordLink) return;
 
+        // Employee portal: forgotten passwords go through an admin ticket.
+        // Management login (admin/CEO) keeps the email security-code flow,
+        // since there is no higher admin to send their ticket to.
+        const isEmployeePortal = /\/employee\/login/i.test(window.location.pathname);
+
         forgotPasswordLink.addEventListener('click', (e) => {
             e.preventDefault();
-            openForgotPasswordFlow();
+            if (isEmployeePortal) openTicketFlow();
+            else openForgotPasswordFlow();
         });
     });
 
@@ -39,6 +45,61 @@
             buttonsStyling: false,
             ...options
         });
+    }
+
+    async function openTicketFlow() {
+        const typedUsername = (document.getElementById('username') || {}).value || '';
+        const { value: form, isConfirmed } = await showSweetAlert({
+            title: 'Forgot Password?',
+            html: `
+        <p style="font-size:13.5px;color:#7C4F38;margin:0 0 14px;text-align:left;">
+          Send a request to your admin. They will verify it's you and give you a new password.
+        </p>
+        <input type="text" id="tkUsername" class="swal2-input" placeholder="Your username" style="margin:0 0 10px;">
+        <textarea id="tkNote" class="swal2-textarea" placeholder="Note for the admin (optional)" maxlength="300" style="margin:0;"></textarea>
+      `,
+            showCancelButton: true,
+            confirmButtonText: 'Send Request',
+            cancelButtonText: 'Cancel',
+            focusConfirm: false,
+            didOpen: () => { document.getElementById('tkUsername').value = typedUsername.trim(); },
+            preConfirm: () => {
+                const username = document.getElementById('tkUsername').value.trim();
+                const note = document.getElementById('tkNote').value.trim();
+                if (!username) {
+                    Swal.showValidationMessage('Please enter your username.');
+                    return false;
+                }
+                return { username, note };
+            }
+        });
+
+        if (!isConfirmed || !form) return;
+
+        try {
+            const res = await fetch('/api/staff/password-ticket', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(form)
+            });
+            const data = await res.json();
+            if (!res.ok || data.status !== 'success') {
+                throw new Error(data.message || 'Could not send your request.');
+            }
+            showSweetAlert({
+                title: data.already_pending ? 'Already Requested' : 'Request Sent!',
+                text: data.message,
+                icon: 'success',
+                confirmButtonText: 'OK'
+            });
+        } catch (err) {
+            showSweetAlert({
+                title: 'Could Not Send Request',
+                text: err.message,
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+        }
     }
 
     async function openForgotPasswordFlow() {

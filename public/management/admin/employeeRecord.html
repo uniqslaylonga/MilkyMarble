@@ -104,6 +104,11 @@
                         <h2 class="section-title">Workforce Summary</h2>
                         <p class="section-sub-text">Overview of registered employee credentials, roles, and duty status.</p>
                     </div>
+                    <div class="section-head-actions">
+                    <button type="button" class="action-btn-secondary" id="pwTicketsBtn" onclick="openTicketsModal()">
+                        <span>Password Requests</span>
+                        <span class="ticket-count-badge" id="pwTicketsBadge" hidden>0</span>
+                    </button>
                     <button class="action-btn-primary" onclick="openAddModal()">
                         <svg class="btn-action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -111,6 +116,7 @@
                         </svg>
                         <span>Add New Employee</span>
                     </button>
+                    </div>
                 </div>
 
                 <div class="overview-grid">
@@ -342,6 +348,28 @@
             </div>
         </div>
 
+        <!-- MODAL 3: PASSWORD REQUESTS (TICKETS) -->
+        <div class="modal-overlay" id="ticketsModalOverlay">
+            <div class="profile-modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <div class="modal-header-left">
+                        <h3 class="modal-title">Password Requests</h3>
+                        <span class="modal-id-badge">Forgot Password Tickets</span>
+                    </div>
+                    <button class="modal-close" onclick="closeTicketsModal()">
+                        <svg class="close-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="ticket-help">Confirm the employee's identity in person before issuing a new password.</p>
+                    <div id="ticketsList" class="tickets-list"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- MODAL 2: ADD NEW EMPLOYEE MODAL -->
         <div class="modal-overlay" id="addEmployeeModalOverlay">
             <div class="profile-modal" onclick="event.stopPropagation()">
@@ -425,6 +453,7 @@
     </div>
 
     <script src="js/employeeRecord.js"></script>
+    <script src="js/passwordTickets.js"></script>
     <script src="/shared/js/avatarUpload.js"></script>
     <script src="/shared/js/staffLogout.js"></script>
 </body>
