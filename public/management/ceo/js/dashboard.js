@@ -407,9 +407,169 @@ function initRevenueChart() {
 
 // --------------------------------------------------------------------------
 // THE SINGLE OFFICIAL EXECUTIVE PDF EXPORT
+// Fills the hidden "Executive Command Center Summary" template with the
+// dashboard's live KPIs, revenue trend, pending approvals and roster, then
+// renders it to a downloadable PDF (same html2pdf engine used across the
+// other officer report pages) instead of printing the raw dashboard page.
 // --------------------------------------------------------------------------
-function exportExecutivePDF() {
-    window.print();
+async function exportExecutivePDF() {
+    const wrapper = document.getElementById('corporatePdfRenderWrapper');
+    if (!wrapper) {
+        window.print();
+        return;
+    }
+
+    const todayStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const setText = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    };
+
+    setText('pdfMetaDate', `Date: ${todayStr}`);
+
+    const fullName = document.getElementById('userFullNameDisplay')?.textContent?.trim() || 'Gabriel Louis M. Espadilla';
+    setText('pdfMetaOfficer', 'CEO');
+    setText('pdfSignOfficer', fullName);
+
+    // 1. Macro KPI Summary
+    const salesText = document.getElementById('statSales')?.textContent || '₱0.00';
+    const marginText = document.getElementById('statMargin')?.textContent || '68.8%';
+    const dsoText = document.getElementById('ceoDsoValue')?.textContent || '12 Days';
+    const approvalsCount = pendingMajorApprovals.length;
+    const rosterCount = document.getElementById('statActiveRoster')?.textContent || '5';
+
+    const kpiRows = [
+        ['Total Sales (Current Cycle)', salesText, 'Gross revenue booked this cycle'],
+        ['Gross Margin', marginText, 'Target: > 60%'],
+        ['Days Sales Outstanding (DSO)', dsoText, 'Target: < 45 Days'],
+        ['On-Time Fulfillment (OTD)', '98.4%', 'Target: > 95%'],
+        ['First-Pass Yield (FPY)', '96.2%', 'Batch brewing accuracy, minimal scrap'],
+        ['Pending Major Approvals (> ₱500)', String(approvalsCount), approvalsCount > 0 ? 'Awaiting CEO sign-off' : 'Queue clear'],
+        ['Active Duty Workforce', String(rosterCount), 'Currently on shift']
+    ];
+
+    const kpiBody = document.getElementById('pdfKpiTableBody');
+    if (kpiBody) {
+        kpiBody.innerHTML = kpiRows.map(([metric, value, notes]) => `
+            <tr>
+                <td>${escapeHtml(metric)}</td>
+                <td><strong>${escapeHtml(value)}</strong></td>
+                <td>${escapeHtml(notes)}</td>
+            </tr>
+        `).join('');
+    }
+
+    // 2. Revenue Trajectory Summary (last 3 months of data on hand)
+    const revenueBody = document.getElementById('pdfRevenueTableBody');
+    if (revenueBody) {
+        const months = chartData.monthsLabels || [];
+        const lastCount = Math.min(3, months.length);
+        const startIdx = Math.max(0, months.length - lastCount);
+        const rows = [];
+
+        for (let i = startIdx; i < months.length; i++) {
+            const coffee = Number(chartData.monthlyCoffee[i] || 0);
+            const strawberry = Number(chartData.monthlyStrawberry[i] || 0);
+            const pandan = Number(chartData.monthlyPandan[i] || 0);
+            const total = coffee + strawberry + pandan;
+            const peso = (n) => '₱' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            rows.push(`
+                <tr>
+                    <td>${escapeHtml(months[i])}</td>
+                    <td>${peso(coffee)}</td>
+                    <td>${peso(strawberry)}</td>
+                    <td>${peso(pandan)}</td>
+                    <td><strong>${peso(total)}</strong></td>
+                </tr>
+            `);
+        }
+
+        revenueBody.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="5" class="loading-state-text">No revenue data available for this period.</td></tr>';
+    }
+
+    // 3. Major DOA Approvals Pending
+    const approvalsBody = document.getElementById('pdfApprovalsTableBody');
+    if (approvalsBody) {
+        if (pendingMajorApprovals.length === 0) {
+            approvalsBody.innerHTML = '<tr><td colspan="4" class="loading-state-text" style="color:#2E7D32;">All major procurement requests cleared. Zero escalations pending.</td></tr>';
+        } else {
+            approvalsBody.innerHTML = pendingMajorApprovals.map(item => {
+                const amount = '₱' + Number(item.amount || item.total_cost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                return `
+                    <tr>
+                        <td>${escapeHtml(item.item_name)} <div style="font-size: 10px; color: #8C7A70;">${escapeHtml(item.pr_code)}</div></td>
+                        <td>${escapeHtml(item.department)}</td>
+                        <td>${escapeHtml(item.supplier || 'Registered Vendor')}</td>
+                        <td><strong>${amount}</strong></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+
+    // 4. Active Workforce Roster
+    const rosterBody = document.getElementById('pdfRosterTableBody');
+    if (rosterBody) {
+        const rosterItems = document.querySelectorAll('#activeRosterList .roster-item-tile');
+        if (rosterItems.length === 0) {
+            rosterBody.innerHTML = '<tr><td colspan="4" class="loading-state-text">Roster data unavailable.</td></tr>';
+        } else {
+            rosterBody.innerHTML = Array.from(rosterItems).map(tile => {
+                const name = tile.querySelector('.roster-name')?.textContent?.trim() || '—';
+                const stationLine = tile.querySelector('.roster-station')?.textContent?.trim() || '';
+                const [role, station] = stationLine.split('•').map(s => (s || '').trim());
+                const status = tile.querySelector('.badge-roster-duty')?.textContent?.trim() || 'On Duty';
+
+                return `
+                    <tr>
+                        <td>${escapeHtml(name)}</td>
+                        <td>${escapeHtml(role || '—')}</td>
+                        <td>${escapeHtml(station || '—')}</td>
+                        <td>${escapeHtml(status)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+
+    MMSwal.fire({
+        title: 'Compiling Executive Summary',
+        html: 'Formatting KPIs, revenue and approvals into an official PDF summary...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            MMSwal.showLoading();
+        }
+    });
+
+    wrapper.style.display = 'block';
+
+    const opt = {
+        margin: [8, 10, 8, 10],
+        filename: `MilkyMarble_Executive_Summary_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+        await html2pdf().set(opt).from(wrapper).save();
+        wrapper.style.display = 'none';
+
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Executive Summary Generated',
+            text: 'Your CEO summary PDF has been downloaded.'
+        });
+    } catch (err) {
+        wrapper.style.display = 'none';
+        console.error('Executive PDF export failed:', err);
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Export Failed',
+            text: err.message || 'Could not compile the executive summary PDF.'
+        });
+    }
 }
 
 function escapeHtml(str) {

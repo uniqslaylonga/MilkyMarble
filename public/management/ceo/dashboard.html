@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
@@ -113,7 +114,7 @@
                                 <polyline points="7 10 12 15 17 10" />
                                 <line x1="12" y1="15" x2="12" y2="3" />
                             </svg>
-                            <span>Export Executive PDF</span>
+                            <span>Export Executive Summary</span>
                         </button>
                     </div>
                 </div>
@@ -349,6 +350,118 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- EXECUTIVE SUMMARY PDF TEMPLATE (PDF EXPORT ENGINE ONLY) -->
+    <div id="corporatePdfRenderWrapper" class="corporate-pdf-render-area" style="display: none;">
+        <div class="corp-doc-page">
+            <div class="corp-header-block">
+                <div class="corp-brand-left">
+                    <img src="/customer/images/logo.png" alt="Milky Marble" class="corp-doc-logo" />
+                    <div>
+                        <h2 class="corp-company-name">MILKY MARBLE ENTERPRISE</h2>
+                        <span class="corp-company-sub">Executive Suite &bull; DOA Governance Office</span>
+                    </div>
+                </div>
+                <div class="corp-meta-right">
+                    <div class="corp-doc-code">DOC: MM-CEO-2026</div>
+                    <div class="corp-doc-date" id="pdfMetaDate">Date: ---</div>
+                    <div class="corp-doc-period">Prepared For: <span id="pdfMetaOfficer">CEO</span></div>
+                </div>
+            </div>
+
+            <div class="corp-doc-divider"></div>
+            <h1 class="corp-doc-title">EXECUTIVE COMMAND CENTER SUMMARY</h1>
+
+            <!-- 1. Macro KPI Summary -->
+            <div class="corp-section-wrap">
+                <h3 class="corp-section-title">1. OPERATIONAL &amp; FINANCIAL HIGHLIGHTS</h3>
+                <table class="corp-data-table">
+                    <thead>
+                        <tr>
+                            <th>Key Metric</th>
+                            <th>Current Standing</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdfKpiTableBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 2. Revenue Trajectory Summary -->
+            <div class="corp-section-wrap">
+                <h3 class="corp-section-title">2. REVENUE TRAJECTORY BY PRODUCT LINE (LAST 3 MONTHS)</h3>
+                <table class="corp-data-table">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Coffee Jelly</th>
+                            <th>Strawberry Marble</th>
+                            <th>Pandan Bliss</th>
+                            <th>Monthly Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdfRevenueTableBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 3. Major DOA Approvals Pending -->
+            <div class="corp-section-wrap">
+                <h3 class="corp-section-title">3. MAJOR CAPITAL APPROVALS PENDING (&gt; &#8369;500)</h3>
+                <table class="corp-data-table">
+                    <thead>
+                        <tr>
+                            <th>Item / PR Code</th>
+                            <th>Department</th>
+                            <th>Supplier</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdfApprovalsTableBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 4. Active Workforce Roster -->
+            <div class="corp-section-wrap">
+                <h3 class="corp-section-title">4. ACTIVE DUTY WORKFORCE ROSTER</h3>
+                <table class="corp-data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Station</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdfRosterTableBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="corp-signoff-row">
+                <div class="corp-sig-box">
+                    <div class="corp-sig-line"></div>
+                    <span class="corp-sig-name" id="pdfSignOfficer">Gabriel Louis M. Espadilla</span>
+                    <span class="corp-sig-role">Chief Executive Officer</span>
+                </div>
+                <div class="corp-sig-box">
+                    <div class="corp-sig-line"></div>
+                    <span class="corp-sig-name">Board / Governance Review</span>
+                    <span class="corp-sig-role">Executive Acknowledgement</span>
+                </div>
+            </div>
+
+            <div class="corp-doc-footer-note">
+                Milky Marble Enterprise ERP System &bull; Confidential Executive Summary &bull; Generated for official governance and DOA audit purposes.
+            </div>
+        </div>
     </div>
 
     <script src="js/dashboard.js"></script>
