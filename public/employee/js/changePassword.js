@@ -7,7 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Show / hide password toggles
     document.querySelectorAll('.toggle-password').forEach(btn => {
-        btn.addEventListener('click', () => {
+        // onclick (not addEventListener) so it can never be attached twice
+        btn.onclick = () => {
             const input = document.getElementById(btn.dataset.target);
             const eyeOpen = btn.querySelector('.eye-open');
             const eyeClosed = btn.querySelector('.eye-closed');
@@ -16,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
             eyeOpen.style.display = show ? 'block' : 'none';
             eyeClosed.style.display = show ? 'none' : 'block';
             btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-        });
+        };
     });
 
     // Enter in any field submits the form
