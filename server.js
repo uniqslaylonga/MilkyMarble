@@ -3074,23 +3074,27 @@ app.get('/api/ceo/staff-directory', async (req, res) => {
     const user = await getCeoProfile(req);
 
     // 1. Fetch available departments/roles (excluding CEO)
-    const { data: rolesData } = await supabase.from('roles').select('name').neq('name', 'CEO').order('id', { ascending: true });
+    const { data: rolesData, error: rolesErr } = await supabase.from('roles').select('name').neq('name', 'CEO').order('id', { ascending: true });
+    if (rolesErr) throw rolesErr;
     const departments = (rolesData || []).map(r => r.name);
 
     // 2. Fetch staff members (Strictly employees and admins only)
-    const { data: staffData } = await supabase
+    const { data: staffData, error: staffErr } = await supabase
       .from('users')
       .select(`
         id, username, full_name, email, created_at, avatar, user_type,
         user_roles(roles(name))
       `)
       .in('user_type', ['employee', 'admin']) // This explicitly blocks customers
-      .order('id', { ascending: true });;
+      .order('id', { ascending: true });
+    if (staffErr) throw staffErr;
 
     const staffEmployees = (staffData || []).map(row => {
-      const dateObj = row.created_at ? new Date(row.created_at) : new Date();
-      const dateIso = dateObj.toISOString().split('T')[0];
-      const dateFormatted = dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+      // No created_at means unknown: never substitute today's date as a hire date.
+      const dateObj = row.created_at ? new Date(row.created_at) : null;
+      const validDate = dateObj && !isNaN(dateObj.getTime());
+      const dateIso = validDate ? dateObj.toISOString().split('T')[0] : null;
+      const dateFormatted = validDate ? dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : '—';
 
       let dept = row.user_type ? row.user_type.charAt(0).toUpperCase() + row.user_type.slice(1) : 'Staff';
       if (row.user_roles && row.user_roles.length > 0 && row.user_roles[0].roles) {
