@@ -24,7 +24,12 @@
       </div>
 
       <div class="hero-art">
-        <img src="images/drinks.png" alt="Milky Marble drinks">
+        <picture>
+          <source type="image/webp"
+            srcset="images/drinks-400.webp 400w, images/drinks-651.webp 651w, images/drinks-1100.webp 1100w"
+            sizes="(max-width: 900px) 90vw, 500px">
+          <img src="images/drinks.png" alt="Milky Marble drinks" width="1100" height="897" decoding="async">
+        </picture>
       </div>
     </div>
 
