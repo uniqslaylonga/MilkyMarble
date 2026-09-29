@@ -341,7 +341,7 @@ async function generateAiPromoProposal() {
                     : 'Discount Value * (₱ Fixed)';
             }
         }
-        if (valInput) valInput.value = p.discount_value || 10;
+        if (valInput) valInput.value = p.discount_value;
         if (minSpendInput) minSpendInput.value = p.min_spend !== null && p.min_spend !== undefined ? p.min_spend : '';
         if (usageCapInput) usageCapInput.value = p.usage_cap !== null && p.usage_cap !== undefined ? p.usage_cap : '';
         if (noteTextarea) noteTextarea.value = p.pitch_note || '';

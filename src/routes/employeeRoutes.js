@@ -1245,62 +1245,30 @@ router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
     // 1. Read weekly sales velocity
-    const { data: recentOrders } = await supabase
+    const { data: recentOrders, error: recentErr } = await supabase
       .from('orders')
       .select('id, total_amount, placed_at, order_type, order_items(item_label, quantity)')
       .gte('placed_at', sevenDaysAgo)
       .not('status', 'in', NOT_SALES);
+    if (recentErr) throw recentErr;
 
     const ordersList = recentOrders || [];
     const totalWeeklySales = ordersList.reduce((s, o) => s + (parseFloat(o.total_amount) || 0), 0);
     const preordersCount = ordersList.filter(o => o.order_type === 'custom_build').length;
     const presetsCount = ordersList.filter(o => o.order_type === 'preset').length;
 
-    // Production Fallback Pool (Jelly/Milk themed & witty, formal executive rationale)
-    const fallbackPool = [
-      {
-        code: "DESERVEKOTO10",
-        discount_type: "percent",
-        discount_value: 10,
-        min_spend: 100,
-        usage_cap: 50,
-        pitch_note: "A 10% volume incentive designed to stimulate student demand during off-peak hours while maintaining unit contribution margin."
-      },
-      {
-        code: "JELLYGOOD15",
-        discount_type: "percent",
-        discount_value: 15,
-        min_spend: 120,
-        usage_cap: 40,
-        pitch_note: "A targeted 15% discount for higher-basket pre-orders to increase overall daily ticket size without compromising profitability."
-      },
-      {
-        code: "SIPANDCHILL10",
-        discount_type: "percent",
-        discount_value: 10,
-        min_spend: 80,
-        usage_cap: 50,
-        pitch_note: "An accessible 10% promotion focused on driving midday counter presets and accelerating stock turnover."
-      },
-      {
-        code: "MILKYMOOD15",
-        discount_type: "percent",
-        discount_value: 15,
-        min_spend: 110,
-        usage_cap: 35,
-        pitch_note: "A strategic campaign aimed at rewarding high-frequency orders and leveling out weekday revenue variance."
-      }
-    ];
+    // No canned proposals. If the AI is unavailable we say so, instead of showing a
+    // pre-written promo as if it had been generated from this week's sales.
+    const apiKey = String(process.env.GEMINI_API_KEY || '').trim();
+    if (!apiKey) {
+      return res.status(503).json({
+        status: 'error',
+        message: 'AI promo drafting is not configured on the server (GEMINI_API_KEY is missing). Please enter the promo details manually.'
+      });
+    }
 
-    let finalProposal = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
-
-    // 2. Gemini Live Synthesis
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey) {
-      try {
-        const randomSalt = Math.floor(Math.random() * 10000);
-        
-        const systemPrompt = `
+    const randomSalt = Math.floor(Math.random() * 10000);
+    const systemPrompt = `
 You are the Strategic Revenue Director for "Milky Marble Enterprise", a popular handcrafted jelly and milk beverage enterprise.
 Session ID: ${randomSalt}.
 
@@ -1327,28 +1295,41 @@ Respond ONLY with this exact JSON format. No conversational text or markdown cod
   "pitch_note": "<Formal 1-2 sentence rationale>"
 }`;
 
-        const result = await executeDynamicGemini(systemPrompt);
-        const rawText = result.text || '';
-
-        // Robust JSON extraction
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (parsed.code && parsed.discount_value) {
-            finalProposal = {
-              code: String(parsed.code).toUpperCase().trim().replace(/^AI_/, ''),
-              discount_type: parsed.discount_type || 'percent',
-              discount_value: parseFloat(parsed.discount_value) || 10,
-              min_spend: parsed.min_spend !== null && parsed.min_spend !== undefined ? parseFloat(parsed.min_spend) : null,
-              usage_cap: parsed.usage_cap !== null && parsed.usage_cap !== undefined ? parseInt(parsed.usage_cap, 10) : null,
-              pitch_note: parsed.pitch_note || finalProposal.pitch_note
-            };
-          }
-        }
-      } catch (geminiErr) {
-        console.warn('[Gemini Auto-Draft Note]: Used verified commercial fallback -', geminiErr.message);
-      }
+    let parsed;
+    try {
+      const result = await executeDynamicGemini(systemPrompt);
+      const jsonMatch = String(result.text || '').match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('The AI reply did not contain a proposal.');
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch (aiErr) {
+      console.warn('[Gemini Auto-Draft] failed:', aiErr.message);
+      return res.status(503).json({
+        status: 'error',
+        message: 'The AI could not draft a proposal right now. Please try again, or enter the promo details manually.'
+      });
     }
+
+    const code = String(parsed.code || '').toUpperCase().trim().replace(/^AI_/, '');
+    const discountType = ['percent', 'fixed'].includes(parsed.discount_type) ? parsed.discount_type : null;
+    const discountValue = parseFloat(parsed.discount_value);
+    const pitchNote = String(parsed.pitch_note || '').trim();
+    if (!code || !discountType || !Number.isFinite(discountValue) || discountValue <= 0 || !pitchNote) {
+      console.warn('[Gemini Auto-Draft] incomplete proposal:', JSON.stringify(parsed));
+      return res.status(502).json({
+        status: 'error',
+        message: 'The AI returned an incomplete proposal. Please try again, or enter the promo details manually.'
+      });
+    }
+    const minSpend = parseFloat(parsed.min_spend);
+    const usageCap = parseInt(parsed.usage_cap, 10);
+    const finalProposal = {
+      code,
+      discount_type: discountType,
+      discount_value: discountValue,
+      min_spend: Number.isFinite(minSpend) ? minSpend : null,
+      usage_cap: Number.isFinite(usageCap) ? usageCap : null,
+      pitch_note: pitchNote
+    };
 
     return res.json({
       status: 'success',
