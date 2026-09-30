@@ -78,17 +78,9 @@
         <!-- MAIN SCROLLABLE CONTENT -->
         <main class="main-content">
             <!-- TOPBAR -->
-            <header class="top-bar">
-                <div class="search-box">
-                    <input type="text" id="analyticsSearchInput" placeholder="Search product line, flavor velocity, or strategic metrics...">
-                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <circle cx="11" cy="11" r="7" />
-                        <path d="M21 21l-4.35-4.35" />
-                    </svg>
-                </div>
-                
-                <div class="header-actions">
-                    <div class="role-tag-badge">Chief Executive Officer</div>
+            <header class="top-bar"> 
+                <div class="role-tag-badge">Chief Executive Officer</div>
+                <div class="header-actions">                                       
                     <div class="user-profile">
                         <div class="user-avatar" id="userAvatarContainer">
                             <img id="userAvatarImg" src="/customer/images/account.png" alt="CEO Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
@@ -227,8 +219,10 @@
                             <div class="ai-insights-block">
                                 <div class="ai-sub-heading">Latest Customer Feedback:</div>
                                 <div class="feedback-quote-tile" id="quotePositiveTile" style="display: none;">
-                                    <svg class="quote-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                    <svg class="quote-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+
                                     </svg>
                                     <div class="quote-content">
                                         <p class="quote-text" id="quotePositiveText"></p>
@@ -237,10 +231,14 @@
                                 </div>
 
                                 <div class="feedback-quote-tile alert-tile" id="quoteCriticalTile" style="display: none;">
-                                    <svg class="quote-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                    <svg class="quote-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                                        <circle cx="12" cy="12" r="10"></circle>
+
+                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+
+                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+
                                     </svg>
                                     <div class="quote-content">
                                         <p class="quote-text" id="quoteCriticalText"></p>
@@ -368,6 +366,15 @@
                         <div>
                             <h2 class="section-title">Flavor Velocity &amp; Unit Contribution Margins</h2>
                             <p class="section-sub-text">Itemized product performance records across recipe batches and checkout channels.</p>
+                        </div>
+                        <div class="header-right-group">
+                            <div class="search-wrapper">
+                                <svg class="search-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="7" />
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                </svg>
+                                <input type="text" id="analyticsSearchInput" class="search-input-sm" placeholder="Search flavor or category..." />
+                            </div>
                         </div>
                     </div>
 

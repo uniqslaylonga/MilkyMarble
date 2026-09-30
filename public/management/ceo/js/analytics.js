@@ -248,8 +248,12 @@ function renderAnalyticsPaginationControls(totalPages, activePage) {
     const pagerNumbers = document.getElementById('analyticsPagerNumbers');
     if (!pagerNumbers) return;
 
+    const GROUP_SIZE = 5;
+    const groupStart = Math.floor((activePage - 1) / GROUP_SIZE) * GROUP_SIZE + 1;
+    const groupEnd = Math.min(groupStart + GROUP_SIZE - 1, totalPages);
+
     let html = '';
-    for (let i = 1; i <= totalPages; i++) {
+    for (let i = groupStart; i <= groupEnd; i++) {
         const isActive = i === activePage ? 'active' : '';
         html += `<button type="button" class="pager-num-btn ${isActive}" data-page="${i}">${i}</button>`;
     }

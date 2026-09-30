@@ -78,16 +78,8 @@
         <main class="main-content">
             <!-- TOPBAR -->
             <header class="top-bar">
-                <div class="search-box">
-                    <input type="text" id="auditSearchInput" placeholder="Search order #, client name, transaction ID, or shift date...">
-                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <circle cx="11" cy="11" r="7" />
-                        <path d="M21 21l-4.35-4.35" />
-                    </svg>
-                </div>
-                
+            <div class="role-tag-badge">Chief Executive Officer</div>
                 <div class="header-actions">
-                    <div class="role-tag-badge">Chief Executive Officer</div>
                     <div class="user-profile">
                         <div class="user-avatar" id="userAvatarContainer">
                             <img id="userAvatarImg" src="/customer/images/account.png" alt="CEO Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
@@ -207,7 +199,16 @@
                             <h2 class="section-title">Executive Transaction &amp; Fulfillment Log</h2>
                             <p class="section-sub-text">Audited record of customer tickets across online pre-orders, e-wallets, and walk-in counter turnover.</p>
                         </div>
-                        <span class="section-badge-pink">Order Level Audit</span>
+                        <div class="header-right-group">
+                            <span class="section-badge-pink">Order Level Audit</span>
+                            <div class="search-wrapper">
+                                <svg class="search-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="7" />
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                </svg>
+                                <input type="text" id="fulfillSearchInput" class="search-input-sm" placeholder="Search order, name, or ref..." />
+                            </div>
+                        </div>
                     </div>
 
                     <div class="table-container">
@@ -258,7 +259,16 @@
                             <h2 class="section-title">Cash Register Turn-over &amp; Shift Reconciliation History</h2>
                             <p class="section-sub-text">Z-Reading drawer reconciliations recorded by Finance.</p>
                         </div>
-                        <span class="section-badge-pink">Z-Reading Ledger</span>
+                        <div class="header-right-group">
+                            <span class="section-badge-pink">Z-Reading Ledger</span>
+                            <div class="search-wrapper">
+                                <svg class="search-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="7" />
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                </svg>
+                                <input type="text" id="reconSearchInput" class="search-input-sm" placeholder="Search date, staff, or notes..." />
+                            </div>
+                        </div>
                     </div>
 
                     <div class="table-container">

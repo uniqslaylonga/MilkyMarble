@@ -54,7 +54,6 @@
 html, body {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
 }
 
 body {
@@ -196,9 +195,15 @@ body {
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
+  justify-content: end;
   gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background-color: var(--bg-main);
+  border-left: 2px solid var(--border-soft);
+  margin: -24px -36px 24px -24px;
+  padding: 15px 36px 15px 20px;
 }
 
 .search-box {
@@ -244,7 +249,7 @@ body {
 .role-tag-badge {
   font-family: var(--font-family-body);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--accent-pink);
   background: var(--card-white);
   border: 1px solid var(--border-soft);
@@ -373,7 +378,7 @@ body {
   font-size: 13px;
   font-weight: 700;
   color: var(--text-dark);
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 .stat-icon-wrap {
@@ -495,7 +500,7 @@ body {
   font-size: 13.5px;
   font-weight: 700;
   color: var(--brown-soft);
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 
 .cust-id-sub {
@@ -516,7 +521,7 @@ body {
 
 .role-pill-badge {
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 3px 8px;
   border-radius: 8px;
   background: var(--card-white);
@@ -552,7 +557,7 @@ body {
   border-radius: 10px;
   font-family: var(--font-family-body);
   font-size: 11.5px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
   outline: none;
   border: 1px solid transparent;
@@ -739,12 +744,13 @@ body {
 .modal-title {
   font-family: var(--font-family-heading);
   font-size: 18px;
+  letter-spacing: 1px;
   color: var(--brown-soft);
 }
 
 .modal-id-badge {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 2px 8px;
   background: var(--bg-main);
   color: var(--brown-soft);
@@ -847,7 +853,7 @@ body {
   font-size: 13px;
   font-weight: 700;
   color: var(--brown-soft);
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 
 .modal-details-grid {
@@ -1086,7 +1092,7 @@ body {
   min-width: 20px;
   padding: 1px 7px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   text-align: center;
 }
 
@@ -1128,7 +1134,7 @@ body {
 }
 
 .ticket-name {
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-dark);
   font-size: 14px;
 }

@@ -27,8 +27,9 @@ const MMSwal = Swal.mixin({
 document.addEventListener('DOMContentLoaded', () => {
     fetchEnterpriseAuditData();
 
-    // Search filter listener
-    document.getElementById('auditSearchInput')?.addEventListener('input', applyCurrentTabFilter);
+    // Search filter listeners (one per table now)
+    document.getElementById('fulfillSearchInput')?.addEventListener('input', applyFulfillmentFilter);
+    document.getElementById('reconSearchInput')?.addEventListener('input', applyReconciliationFilter);
 
     // Fulfillment Pagination button listeners
     document.getElementById('prevFulfillBtn')?.addEventListener('click', () => {
@@ -101,7 +102,8 @@ async function fetchEnterpriseAuditData() {
         setText('badgeReconCount', allShiftReconciliations.length);
 
         setText('auditSyncText', 'Live from database • ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
-        applyCurrentTabFilter();
+        applyFulfillmentFilter();
+        applyReconciliationFilter();
 
     } catch (err) {
         // No made-up fallback rows: say plainly that the data could not be loaded.
@@ -110,7 +112,8 @@ async function fetchEnterpriseAuditData() {
         setText('statVarianceFooter', '—');
         allFulfillmentOrders = [];
         allShiftReconciliations = [];
-        applyCurrentTabFilter();
+        applyFulfillmentFilter();
+        applyReconciliationFilter();
         const msg = '<tr><td colspan="8" class="loading-state-text" style="color:#C9302C;">Could not load audit records from the database.</td></tr>';
         const f = document.getElementById('fulfillmentTableBody'); if (f) f.innerHTML = msg;
         const r = document.getElementById('reconciliationTableBody'); if (r) r.innerHTML = msg.replace('colspan="8"', 'colspan="7"');
@@ -139,34 +142,34 @@ function switchAuditTab(tab) {
         if (viewFulfill) viewFulfill.style.display = 'none';
         if (viewRecon) viewRecon.style.display = 'block';
     }
-
-    applyCurrentTabFilter();
 }
 
-function applyCurrentTabFilter() {
-    const q = document.getElementById('auditSearchInput')?.value.toLowerCase().trim() || '';
+function applyFulfillmentFilter() {
+    const q = document.getElementById('fulfillSearchInput')?.value.toLowerCase().trim() || '';
 
-    if (currentAuditTab === 'fulfillment') {
-        filteredFulfillmentOrders = allFulfillmentOrders.filter(ord => {
-            if (!q) return true;
-            const num = (ord.order_number || '').toLowerCase();
-            const name = (ord.customer_name || '').toLowerCase();
-            const ref = (ord.transaction_id || ord.ref_id || '').toLowerCase();
-            return num.includes(q) || name.includes(q) || ref.includes(q);
-        });
-        currentFulfillPage = 1;
-        renderFulfillmentTable();
-    } else {
-        filteredShiftReconciliations = allShiftReconciliations.filter(rec => {
-            if (!q) return true;
-            const dateStr = formatShiftDate(rec).toLowerCase();
-            const notes = (rec.notes || '').toLowerCase();
-            const who = (rec.recorded_by_name || '').toLowerCase();
-            return dateStr.includes(q) || notes.includes(q) || who.includes(q);
-        });
-        currentReconPage = 1;
-        renderReconciliationTable();
-    }
+    filteredFulfillmentOrders = allFulfillmentOrders.filter(ord => {
+        if (!q) return true;
+        const num = (ord.order_number || '').toLowerCase();
+        const name = (ord.customer_name || '').toLowerCase();
+        const ref = (ord.transaction_id || ord.ref_id || '').toLowerCase();
+        return num.includes(q) || name.includes(q) || ref.includes(q);
+    });
+    currentFulfillPage = 1;
+    renderFulfillmentTable();
+}
+
+function applyReconciliationFilter() {
+    const q = document.getElementById('reconSearchInput')?.value.toLowerCase().trim() || '';
+
+    filteredShiftReconciliations = allShiftReconciliations.filter(rec => {
+        if (!q) return true;
+        const dateStr = formatShiftDate(rec).toLowerCase();
+        const notes = (rec.notes || '').toLowerCase();
+        const who = (rec.recorded_by_name || '').toLowerCase();
+        return dateStr.includes(q) || notes.includes(q) || who.includes(q);
+    });
+    currentReconPage = 1;
+    renderReconciliationTable();
 }
 
 // --------------------------------------------------------------------------
@@ -242,8 +245,12 @@ function renderFulfillPagerButtons(totalPages, activePage) {
     const pagerNumbers = document.getElementById('fulfillPagerNumbers');
     if (!pagerNumbers) return;
 
+    const GROUP_SIZE = 5;
+    const groupStart = Math.floor((activePage - 1) / GROUP_SIZE) * GROUP_SIZE + 1;
+    const groupEnd = Math.min(groupStart + GROUP_SIZE - 1, totalPages);
+
     let html = '';
-    for (let i = 1; i <= totalPages; i++) {
+    for (let i = groupStart; i <= groupEnd; i++) {
         const isActive = i === activePage ? 'active' : '';
         html += `<button type="button" class="pager-num-btn ${isActive}" data-page="${i}">${i}</button>`;
     }
@@ -370,8 +377,12 @@ function renderReconPagerButtons(totalPages, activePage) {
     const pagerNumbers = document.getElementById('reconPagerNumbers');
     if (!pagerNumbers) return;
 
+    const GROUP_SIZE = 5;
+    const groupStart = Math.floor((activePage - 1) / GROUP_SIZE) * GROUP_SIZE + 1;
+    const groupEnd = Math.min(groupStart + GROUP_SIZE - 1, totalPages);
+
     let html = '';
-    for (let i = 1; i <= totalPages; i++) {
+    for (let i = groupStart; i <= groupEnd; i++) {
         const isActive = i === activePage ? 'active' : '';
         html += `<button type="button" class="pager-num-btn ${isActive}" data-page="${i}">${i}</button>`;
     }
