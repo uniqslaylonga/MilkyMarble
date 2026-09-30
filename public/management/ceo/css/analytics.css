@@ -399,7 +399,7 @@ body {
   font-size: 13px;
   font-weight: 700;
   color: var(--text-dark);
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 .stat-icon-svg {
@@ -686,6 +686,7 @@ body {
   color: var(--brown-soft);
   font-family: var(--font-family-heading);
   font-size: 12.5px;
+  letter-spacing: 1px;
 }
 
 .erp-benchmark-card {
@@ -746,6 +747,7 @@ body {
 .bm-value-row strong {
   font-family: var(--font-family-heading);
   font-size: 16px;
+  letter-spacing: 1px;
   color: var(--brown-soft);
 }
 
