@@ -448,10 +448,16 @@ function staticCacheHeaders(res, filePath) {
 
 const staticOpts = { maxAge: '7d', setHeaders: staticCacheHeaders };
 
+// Old management login URL -> new URL (keeps old bookmarks/links working)
+app.get('/management/managementlogin.html', (req, res) => {
+  const queryStr = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+  res.redirect(301, `/management/login.html${queryStr}`);
+});
+
 // Staff pages: no valid login cookie -> back to the login page.
 // Only .html files under /management and /employee are checked; CSS, JS,
 // fonts and images stay public and cached, so page speed is unchanged.
-const STAFF_LOGIN_PAGES = ['/management/managementlogin.html', '/employee/login.html'];
+const STAFF_LOGIN_PAGES = ['/management/login.html', '/employee/login.html'];
 app.use((req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
   let p;
@@ -464,7 +470,7 @@ app.use((req, res, next) => {
   const isEmp = p.startsWith('/employee/');
   if ((!isMgmt && !isEmp) || !p.endsWith('.html') || STAFF_LOGIN_PAGES.includes(p)) return next();
 
-  const loginUrl = (isMgmt ? '/management/managementlogin.html' : '/employee/login.html') + '?error=login_required';
+  const loginUrl = (isMgmt ? '/management/login.html' : '/employee/login.html') + '?error=login_required';
   const session = readToken(req.cookies && req.cookies[COOKIE_NAME]);
   const allowed = isMgmt
     ? (p.startsWith('/management/ceo/') ? ['ceo'] : ['admin', 'ceo'])

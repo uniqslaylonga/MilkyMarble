@@ -74,7 +74,7 @@ async function fetchCeoDashboardData() {
         const response = await fetch('/api/ceo/dashboard');
         if (!response.ok) {
             if (response.status === 401) {
-                window.location.href = '/management/managementlogin.html?error=login_required';
+               window.location.href = '/management/login.html?error=login_required';
                 return;
             }
             const errBody = await response.json().catch(() => ({}));
