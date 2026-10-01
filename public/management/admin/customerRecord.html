@@ -160,10 +160,17 @@
             <section class="section">
                 <div class="directory-card">
                     <div class="panel-header-bar">
-                        <div>
+                        <div class="panel-title-group">
                             <h2 class="section-title">Customer Account Directory</h2>
                             <p class="section-sub-text"><span id="visibleCustomerCount">0</span> customers currently matching search filter</p>
                         </div>
+                        <label class="search-box customer-search-box">
+                            <input type="search" id="customerSearchInput" placeholder="Search customers..." aria-label="Search customers">
+                            <svg class="search-icon" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="11" cy="11" r="7"></circle>
+                                <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+                            </svg>
+                        </label>
                     </div>
 
                     <div class="table-container">

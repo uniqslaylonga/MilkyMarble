@@ -200,7 +200,7 @@ body {
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: end;
+  justify-content: space-between;
   gap: 20px;
   position: sticky;
   top: 0;
@@ -610,7 +610,7 @@ body {
   font-family: var(--font-family-heading);
   font-size: 12.5px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   color: var(--text-dark);
 }
 
@@ -721,12 +721,43 @@ body {
   flex-direction: column;
 }
 
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.table-toolbar .settings-card-heading {
+  margin: 0;
+}
+
+.table-search-group {
+  flex: 0 1 420px;
+  min-width: 240px;
+}
+
 .table-container {
   width: 100%;
   max-width: 100%;
-  overflow-x: auto;
-  min-height: 250px;
+  height: 420px;
+  min-height: 420px;
+  overflow: auto;
 }
+
+.log-table {
+  width: 100%;
+  min-width: 900px;
+  height: 100%;
+  table-layout: fixed;
+}
+
+.log-table th:nth-child(1) { width: 17%; }
+.log-table th:nth-child(2) { width: 20%; }
+.log-table th:nth-child(3) { width: 15%; }
+.log-table th:nth-child(4) { width: 33%; }
+.log-table th:nth-child(5) { width: 15%; }
 
 .cust-table {
   width: 100%;
@@ -1000,5 +1031,17 @@ body {
   }
   .log-overview-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .table-search-group {
+    width: 100%;
+    min-width: 0;
   }
 }

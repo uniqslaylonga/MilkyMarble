@@ -156,6 +156,18 @@
                             <h2 class="section-title">Staff Directory &amp; RBAC Profiles</h2>
                             <p class="section-sub-text"><span id="visibleEmployeeCount">0</span> employee profiles currently active in registry</p>
                         </div>
+                        <label class="search-box employee-search-box">
+                            <input
+                                type="search"
+                                id="employeeSearchInput"
+                                placeholder="Search by name, ID, job title, or email..."
+                                aria-label="Search employee records"
+                            >
+                            <svg class="search-icon" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                        </label>
                     </div>
 
                     <div class="table-container">
@@ -377,7 +389,7 @@
                     <button class="modal-close" onclick="closeAddModal()">
                         <svg class="close-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                            <line x1="6" y1="18" x2="18" y2="6"></line>
                         </svg>
                     </button>
                 </div>

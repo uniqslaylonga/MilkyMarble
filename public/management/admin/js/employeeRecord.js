@@ -223,8 +223,12 @@ function renderEmpPagerButtons(totalPages, activePage) {
     const pagerNumbers = document.getElementById('empPagerNumbers');
     if (!pagerNumbers) return;
 
+    const maxVisiblePages = 5;
+    const firstVisiblePage = Math.floor((activePage - 1) / maxVisiblePages) * maxVisiblePages + 1;
+    const lastVisiblePage = Math.min(firstVisiblePage + maxVisiblePages - 1, totalPages);
+
     let html = '';
-    for (let i = 1; i <= totalPages; i++) {
+    for (let i = firstVisiblePage; i <= lastVisiblePage; i++) {
         const isActive = i === activePage ? 'active' : '';
         html += `<button type="button" class="pager-num-btn ${isActive}" data-page="${i}">${i}</button>`;
     }

@@ -259,10 +259,6 @@
                         <label for="dateToFilter">To</label>
                         <input type="date" id="dateToFilter">
                     </div>
-                    <div class="filter-group flex-grow">
-                        <label for="logSearchInput">Search Query</label>
-                        <input type="text" id="logSearchInput" placeholder="Filter by actor, action, or description...">
-                    </div>
                     <button type="button" class="action-btn-secondary" id="clearFiltersBtn">Clear Filters</button>
                     <button type="button" class="action-btn-primary" id="refreshLogsBtn">
                         <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -274,6 +270,13 @@
 
                 <!-- DIRECTORY TABLE CARD -->
                 <div class="directory-card">
+                    <div class="table-toolbar">
+                        <h3 class="settings-card-heading">Activity Log</h3>
+                        <div class="filter-group table-search-group">
+                            <label for="logSearchInput">Search Activity Logs</label>
+                            <input type="search" id="logSearchInput" placeholder="Filter by actor, action, or description...">
+                        </div>
+                    </div>
                     <div class="table-container">
                         <table class="cust-table log-table" id="logTable">
                             <thead>
