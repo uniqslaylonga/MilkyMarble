@@ -432,6 +432,12 @@ function staticCacheHeaders(res, filePath) {
     res.setHeader('Cache-Control', 'private, no-store');
     return;
   }
+  // Login-page scripts (incl. the shared forgot-password script) must never be
+  // served stale, or fixes don't reach staff until the cache expires.
+  if (/(staffForgotPassword|employeelogin|managementlogin|[\\/]login)\.(js|css)$/i.test(filePath)) {
+    res.setHeader('Cache-Control', 'no-cache');
+    return;
+  }
   if (/\.(png|jpe?g|gif|webp|svg|ico|ttf|otf|woff2?)$/i.test(filePath)) {
     // Images/fonts rarely change: cache long at the edge and in the browser,
     // but allow a background revalidation window instead of marking them
