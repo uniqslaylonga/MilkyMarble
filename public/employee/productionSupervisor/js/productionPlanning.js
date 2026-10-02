@@ -36,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (unitSelect) unitSelect.value = 'grams';
                     if (qtyInput && !qtyInput.value) qtyInput.value = 300;
                 } else {
-                    // Gulaman Flavors (Strawberry, Coffee, Buko Pandan)
                     if (unitSelect) unitSelect.value = 'pcs';
                     if (qtyInput && !qtyInput.value) qtyInput.value = 2;
                 }
@@ -47,6 +46,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Form Submissions
     document.getElementById('addPlanForm')?.addEventListener('submit', handleAddPlan);
     document.getElementById('editPlanForm')?.addEventListener('submit', handleEditPlan);
+    document.getElementById('pitchRestockForm')?.addEventListener('submit', handlePitchRestockSubmit);
+
+    // Live calculation listeners for Pitch modal
+    const pitchQtyEl = document.getElementById('pitchQty');
+    const pitchUnitPriceEl = document.getElementById('pitchUnitPrice');
+    if (pitchQtyEl) pitchQtyEl.addEventListener('input', calculatePitchTotal);
+    if (pitchUnitPriceEl) pitchUnitPriceEl.addEventListener('input', calculatePitchTotal);
 
     // Timeline Filter
     document.getElementById('timeRangeFilter')?.addEventListener('change', filterByTimeRange);
@@ -93,11 +99,10 @@ async function fetchProductionPlanningData() {
 
         const data = await response.json();
 
-        // User profile header
-        const userFullNameEl = document.getElementById('userFullName');
-        const userAvatarEl = document.getElementById('userAvatar');
         if (data.user && data.user.fullName) {
             supervisorFullName = data.user.fullName;
+            const userFullNameEl = document.getElementById('userFullName');
+            const userAvatarEl = document.getElementById('userAvatar');
             if (userFullNameEl) userFullNameEl.textContent = data.user.fullName;
             if (userAvatarEl && data.user.avatarSrc) userAvatarEl.src = data.user.avatarSrc;
         }
@@ -403,17 +408,17 @@ async function handleAddPlan(e) {
 
         const result = await res.json().catch(() => ({}));
 
-        // Harang: Kapag insufficient stock ang ibinalik ng server, magpa-popup ng Pitch Restock
+        // English Out-of-Stock Alert + Modal Trigger
         if (!res.ok || result.status === 'insufficient_stock') {
             if (result.status === 'insufficient_stock') {
                 const pitchConfirm = await Swal.fire({
                     title: 'Out of Stock!',
                     html: `
                         <p style="font-size: 13.5px; color: var(--text-dark); margin-bottom: 8px;">
-                            Hindi maaaring lutuin ang <b>${escapeHtml(result.itemName)}</b> dahil <b>${result.currentStock} ${result.unit}</b> na lang ang natitirang stock sa inventory (Kailangan: <b>${result.requiredStock} ${result.unit}</b>).
+                            Cannot schedule cooking run for <b>${escapeHtml(result.itemName)}</b> because only <b>${result.currentStock} ${result.unit}</b> remains in inventory (Required: <b>${result.requiredStock} ${result.unit}</b>).
                         </p>
                         <p style="font-size: 12px; font-weight: 700; color: var(--brown-soft);">
-                            Kailangan munang mag-pitch ng restock bago mag-schedule ng cooking batch.
+                            You must pitch a restock requisition before scheduling this batch.
                         </p>
                     `,
                     icon: 'warning',
@@ -423,6 +428,7 @@ async function handleAddPlan(e) {
                     customClass: {
                         popup: 'mm-swal-popup',
                         title: 'mm-swal-title',
+                        actions: 'mm-swal-actions',
                         confirmButton: 'mm-swal-confirm',
                         cancelButton: 'mm-swal-cancel'
                     },
@@ -430,7 +436,9 @@ async function handleAddPlan(e) {
                 });
 
                 if (pitchConfirm.isConfirmed) {
-                    window.location.href = 'procurement.html';
+                    closeModal('addPlanModal');
+                    // Bubuksan ang Pitch Ingredient Restock modal on-screen
+                    openPitchRestockModal(result.itemName, result.requiredStock, result.unit);
                 }
                 return;
             }
@@ -445,6 +453,91 @@ async function handleAddPlan(e) {
     } catch (error) {
         console.error('Scheduling failed:', error);
         showCustomSwal('Scheduling Blocked', error.message || 'Could not save the batch plan.', 'warning');
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
+
+// Opens the Pitch Ingredient Restock Modal directly on screen with pre-filled details
+function openPitchRestockModal(itemName, requiredQty, unit) {
+    const nameInput = document.getElementById('pitchItemName');
+    const qtyInput = document.getElementById('pitchQty');
+    const unitPriceInput = document.getElementById('pitchUnitPrice');
+    const rationaleInput = document.getElementById('pitchRationale');
+
+    if (nameInput) nameInput.value = itemName || '';
+    if (qtyInput) qtyInput.value = requiredQty || 2;
+    if (unitPriceInput) unitPriceInput.value = 130;
+    if (rationaleInput) {
+        rationaleInput.value = `Running low on ${itemName} (${requiredQty} ${unit} needed for scheduled batch run).`;
+    }
+
+    calculatePitchTotal();
+    openModal('pitchRestockModal');
+}
+
+// Live Cost & Route Calculation for Pitch Modal
+function calculatePitchTotal() {
+    const qty = parseFloat(document.getElementById('pitchQty')?.value || 0);
+    const unitPrice = parseFloat(document.getElementById('pitchUnitPrice')?.value || 0);
+    const total = qty * unitPrice;
+
+    const displayEl = document.getElementById('pitchCostDisplay');
+    const badgeEl = document.getElementById('pitchRouteBadge');
+
+    if (displayEl) {
+        displayEl.textContent = `₱${total.toFixed(2)}`;
+    }
+
+    if (badgeEl) {
+        if (total > 500) {
+          badgeEl.textContent = '🔴 Escalated Route: CEO Clearance Required';
+          badgeEl.style.background = 'rgba(201, 48, 44, 0.12)';
+          badgeEl.style.color = '#C9302C';
+        } else if (total > 300) {
+          badgeEl.textContent = '🟠 Routing: Finance Officer Approval Required';
+          badgeEl.style.background = 'rgba(234, 163, 66, 0.2)';
+          badgeEl.style.color = '#B26A00';
+        } else {
+          badgeEl.textContent = '🟢 Direct Route: Procurement Officer (Direct Purchase Authorized)';
+          badgeEl.style.background = 'rgba(46, 125, 50, 0.12)';
+          badgeEl.style.color = '#2E7D32';
+        }
+    }
+}
+
+// Handle Pitch Requisition Form Submission
+async function handlePitchRestockSubmit(e) {
+    e.preventDefault();
+
+    const item_name = document.getElementById('pitchItemName').value.trim();
+    const quantity = parseFloat(document.getElementById('pitchQty').value);
+    const unit_price = parseFloat(document.getElementById('pitchUnitPrice').value);
+    const rationale = document.getElementById('pitchRationale').value.trim();
+
+    if (!item_name || isNaN(quantity) || isNaN(unit_price)) {
+        showCustomSwal('Incomplete Information', 'Please provide item name, quantity, and unit price.', 'warning');
+        return;
+    }
+
+    const submitBtn = document.getElementById('btnSubmitPitch');
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+        const payload = {
+            item_name,
+            quantity,
+            unit_price,
+            rationale
+        };
+
+        await apiPost('/api/production-supervisor/pitch-restock', payload);
+        closeModal('pitchRestockModal');
+        e.target.reset();
+        showCustomSwal('Pitch Submitted', `Restock requisition for "${item_name}" transmitted successfully to Procurement.`, 'success');
+    } catch (err) {
+        console.error('Pitch submission failed:', err);
+        showCustomSwal('Submission Failed', err.message || 'Could not transmit restock pitch.', 'warning');
     } finally {
         if (submitBtn) submitBtn.disabled = false;
     }

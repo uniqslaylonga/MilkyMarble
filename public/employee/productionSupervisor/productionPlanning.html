@@ -568,6 +568,63 @@
     </div>
 </div>
 
+<!-- Modal 3: Pitch Ingredient Restock Modal (Naka-embed on screen para hindi mag-404) -->
+<div class="modal-overlay" id="pitchRestockModal">
+    <div class="profile-modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <h3 class="modal-title">Pitch Ingredient Restock</h3>
+                <p class="modal-subtitle">Auto-routed to Procurement, Finance, or CEO based on estimated cost.</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('pitchRestockModal')">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <form id="pitchRestockForm" class="modal-body">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Raw Ingredient / Item *</label>
+                    <input type="text" id="pitchItemName" placeholder="e.g. Tapioca Pearls (1kg), Fresh Milk, Sealing Film" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Quantity *</label>
+                    <input type="number" id="pitchQty" min="1" step="any" placeholder="e.g. 2" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Est. Unit Price (₱) *</label>
+                    <input type="number" id="pitchUnitPrice" min="0" step="any" placeholder="e.g. 130" required>
+                </div>
+
+                <div class="form-group full">
+                    <div class="pitch-cost-box">
+                        <span class="pitch-cost-title">Total Estimated Cost:</span>
+                        <div class="pitch-cost-val" id="pitchCostDisplay">₱0.00</div>
+                        <span class="pitch-route-badge" id="pitchRouteBadge">Direct Route: Procurement Officer (Direct Purchase Authorized)</span>
+                    </div>
+                </div>
+
+                <div class="form-group full">
+                    <label>Requisition Rationale</label>
+                    <textarea id="pitchRationale" placeholder="e.g. Running low on tapioca pearls for Thursday morning batch brewing..."></textarea>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal('pitchRestockModal')">Cancel</button>
+                <button type="submit" class="btn-primary" id="btnSubmitPitch">
+                    <span>Submit Restock Pitch</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script src="../js/employeeAuth.js"></script>
 <script src="js/productionPlanning.js"></script>
 <script src="/shared/js/avatarUpload.js"></script>
