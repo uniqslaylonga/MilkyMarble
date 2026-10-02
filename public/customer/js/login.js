@@ -7,6 +7,41 @@ document.addEventListener('DOMContentLoaded', () => {
   const serverError = document.getElementById('server-error-msg');
   const submitBtn = document.getElementById('submitBtn');
 
+  // Password field with the same round pink eye button used on the login form.
+  function mmPasswordField(id, placeholder, marginBottom) {
+    return `
+      <div class="mm-pw-wrap" style="margin-bottom:${marginBottom}px;">
+        <button type="button" class="mm-pw-toggle" data-target="${id}" aria-label="Show password">
+          <svg class="eye-open" viewBox="0 0 40 40" style="display:none">
+            <path d="M8 20 C11 13 15.5 10 20 10 C24.5 10 29 13 32 20 C29 27 24.5 30 20 30 C15.5 30 11 27 8 20 Z" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linejoin="round"/>
+            <circle cx="20" cy="20" r="5" fill="#ffffff"/>
+          </svg>
+          <svg class="eye-closed" viewBox="0 0 40 40">
+            <path d="M8 20 C11 13 15.5 10 20 10 C24.5 10 29 13 32 20 C29 27 24.5 30 20 30 C15.5 30 11 27 8 20 Z" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linejoin="round"/>
+            <circle cx="20" cy="20" r="5" fill="#ffffff"/>
+            <line x1="9" y1="31" x2="31" y2="9" stroke="#F69299" stroke-width="3.4" stroke-linecap="round"/>
+            <line x1="9" y1="31" x2="31" y2="9" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <input type="password" id="${id}" class="swal2-input" placeholder="${placeholder}" autocomplete="new-password">
+      </div>`;
+  }
+
+  function mmWirePasswordToggles(popup) {
+    (popup || document).querySelectorAll('.mm-pw-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById(btn.dataset.target);
+        if (!input) return;
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.querySelector('.eye-open').style.display = show ? 'block' : 'none';
+        btn.querySelector('.eye-closed').style.display = show ? 'none' : 'block';
+        btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        input.focus();
+      });
+    });
+  }
+
   // SweetAlert modal wrapper
   function showSweetAlert(options) {
     if (typeof Swal === 'undefined') return Promise.resolve({ isConfirmed: false });
@@ -350,13 +385,14 @@ document.addEventListener('DOMContentLoaded', () => {
           We sent a 6-digit code to <b>${email}</b>. Enter it below along with your new password.
         </p>
         <input type="text" id="fpOtp" class="swal2-input" placeholder="6-digit code" maxlength="6" style="margin:0 0 10px;">
-        <input type="password" id="fpNewPassword" class="swal2-input" placeholder="New password" style="margin:0 0 10px;">
-        <input type="password" id="fpConfirmPassword" class="swal2-input" placeholder="Confirm new password" style="margin:0;">
+        ${mmPasswordField('fpNewPassword', 'New password', 10)}
+        ${mmPasswordField('fpConfirmPassword', 'Confirm new password', 0)}
       `,
       showCancelButton: true,
       confirmButtonText: 'Reset Password',
       cancelButtonText: 'Cancel',
       focusConfirm: false,
+      didOpen: (popup) => mmWirePasswordToggles(popup),
       preConfirm: () => {
         const otp = document.getElementById('fpOtp').value.trim();
         const pass = document.getElementById('fpNewPassword').value;
