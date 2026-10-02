@@ -7,41 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const serverError = document.getElementById('server-error-msg');
   const submitBtn = document.getElementById('submitBtn');
 
-  // Password field with the same round pink eye button used on the login form.
-  function mmPasswordField(id, placeholder, marginBottom) {
-    return `
-      <div class="mm-pw-wrap" style="margin-bottom:${marginBottom}px;">
-        <button type="button" class="mm-pw-toggle" data-target="${id}" aria-label="Show password">
-          <svg class="eye-open" viewBox="0 0 40 40" style="display:none">
-            <path d="M8 20 C11 13 15.5 10 20 10 C24.5 10 29 13 32 20 C29 27 24.5 30 20 30 C15.5 30 11 27 8 20 Z" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linejoin="round"/>
-            <circle cx="20" cy="20" r="5" fill="#ffffff"/>
-          </svg>
-          <svg class="eye-closed" viewBox="0 0 40 40">
-            <path d="M8 20 C11 13 15.5 10 20 10 C24.5 10 29 13 32 20 C29 27 24.5 30 20 30 C15.5 30 11 27 8 20 Z" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linejoin="round"/>
-            <circle cx="20" cy="20" r="5" fill="#ffffff"/>
-            <line x1="9" y1="31" x2="31" y2="9" stroke="#F69299" stroke-width="3.4" stroke-linecap="round"/>
-            <line x1="9" y1="31" x2="31" y2="9" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </button>
-        <input type="password" id="${id}" class="swal2-input" placeholder="${placeholder}" autocomplete="new-password">
-      </div>`;
-  }
-
-  function mmWirePasswordToggles(popup) {
-    (popup || document).querySelectorAll('.mm-pw-toggle').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const input = document.getElementById(btn.dataset.target);
-        if (!input) return;
-        const show = input.type === 'password';
-        input.type = show ? 'text' : 'password';
-        btn.querySelector('.eye-open').style.display = show ? 'block' : 'none';
-        btn.querySelector('.eye-closed').style.display = show ? 'none' : 'block';
-        btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-        input.focus();
-      });
-    });
-  }
-
   // SweetAlert modal wrapper
   function showSweetAlert(options) {
     if (typeof Swal === 'undefined') return Promise.resolve({ isConfirmed: false });
@@ -159,36 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('mm_user', JSON.stringify(customerData));
   }
 
-  // Staff (employee / admin / CEO) sign-in from the customer login page.
-  // Returns the dashboard URL to open, or null if it isn't a valid staff login.
-  async function tryStaffLogin(username, password) {
-    try {
-      const res = await fetch('/api/auth/employee-login', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, fromCustomerPage: true })
-      });
-      const data = await res.json();
-      if (!res.ok || data.status !== 'success') return null;
-
-      const user = data.user || {};
-      if (user.id) localStorage.setItem('userId', user.id);
-
-      // Temporary password: change-password page first (same as the employee login).
-      if (data.mustChangePassword) {
-        try { sessionStorage.setItem('mmNextUrl', data.nextUrl || ''); } catch (e) {}
-        try { sessionStorage.setItem('mmTempUser', user.username || username); } catch (e) {}
-        return '/employee/changePassword.html';
-      }
-      if (user.userType === 'ceo') return '/management/ceo/dashboard.html';
-      if (user.userType === 'admin') return '/management/admin/dashboard.html';
-      return '/employee/' + (data.redirectUrl || 'login.html');
-    } catch (e) {
-      return null;
-    }
-  }
-
   // Handle login submission
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -248,15 +183,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (!response.ok || result.status !== 'success') {
-        // Not a customer account. Employees (and admin/CEO) who type their
-        // login here are signed in and sent to their own dashboard instead.
-        if (response.status === 401) {
-          const staffUrl = await tryStaffLogin(userInput, passInput);
-          if (staffUrl) {
-            window.location.href = staffUrl;
-            return;
-          }
-        }
         throw new Error(result.message || 'Invalid username or password.');
       }
 
@@ -424,14 +350,13 @@ document.addEventListener('DOMContentLoaded', () => {
           We sent a 6-digit code to <b>${email}</b>. Enter it below along with your new password.
         </p>
         <input type="text" id="fpOtp" class="swal2-input" placeholder="6-digit code" maxlength="6" style="margin:0 0 10px;">
-        ${mmPasswordField('fpNewPassword', 'New password', 10)}
-        ${mmPasswordField('fpConfirmPassword', 'Confirm new password', 0)}
+        <input type="password" id="fpNewPassword" class="swal2-input" placeholder="New password" style="margin:0 0 10px;">
+        <input type="password" id="fpConfirmPassword" class="swal2-input" placeholder="Confirm new password" style="margin:0;">
       `,
       showCancelButton: true,
       confirmButtonText: 'Reset Password',
       cancelButtonText: 'Cancel',
       focusConfirm: false,
-      didOpen: (popup) => mmWirePasswordToggles(popup),
       preConfirm: () => {
         const otp = document.getElementById('fpOtp').value.trim();
         const pass = document.getElementById('fpNewPassword').value;

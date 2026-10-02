@@ -467,9 +467,6 @@ button.login-btn:active{ transform:scale(0.99); }
 }
 
 .wave img{ display:block; width:100%; height:auto; }
-/* The decorative wave sits on top of the card on wide/short screens; let clicks pass through it */
-.wave{ pointer-events:none; z-index:0; }
-.card{ position:relative; z-index:1; }
 /* Milky Marble SweetAlert System Style */
 .swal2-container.mm-swal-container-top,
 div.swal2-container.mm-swal-container-top {
@@ -559,83 +556,4 @@ button.swal2-cancel.mm-swal-cancel-btn {
   border: none !important;
   cursor: pointer !important;
 }
-<<<<<<< HEAD
 #forgotPasswordLink { margin-top: 6px; }
-
-/* Forgot-password popup: remove SweetAlert's default blue focus ring */
-div.swal2-popup.mm-swal-popup .swal2-input:focus,
-div.swal2-popup.mm-swal-popup .swal2-textarea:focus {
-  border-color: #FDE1E3 !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-button.swal2-cancel.mm-swal-cancel-btn:focus {
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-/* Popup fields: same look as the login form fields */
-div.swal2-popup.mm-swal-popup .swal2-input,
-div.swal2-popup.mm-swal-popup .swal2-textarea {
-  box-sizing: border-box !important;
-  background: #FCF5F5 !important;
-  border: 2px solid #FDE1E3 !important;
-  border-radius: 16px !important;
-  padding: 10px 14px !important;
-  font-family: 'Urbanist', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  font-size: 15px !important;
-  font-weight: 600 !important;
-  color: #6B4536 !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-div.swal2-popup.mm-swal-popup .swal2-input::placeholder,
-div.swal2-popup.mm-swal-popup .swal2-textarea::placeholder { color: #C9A9A0 !important; }
-
-/* Password field with eye button (same round pink eye as the login form) */
-div.swal2-popup.mm-swal-popup .mm-pw-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  box-sizing: border-box;
-  background: #FCF5F5;
-  border: 2px solid #FDE1E3;
-  border-radius: 16px;
-  padding: 0 8px;
-  margin: 0 0 10px;
-}
-
-div.swal2-popup.mm-swal-popup .mm-pw-wrap input.swal2-input {
-  flex: 1;
-  min-width: 0;
-  width: auto !important;
-  margin: 0 !important;
-  padding: 10px 4px !important;
-  border: none !important;
-  background: transparent !important;
-}
-.mm-pw-toggle {
-  width: 33px;
-  height: 33px;
-  border-radius: 50%;
-  position: relative;
-  flex-shrink: 0;
-  overflow: hidden;
-  border: none;
-  background: #F69299;
-  padding: 0;
-  cursor: pointer;
-  outline: none;
-}
-
-.mm-pw-toggle svg {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 20px;
-  height: 20px;
-  transform: translate(-50%, -50%);
-}
-=======
-#forgotPasswordLink { margin-top: 6px; }
->>>>>>> parent of a5ac77e (blue)

@@ -514,7 +514,7 @@ router.post('/login', async (req, res) => {
 // through to the app.use() 404 handler at the bottom of server.js.
 router.post('/employee-login', async (req, res) => {
   try {
-    const { username, password, fromCustomerPage } = req.body;
+    const { username, password } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ status: 'error', message: 'Please enter both username and password.' });
@@ -522,22 +522,17 @@ router.post('/employee-login', async (req, res) => {
 
     const cleanUsername = username.trim();
 
-    // Staff can sign in with their username OR their email address.
-    let staffQuery = supabase
+    const { data: account, error: userErr } = await supabase
       .from('users')
       .select('id, username, email, password_hash, full_name, user_type, is_active, must_change_password')
-      .in('user_type', ['employee', 'admin', 'ceo']);
-    staffQuery = cleanUsername.includes('@')
-      ? staffQuery.ilike('email', cleanUsername.replace(/[%_\\]/g, '\\$&'))
-      : staffQuery.eq('username', cleanUsername);
-    const { data: account, error: userErr } = await staffQuery.maybeSingle();
+      .eq('username', cleanUsername)
+      .in('user_type', ['employee', 'admin', 'ceo'])
+      .maybeSingle();
 
     if (userErr) throw userErr;
 
     if (!account) {
-      // When the customer login page falls back to this route, most "unknown
-      // usernames" are just customers - don't flood the staff audit log.
-      if (!fromCustomerPage) logActivity(supabase, {
+      logActivity(supabase, {
         req,
         actorType: 'unknown',
         action: 'auth.login_failed',
@@ -666,7 +661,6 @@ router.post('/employee-login', async (req, res) => {
         username: account.username,
         email: account.email,
         fullName: account.full_name,
-        userType: account.user_type,
         roles: roleNames
       }
     });
