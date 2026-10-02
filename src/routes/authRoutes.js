@@ -514,7 +514,7 @@ router.post('/login', async (req, res) => {
 // through to the app.use() 404 handler at the bottom of server.js.
 router.post('/employee-login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, fromCustomerPage } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ status: 'error', message: 'Please enter both username and password.' });
@@ -532,7 +532,9 @@ router.post('/employee-login', async (req, res) => {
     if (userErr) throw userErr;
 
     if (!account) {
-      logActivity(supabase, {
+      // When the customer login page falls back to this route, most "unknown
+      // usernames" are just customers - don't flood the staff audit log.
+      if (!fromCustomerPage) logActivity(supabase, {
         req,
         actorType: 'unknown',
         action: 'auth.login_failed',
@@ -661,6 +663,7 @@ router.post('/employee-login', async (req, res) => {
         username: account.username,
         email: account.email,
         fullName: account.full_name,
+        userType: account.user_type,
         roles: roleNames
       }
     });

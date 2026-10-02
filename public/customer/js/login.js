@@ -159,6 +159,36 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('mm_user', JSON.stringify(customerData));
   }
 
+  // Staff (employee / admin / CEO) sign-in from the customer login page.
+  // Returns the dashboard URL to open, or null if it isn't a valid staff login.
+  async function tryStaffLogin(username, password) {
+    try {
+      const res = await fetch('/api/auth/employee-login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, fromCustomerPage: true })
+      });
+      const data = await res.json();
+      if (!res.ok || data.status !== 'success') return null;
+
+      const user = data.user || {};
+      if (user.id) localStorage.setItem('userId', user.id);
+
+      // Temporary password: change-password page first (same as the employee login).
+      if (data.mustChangePassword) {
+        try { sessionStorage.setItem('mmNextUrl', data.nextUrl || ''); } catch (e) {}
+        try { sessionStorage.setItem('mmTempUser', user.username || username); } catch (e) {}
+        return '/employee/changePassword.html';
+      }
+      if (user.userType === 'ceo') return '/management/ceo/dashboard.html';
+      if (user.userType === 'admin') return '/management/admin/dashboard.html';
+      return '/employee/' + (data.redirectUrl || 'login.html');
+    } catch (e) {
+      return null;
+    }
+  }
+
   // Handle login submission
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -218,6 +248,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (!response.ok || result.status !== 'success') {
+        // Not a customer account. Employees (and admin/CEO) who type their
+        // login here are signed in and sent to their own dashboard instead.
+        if (response.status === 401) {
+          const staffUrl = await tryStaffLogin(userInput, passInput);
+          if (staffUrl) {
+            window.location.href = staffUrl;
+            return;
+          }
+        }
         throw new Error(result.message || 'Invalid username or password.');
       }
 
