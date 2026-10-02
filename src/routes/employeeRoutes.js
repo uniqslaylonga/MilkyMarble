@@ -1225,7 +1225,7 @@ router.get('/sales-officer/promotions', async (req, res) => {
 
     if (error) throw error;
 
-    const campaigns = (promotions || []).map(p => ({
+    campaigns = (promotions || []).map(p => ({
       id: p.id,
       code: p.code,
       discount_type: p.discount_type,
@@ -2709,10 +2709,15 @@ router.get('/production-supervisor/order-list', async (req, res) => {
 
       const rawStatus = String(ord.status || '').toUpperCase();
       let statusClass = 'pending', statusLabel = 'Pending';
-      if (rawStatus === 'PREPARING') { statusClass = 'inprogress'; statusLabel = 'In Progress'; }
-      else if (rawStatus === 'COMPLETED' || rawStatus === 'READY_FOR_PICKUP') {
-        statusClass = 'complete';
-        statusLabel = rawStatus === 'READY_FOR_PICKUP' ? 'Ready' : 'Complete';
+      if (rawStatus === 'PREPARING') { 
+        statusClass = 'inprogress'; 
+        statusLabel = 'In Progress'; 
+      } else if (rawStatus === 'READY_FOR_PICKUP') {
+        statusClass = 'ready';
+        statusLabel = 'Ready for Pickup';
+      } else if (rawStatus === 'COMPLETED') {
+        statusClass = 'completed';
+        statusLabel = 'Completed';
       }
 
       return {
