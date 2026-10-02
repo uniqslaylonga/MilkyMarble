@@ -10,7 +10,6 @@ const CLIENT_CUP_RECIPE_SPECS = {
         baseGulamanGrams: 100,
         condensedMilkOz: 0.7,
         extraCondensedMilkOz: 0.5,
-        powderedMilkGrams: 2,
         cupItemName: '8oz Cup',
         toppingsGrams: {
             'pearls': 30,
@@ -19,7 +18,7 @@ const CLIENT_CUP_RECIPE_SPECS = {
             'cheese': 5,
             'chocolate chip': 5,
             'marshmallow': 2,
-            'nuts': 5,
+            'nuts': 3,
             'sprinkles (chocolate)': 2,
             'sprinkles (assorted)': 2,
             'sprinkles': 2
@@ -27,9 +26,8 @@ const CLIENT_CUP_RECIPE_SPECS = {
     },
     '12oz': {
         baseGulamanGrams: 200,
-        condensedMilkOz: 1.5,
-        extraCondensedMilkOz: 1.0,
-        powderedMilkGrams: 3,
+        condensedMilkOz: 1.0,
+        extraCondensedMilkOz: 0.5,
         cupItemName: '12oz Cup',
         toppingsGrams: {
             'pearls': 50,
@@ -38,7 +36,7 @@ const CLIENT_CUP_RECIPE_SPECS = {
             'cheese': 7,
             'chocolate chip': 7,
             'marshmallow': 2,
-            'nuts': 7,
+            'nuts': 3,
             'sprinkles (chocolate)': 2,
             'sprinkles (assorted)': 2,
             'sprinkles': 2
@@ -139,51 +137,141 @@ function renderQualityAlerts(alerts) {
     `;
 }
 
+// Helper: Sinusuri ang toppings list para sa multiplier (e.g., "2x nuts", "nuts x2", "2 nuts")
+function parseToppingMultiplier(toppings, keywords) {
+    if (!toppings) return 0;
+    
+    let rawList = [];
+    if (Array.isArray(toppings)) {
+        rawList = toppings;
+    } else if (typeof toppings === 'string') {
+        try {
+            const parsed = JSON.parse(toppings);
+            rawList = Array.isArray(parsed) ? parsed : toppings.split(',');
+        } catch (e) {
+            rawList = toppings.split(',');
+        }
+    } else {
+        rawList = [toppings];
+    }
+
+    let totalMultiplier = 0;
+
+    rawList.forEach(item => {
+        let name = '';
+        let count = 1;
+
+        if (typeof item === 'string') {
+            const trimmed = item.trim();
+            // Match "2x Nuts", "2 x Nuts", "Nuts 2x", "Nuts (2x)", "Nuts x2"
+            const matchX = trimmed.match(/^(\d+)\s*x\s*(.*)$/i) || 
+                           trimmed.match(/^(.*?)\s*\(?(\d+)\s*x\)?$/i) || 
+                           trimmed.match(/^(.*?)\s*x\s*(\d+)$/i);
+
+            if (matchX) {
+                if (/^\d+$/.test(matchX[1])) {
+                    count = parseInt(matchX[1], 10) || 1;
+                    name = matchX[2].trim().toLowerCase();
+                } else {
+                    name = matchX[1].trim().toLowerCase();
+                    count = parseInt(matchX[2], 10) || 1;
+                }
+            } else {
+                // Match "2 Nuts"
+                const matchNum = trimmed.match(/^(\d+)\s+(.+)$/);
+                if (matchNum) {
+                    count = parseInt(matchNum[1], 10) || 1;
+                    name = matchNum[2].trim().toLowerCase();
+                } else {
+                    name = trimmed.toLowerCase();
+                    count = 1;
+                }
+            }
+        } else if (typeof item === 'object' && item !== null) {
+            name = String(item.name || item.topping || item.title || '').trim().toLowerCase();
+            count = parseInt(item.quantity || item.qty || item.count || 1, 10) || 1;
+        }
+
+        const isMatched = keywords.some(kw => name.includes(kw.toLowerCase()));
+        if (isMatched) {
+            totalMultiplier += count;
+        }
+    });
+
+    return totalMultiplier;
+}
+
 // Compute standard BOM deduction based on order parameters
 function computeInitialRecipeBOM(order, materials) {
     liveDeductionMap.clear();
     if (!order) return;
 
-    const is8oz = String(order.cupSize || '').toLowerCase().includes('8oz') || String(order.itemLabel || '').toLowerCase().includes('8oz');
+    const sizeStr = (String(order.cupSize || '') + ' ' + String(order.itemLabel || '')).toLowerCase();
+    const is8oz = sizeStr.includes('8oz') || sizeStr.includes('small') || sizeStr.includes('8 oz');
     const sizeKey = is8oz ? '8oz' : '12oz';
     const spec = CLIENT_CUP_RECIPE_SPECS[sizeKey];
     const qty = parseInt(order.quantity, 10) || 1;
 
     // Check if extra condensed milk is requested
-    const toppingsStr = (order.toppings || []).join(' ').toLowerCase();
-    const hasExtraCondensed = toppingsStr.includes('condensed');
+    const toppingsRaw = order.toppings || [];
+    const toppingsStr = (Array.isArray(toppingsRaw) ? toppingsRaw.join(' ') : String(toppingsRaw)).toLowerCase();
+    const hasExtraCondensed = toppingsStr.includes('extra condensed') || toppingsStr.includes('more condensed');
     const totalMilk = (spec.condensedMilkOz + (hasExtraCondensed ? spec.extraCondensedMilkOz : 0)) * qty;
 
-    // Baseline recipe deductions
+    // 1. Baseline recipe deductions (Walang powdered milk)
     addDeductionLine('Cooked Gulaman Base', spec.baseGulamanGrams * qty, 'grams', 10);
-    addDeductionLine('Condensed Milk', totalMilk, 'oz', 0.5);
-    addDeductionLine('Powdered Milk', spec.powderedMilkGrams * qty, 'grams', 1);
+    addDeductionLine('Condensed Milk', parseFloat(totalMilk.toFixed(2)), 'oz', 0.1);
     addDeductionLine(spec.cupItemName, 1 * qty, 'pcs', 1);
     addDeductionLine('Cup Lids', 1 * qty, 'pcs', 1);
     addDeductionLine('Boba Straws', 1 * qty, 'pcs', 1);
 
+    // 2. Conditional Toppings na may Multiplier Checking
     const isPreset = order.orderType === 'Walk-in Preset';
-    if (isPreset || toppingsStr.includes('pearl') || toppingsStr.includes('tapioca')) {
-        addDeductionLine('Cooked Tapioca Pearls', spec.toppingsGrams['pearls'] * qty, 'grams', 5);
+
+    // Tapioca Pearls
+    let pearlCount = parseToppingMultiplier(toppingsRaw, ['pearl', 'tapioca']);
+    if (isPreset && pearlCount === 0) pearlCount = 1;
+    if (pearlCount > 0) {
+        addDeductionLine('Tapioca Pearls', spec.toppingsGrams['tapioca pearls'] * pearlCount * qty, 'grams', 5);
     }
-    if (toppingsStr.includes('cheese')) {
-        addDeductionLine('Cheese', spec.toppingsGrams['cheese'] * qty, 'grams', 2);
+
+    // Cheese
+    const cheeseCount = parseToppingMultiplier(toppingsRaw, ['cheese']);
+    if (cheeseCount > 0) {
+        addDeductionLine('Cheese', spec.toppingsGrams['cheese'] * cheeseCount * qty, 'grams', 1);
     }
-    if (toppingsStr.includes('chocolate chip')) {
-        addDeductionLine('Chocolate Chip', spec.toppingsGrams['chocolate chip'] * qty, 'grams', 2);
+
+    // Chocolate Chip
+    const chocoChipCount = parseToppingMultiplier(toppingsRaw, ['chocolate chip', 'choco chip', 'chocolate chips']);
+    if (chocoChipCount > 0) {
+        addDeductionLine('Chocolate Chip', spec.toppingsGrams['chocolate chip'] * chocoChipCount * qty, 'grams', 1);
     }
-    if (toppingsStr.includes('marshmallow')) {
-        addDeductionLine('Marshmallow', spec.toppingsGrams['marshmallow'] * qty, 'grams', 1);
+
+    // Marshmallow
+    const marshmallowCount = parseToppingMultiplier(toppingsRaw, ['marshmallow', 'marshmallows']);
+    if (marshmallowCount > 0) {
+        addDeductionLine('Marshmallow', spec.toppingsGrams['marshmallow'] * marshmallowCount * qty, 'grams', 1);
     }
-    if (toppingsStr.includes('nuts')) {
-        addDeductionLine('Nuts', spec.toppingsGrams['nuts'] * qty, 'grams', 2);
+
+    // Nuts
+    const nutsCount = parseToppingMultiplier(toppingsRaw, ['nut', 'nuts']);
+    if (nutsCount > 0) {
+        addDeductionLine('Nuts', spec.toppingsGrams['nuts'] * nutsCount * qty, 'grams', 1);
     }
-    if (toppingsStr.includes('sprinkles (chocolate)')) {
-        addDeductionLine('Sprinkles (Chocolate)', spec.toppingsGrams['sprinkles (chocolate)'] * qty, 'grams', 1);
-    } else if (toppingsStr.includes('sprinkles (assorted)')) {
-        addDeductionLine('Sprinkles (Assorted)', spec.toppingsGrams['sprinkles (assorted)'] * qty, 'grams', 1);
-    } else if (toppingsStr.includes('sprinkles')) {
-        addDeductionLine('Sprinkles', spec.toppingsGrams['sprinkles'] * qty, 'grams', 1);
+
+    // Sprinkles (Chocolate vs Assorted vs Generic)
+    const chocoSprinklesCount = parseToppingMultiplier(toppingsRaw, ['sprinkles (chocolate)', 'chocolate sprinkle', 'choco sprinkle']);
+    const assortedSprinklesCount = parseToppingMultiplier(toppingsRaw, ['sprinkles (assorted)', 'assorted sprinkle']);
+    
+    if (chocoSprinklesCount > 0) {
+        addDeductionLine('Sprinkles (Chocolate)', spec.toppingsGrams['sprinkles (chocolate)'] * chocoSprinklesCount * qty, 'grams', 1);
+    } else if (assortedSprinklesCount > 0) {
+        addDeductionLine('Sprinkles (Assorted)', spec.toppingsGrams['sprinkles (assorted)'] * assortedSprinklesCount * qty, 'grams', 1);
+    } else {
+        const genericSprinklesCount = parseToppingMultiplier(toppingsRaw, ['sprinkles', 'sprinkle']);
+        if (genericSprinklesCount > 0) {
+            addDeductionLine('Sprinkles', spec.toppingsGrams['sprinkles'] * genericSprinklesCount * qty, 'grams', 1);
+        }
     }
 }
 
@@ -224,13 +312,16 @@ function renderOrderDetails(order) {
                 </span>
             `;
         }
-        (order.toppings || []).forEach(top => {
+        const toppingsList = Array.isArray(order.toppings) ? order.toppings : (order.toppings ? String(order.toppings).split(',') : []);
+        toppingsList.forEach(top => {
+            const topStr = String(top).trim();
+            if (!topStr) return;
             tagsHtml += `
                 <span class="spec-tag">
                     <svg class="tag-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="5"></circle>
                     </svg>
-                    <span>${escapeHtml(top)}</span>
+                    <span>${escapeHtml(topStr)}</span>
                 </span>
             `;
         });
@@ -259,6 +350,28 @@ function renderOrderDetails(order) {
     }
 }
 
+// Smart Inventory Matching Helper
+function findMatchingInventoryItem(name) {
+    if (!materialsInventoryList || materialsInventoryList.length === 0) return null;
+
+    const clean = str => String(str || '').toLowerCase().replace(/[^a-z0-9]/g, ' ');
+    const targetWords = clean(name).split(/\s+/).filter(Boolean);
+
+    let match = materialsInventoryList.find(m => {
+        const invName = String(m.name || '').toLowerCase();
+        const targetName = String(name || '').toLowerCase();
+        return invName === targetName || invName.includes(targetName) || targetName.includes(invName);
+    });
+    if (match) return match;
+
+    match = materialsInventoryList.find(m => {
+        const invWords = clean(m.name || '').split(/\s+/).filter(Boolean);
+        return targetWords.every(w => invWords.includes(w)) || invWords.every(w => targetWords.includes(w));
+    });
+
+    return match || null;
+}
+
 // Render material inventory check table with interactive portion steppers
 function renderMaterialInventoryCheck() {
     const container = document.getElementById('materialsList');
@@ -271,13 +384,9 @@ function renderMaterialInventoryCheck() {
 
     const entries = Array.from(liveDeductionMap.entries());
     container.innerHTML = entries.map(([name, item], idx) => {
-        // Find corresponding on-hand inventory item
-        const invItem = materialsInventoryList.find(m => 
-            String(m.name || '').toLowerCase().includes(name.toLowerCase()) ||
-            name.toLowerCase().includes(String(m.name || '').toLowerCase())
-        );
+        const invItem = findMatchingInventoryItem(name);
 
-        const onHandQty = invItem ? parseFloat(invItem.amount || 0) : null;
+        const onHandQty = invItem ? parseFloat(invItem.amount || invItem.quantity || 0) : null;
         let stockTagHtml = '<span class="stock-tag ok">Stock In Chiller</span>';
 
         if (onHandQty !== null) {
@@ -289,6 +398,7 @@ function renderMaterialInventoryCheck() {
         }
 
         const isLast = idx === entries.length - 1;
+        const displayVal = item.unit === 'oz' ? Number(item.deductQty).toFixed(1) : Math.round(item.deductQty);
 
         return `
             <div class="materials-row ${isLast ? 'last-row' : ''}">
@@ -296,7 +406,7 @@ function renderMaterialInventoryCheck() {
                 <span class="col-bom">${item.standardQty} ${item.unit}</span>
                 <div class="col-amount">
                     <button type="button" class="stepper-btn" onclick="stepDeduction('${escapeHtml(name)}', -1)">−</button>
-                    <span class="stepper-val" id="val_${escapeHtml(name.replace(/[^a-zA-Z0-9]/g, ''))}">${Number(item.deductQty).toFixed(item.unit === 'oz' ? 1 : 0)}</span>
+                    <span class="stepper-val" id="val_${escapeHtml(name.replace(/[^a-zA-Z0-9]/g, ''))}">${displayVal}</span>
                     <button type="button" class="stepper-btn" onclick="stepDeduction('${escapeHtml(name)}', 1)">+</button>
                 </div>
                 <div class="col-stock">${stockTagHtml}</div>
@@ -319,7 +429,7 @@ window.stepDeduction = function(name, dir) {
     const targetElId = 'val_' + name.replace(/[^a-zA-Z0-9]/g, '');
     const valEl = document.getElementById(targetElId);
     if (valEl) {
-        valEl.textContent = Number(item.deductQty).toFixed(item.unit === 'oz' ? 1 : 0);
+        valEl.textContent = item.unit === 'oz' ? Number(item.deductQty).toFixed(1) : Math.round(item.deductQty);
     }
 };
 
@@ -349,7 +459,6 @@ async function handleCompleteOrder(orderId) {
         return;
     }
 
-    // Check if workflow steps are checked
     const checks = document.querySelectorAll('.checklist-grid input[type="checkbox"]');
     const allChecked = Array.from(checks).every(c => c.checked);
 
