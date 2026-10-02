@@ -94,14 +94,13 @@ async function executeDynamicGemini(systemPrompt) {
   throw new Error(lastErrorDetail || "All available Gemini models are currently overloaded. Please try again shortly.");
 }
 
-// Recipe BOM and portions per cup size
+// Recipe BOM and portions per cup size (Walang powdered milk)
 const CUP_RECIPE_SPECS = {
   '8oz': {
     baseGulamanGrams: 100,
     condensedMilkOz: 0.7,
     extraCondensedMilkOz: 0.5,
-    powderedMilkGrams: 2,
-    cupItemName: '8oz Cup',
+    cupItemName: '8oz Plastic Cups',
     toppingsGrams: {
       'pearls': 30,
       'tapioca': 30,
@@ -109,7 +108,7 @@ const CUP_RECIPE_SPECS = {
       'cheese': 5,
       'chocolate chip': 5,
       'marshmallow': 2,
-      'nuts': 5,
+      'nuts': 3,
       'sprinkles (chocolate)': 2,
       'sprinkles (assorted)': 2,
       'sprinkles': 2
@@ -117,10 +116,9 @@ const CUP_RECIPE_SPECS = {
   },
   '12oz': {
     baseGulamanGrams: 200,
-    condensedMilkOz: 1.5,
-    extraCondensedMilkOz: 1.0,
-    powderedMilkGrams: 3,
-    cupItemName: '12oz Cup',
+    condensedMilkOz: 1.0,
+    extraCondensedMilkOz: 0.5,
+    cupItemName: '12oz Plastic Cups',
     toppingsGrams: {
       'pearls': 50,
       'tapioca': 50,
@@ -128,7 +126,7 @@ const CUP_RECIPE_SPECS = {
       'cheese': 7,
       'chocolate chip': 7,
       'marshmallow': 2,
-      'nuts': 7,
+      'nuts': 3,
       'sprinkles (chocolate)': 2,
       'sprinkles (assorted)': 2,
       'sprinkles': 2
@@ -136,15 +134,15 @@ const CUP_RECIPE_SPECS = {
   }
 };
 
-// Batch yield conversions: 6 packs = 6,500g, 0.25 bag = 1,700g
+// Batch yield conversions
 const BATCH_YIELD_CONVERSIONS = {
   gulaman: {
-    rawItemName: 'Gulaman Powder',
+    rawItemName: 'Gulaman',
     cookedItemName: 'Cooked Gulaman Base',
     gramsPerPack: 6500 / 6
   },
   tapioca: {
-    rawItemName: 'Raw Tapioca Pearls',
+    rawItemName: 'Tapioca Pearls',
     cookedItemName: 'Cooked Tapioca Pearls',
     gramsPerBag: 1700 / 0.25
   }
@@ -172,13 +170,12 @@ async function deductInventoryForOrder(orderId, employeeName = 'Production Kitch
       const spec = CUP_RECIPE_SPECS[sizeKey];
 
       const toppingsStr = String(item.toppings || '').toLowerCase();
-      const hasExtraCondensed = toppingsStr.includes('condensed');
+      const hasExtraCondensed = toppingsStr.includes('extra condensed') || toppingsStr.includes('more condensed');
       const totalCondensedOz = (spec.condensedMilkOz + (hasExtraCondensed ? spec.extraCondensedMilkOz : 0)) * qty;
 
       const deductions = [
-        { name: 'Cooked Gulaman Base', qty: spec.baseGulamanGrams * qty },
+        { name: 'Gulaman', qty: spec.baseGulamanGrams * qty },
         { name: 'Condensed Milk', qty: totalCondensedOz },
-        { name: 'Powdered Milk', qty: spec.powderedMilkGrams * qty },
         { name: spec.cupItemName, qty: 1 * qty },
         { name: 'Cup Lids', qty: 1 * qty },
         { name: 'Boba Straws', qty: 1 * qty }
@@ -187,23 +184,23 @@ async function deductInventoryForOrder(orderId, employeeName = 'Production Kitch
       const isPreset = !item.is_custom;
 
       if (isPreset || toppingsStr.includes('pearl') || toppingsStr.includes('tapioca')) {
-        deductions.push({ name: 'Cooked Tapioca Pearls', qty: spec.toppingsGrams['pearls'] * qty });
+        deductions.push({ name: 'Tapioca Pearls', qty: spec.toppingsGrams['tapioca pearls'] * qty });
       }
       if (toppingsStr.includes('cheese')) {
         deductions.push({ name: 'Cheese', qty: spec.toppingsGrams['cheese'] * qty });
       }
-      if (toppingsStr.includes('chocolate chip')) {
+      if (toppingsStr.includes('chocolate chip') || toppingsStr.includes('choco chip')) {
         deductions.push({ name: 'Chocolate Chip', qty: spec.toppingsGrams['chocolate chip'] * qty });
       }
       if (toppingsStr.includes('marshmallow')) {
         deductions.push({ name: 'Marshmallow', qty: spec.toppingsGrams['marshmallow'] * qty });
       }
-      if (toppingsStr.includes('nuts')) {
+      if (toppingsStr.includes('nuts') || toppingsStr.includes('nut')) {
         deductions.push({ name: 'Nuts', qty: spec.toppingsGrams['nuts'] * qty });
       }
-      if (toppingsStr.includes('sprinkles (chocolate)')) {
+      if (toppingsStr.includes('sprinkles (chocolate)') || toppingsStr.includes('chocolate sprinkle')) {
         deductions.push({ name: 'Sprinkles (Chocolate)', qty: spec.toppingsGrams['sprinkles (chocolate)'] * qty });
-      } else if (toppingsStr.includes('sprinkles (assorted)')) {
+      } else if (toppingsStr.includes('sprinkles (assorted)') || toppingsStr.includes('assorted sprinkle')) {
         deductions.push({ name: 'Sprinkles (Assorted)', qty: spec.toppingsGrams['sprinkles (assorted)'] * qty });
       } else if (toppingsStr.includes('sprinkles')) {
         deductions.push({ name: 'Sprinkles', qty: spec.toppingsGrams['sprinkles'] * qty });
@@ -223,7 +220,7 @@ async function deductInventoryForOrder(orderId, employeeName = 'Production Kitch
 
           await supabase
             .from('inventory_items')
-            .update({ on_hand: newQty })
+            .update({ on_hand: newQty, updated_at: new Date().toISOString() })
             .eq('id', invRow.id);
 
           await supabase.from('inventory_movement_logs').insert([{
@@ -1236,7 +1233,6 @@ router.get('/sales-officer/promotions', async (req, res) => {
   }
 });
 
-// AI DECISION SUPPORT: AUTO-DRAFT OPTIMAL PROMOTION PROPOSAL (EXECUTIVE PRODUCTION TONE)
 router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1244,7 +1240,6 @@ router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    // 1. Read weekly sales velocity
     const { data: recentOrders, error: recentErr } = await supabase
       .from('orders')
       .select('id, total_amount, placed_at, order_type, order_items(item_label, quantity)')
@@ -1257,8 +1252,6 @@ router.post('/sales-officer/promotions/ai-suggest', async (req, res) => {
     const preordersCount = ordersList.filter(o => o.order_type === 'custom_build').length;
     const presetsCount = ordersList.filter(o => o.order_type === 'preset').length;
 
-    // No canned proposals. If the AI is unavailable we say so, instead of showing a
-    // pre-written promo as if it had been generated from this week's sales.
     const apiKey = String(process.env.GEMINI_API_KEY || '').trim();
     if (!apiKey) {
       return res.status(503).json({
@@ -1314,7 +1307,6 @@ Respond ONLY with this exact JSON format. No conversational text or markdown cod
     const discountValue = parseFloat(parsed.discount_value);
     const pitchNote = String(parsed.pitch_note || '').trim();
     if (!code || !discountType || !Number.isFinite(discountValue) || discountValue <= 0 || !pitchNote) {
-      console.warn('[Gemini Auto-Draft] incomplete proposal:', JSON.stringify(parsed));
       return res.status(502).json({
         status: 'error',
         message: 'The AI returned an incomplete proposal. Please try again, or enter the promo details manually.'
@@ -1687,7 +1679,6 @@ router.get('/finance-officer/revenue', async (req, res) => {
 
     let { data: expenseRows, error: expErr } = await supabase.from('expenses').select('amount, status, expense_date, category');
     if (expErr && expErr.code === '42703') {
-      // category column not migrated yet: keep totals working, COGS stays 0
       ({ data: expenseRows } = await supabase.from('expenses').select('amount, status, expense_date'));
     }
     const totalExpenses = (expenseRows || [])
@@ -2500,7 +2491,6 @@ router.get('/procurement-officer/stock-control', async (req, res) => {
 // PRODUCTION SUPERVISOR API ROUTES
 // ==========================================================================
 
-// Production Dashboard (Option A: Macro Quality & Calibration Pulse Integration)
 router.get('/production-supervisor/dashboard', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -2545,7 +2535,6 @@ router.get('/production-supervisor/dashboard', async (req, res) => {
     });
     const pendingRestocks = restockPitches.filter(p => !['PURCHASED', 'REJECTED'].includes(p.status)).length;
 
-    // Macro Quality Pulse for Dashboard (Live CSAT & Action Directives)
     let qualityPulse = {
       averageCsat: 5.0,
       totalReviewsAnalyzed: 0,
@@ -2659,7 +2648,7 @@ router.get('/production-supervisor/dashboard', async (req, res) => {
         preordersClaimedStr: `${claimedTodayCount || 0} / ${totalTodayCount || 0}`,
         pendingRestocks
       },
-      qualityPulse, // Macro Quality Metrics & Directives
+      qualityPulse,
       recentOrders,
       restockPitches,
       scheduleList
@@ -2737,7 +2726,6 @@ router.get('/production-supervisor/order-list', async (req, res) => {
   }
 });
 
-// Production Station (Option B: Micro Assembly Line View with Heads-Up Calibration Alerts)
 router.get('/production-supervisor/order-production', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -2805,7 +2793,6 @@ router.get('/production-supervisor/order-production', async (req, res) => {
       materials = [];
     }
 
-    // Micro Station Directives (Heads-Up Alert Banner above BOM)
     let qualityAlerts = [];
     try {
       const { data: qReport } = await supabase
@@ -2834,7 +2821,7 @@ router.get('/production-supervisor/order-production', async (req, res) => {
       user: userProfile, 
       order: orderData, 
       materials,
-      qualityAlerts // Heads-up calibration strip
+      qualityAlerts
     });
   } catch (error) {
     console.error('[production-supervisor/order-production] error:', error.message);
@@ -2899,7 +2886,7 @@ router.post('/production-supervisor/cook-batch', async (req, res) => {
       const remainingRaw = Math.max(0, (parseFloat(rawItem.on_hand) || 0) - numQty);
       await supabase
         .from('inventory_items')
-        .update({ on_hand: remainingRaw })
+        .update({ on_hand: remainingRaw, updated_at: new Date().toISOString() })
         .eq('id', rawItem.id);
 
       await supabase.from('inventory_movement_logs').insert([{
@@ -2922,7 +2909,7 @@ router.post('/production-supervisor/cook-batch', async (req, res) => {
     if (cookedItem) {
       await supabase
         .from('inventory_items')
-        .update({ on_hand: (parseFloat(cookedItem.on_hand) || 0) + cookedGramsProduced })
+        .update({ on_hand: (parseFloat(cookedItem.on_hand) || 0) + cookedGramsProduced, updated_at: new Date().toISOString() })
         .eq('id', cookedItem.id);
     } else {
       const { data: newCooked } = await supabase.from('inventory_items').insert([{
@@ -3000,24 +2987,104 @@ router.get('/production-supervisor/production-planning', async (req, res) => {
   }
 });
 
+// Production Planning Schedule with Inventory Pre-Check & Pitch Restock Guard
 router.post('/production-supervisor/add-plan', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
-    const { operation, due_date, schedule_time, status, target_liters } = req.body;
+    const { recipe_name, raw_qty, raw_unit, operation, due_date, schedule_time, status, target_liters } = req.body;
+
     if (!operation || !due_date || !schedule_time) {
       return res.status(400).json({ status: 'error', message: 'Operation name, due date, and schedule time are required.' });
     }
 
+    const deductAmount = parseFloat(raw_qty) || 0;
+
+    // 1. Pre-Check Inventory Stock before scheduling
+    if (deductAmount > 0 && recipe_name) {
+      let searchTerm = recipe_name;
+      if (recipe_name.toLowerCase().includes('strawberry')) searchTerm = 'Strawberry';
+      else if (recipe_name.toLowerCase().includes('coffee')) searchTerm = 'Coffee';
+      else if (recipe_name.toLowerCase().includes('buko')) searchTerm = 'Buko Pandan';
+      else if (recipe_name.toLowerCase().includes('tapioca') || recipe_name.toLowerCase().includes('pearl')) searchTerm = 'Tapioca';
+
+      const { data: invItem } = await supabase
+        .from('inventory_items')
+        .select('id, name, on_hand, unit_of_measure')
+        .ilike('name', `%${searchTerm}%`)
+        .limit(1)
+        .maybeSingle();
+
+      const currentStock = invItem ? parseFloat(invItem.on_hand || 0) : 0;
+
+      // Harang kung 0 o mas mababa ang stock
+      if (!invItem || currentStock < deductAmount) {
+        return res.status(400).json({
+          status: 'insufficient_stock',
+          message: `Insufficient stock for ${recipe_name}. Current on-hand is ${currentStock} ${invItem ? invItem.unit_of_measure : (raw_unit || 'units')}, but ${deductAmount} ${raw_unit || 'units'} required.`,
+          itemName: invItem ? invItem.name : recipe_name,
+          currentStock,
+          requiredStock: deductAmount,
+          unit: invItem ? invItem.unit_of_measure : (raw_unit || 'units')
+        });
+      }
+
+      // 2. Insert into production_orders
+      const { count: totalCount } = await supabase.from('production_orders').select('*', { count: 'exact', head: true });
+      const nextCode = 'MM-' + (24080 + (totalCount || 0) + 1);
+      const numTargetLiters = target_liters !== undefined && target_liters !== '' ? parseFloat(target_liters) : null;
+
+      const { data: planData, error: insertErr } = await supabase.from('production_orders').insert([{
+        order_code: nextCode,
+        operation,
+        target_liters: numTargetLiters,
+        due_date,
+        schedule_time: schedule_time || '08:00',
+        status: status || 'PLANNED'
+      }]).select().single();
+
+      if (insertErr) throw insertErr;
+
+      // 3. Deduct stock from inventory_items
+      const newStock = Math.max(0, currentStock - deductAmount);
+      await supabase
+        .from('inventory_items')
+        .update({ on_hand: newStock, updated_at: new Date().toISOString() })
+        .eq('id', invItem.id);
+
+      // 4. Log movement
+      const empProfile = await getEmployeeProfile(req);
+      await supabase.from('inventory_movement_logs').insert([{
+        item_id: invItem.id,
+        item_name: invItem.name,
+        change_type: 'DEDUCT',
+        quantity_changed: deductAmount,
+        employee_name: empProfile.fullName || 'Production Supervisor'
+      }]);
+
+      return res.json({
+        status: 'success',
+        message: 'Production plan created and inventory deducted successfully.',
+        plan: planData
+      });
+    }
+
+    // Standard fallback if no recipe_name / quantity specified
     const { count: totalCount } = await supabase.from('production_orders').select('*', { count: 'exact', head: true });
     const nextCode = 'MM-' + (24080 + (totalCount || 0) + 1);
     const numTargetLiters = target_liters !== undefined && target_liters !== '' ? parseFloat(target_liters) : null;
 
-    const { error } = await supabase.from('production_orders').insert([{
-      order_code: nextCode, operation, target_liters: numTargetLiters, due_date, schedule_time, status: status || 'PENDING'
-    }]);
-    if (error) throw error;
+    const { data: planData, error } = await supabase.from('production_orders').insert([{
+      order_code: nextCode,
+      operation,
+      target_liters: numTargetLiters,
+      due_date,
+      schedule_time: schedule_time || '08:00',
+      status: status || 'PLANNED'
+    }]).select().single();
 
-    return res.json({ status: 'success', message: 'Production plan created successfully.' });
+    if (error) throw error;
+    return res.json({ status: 'success', message: 'Production plan created successfully.', plan: planData });
+
   } catch (error) {
     console.error('[production-supervisor/add-plan] error:', error.message);
     return res.status(500).json({ status: 'error', message: error.message });
@@ -3044,4 +3111,4 @@ router.post('/production-supervisor/edit-plan', async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = router;  

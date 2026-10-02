@@ -351,7 +351,7 @@ function filterByTimeRange() {
     renderAllViews();
 }
 
-// Submits batch cooking run & sends quantity/unit to backend for Supabase inventory deduction
+// Submits batch cooking run & checks for stock validation / Pitch Restock trigger
 async function handleAddPlan(e) {
     e.preventDefault();
 
@@ -375,7 +375,7 @@ async function handleAddPlan(e) {
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-        await apiPost('/api/production-supervisor/add-plan', {
+        const payload = {
             recipe_name: recipePreset || operation,
             raw_qty: batchQty,
             raw_unit: batchUnit,
@@ -384,14 +384,67 @@ async function handleAddPlan(e) {
             due_date,
             schedule_time,
             status
-        });
+        };
+
+        const res = await (typeof employeeFetch === 'function' 
+            ? employeeFetch('/api/production-supervisor/add-plan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            : fetch('/api/production-supervisor/add-plan', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-user-id': localStorage.getItem('userId') || sessionStorage.getItem('userId') || ''
+                },
+                body: JSON.stringify(payload)
+            }));
+
+        const result = await res.json().catch(() => ({}));
+
+        // Harang: Kapag insufficient stock ang ibinalik ng server, magpa-popup ng Pitch Restock
+        if (!res.ok || result.status === 'insufficient_stock') {
+            if (result.status === 'insufficient_stock') {
+                const pitchConfirm = await Swal.fire({
+                    title: 'Out of Stock!',
+                    html: `
+                        <p style="font-size: 13.5px; color: var(--text-dark); margin-bottom: 8px;">
+                            Hindi maaaring lutuin ang <b>${escapeHtml(result.itemName)}</b> dahil <b>${result.currentStock} ${result.unit}</b> na lang ang natitirang stock sa inventory (Kailangan: <b>${result.requiredStock} ${result.unit}</b>).
+                        </p>
+                        <p style="font-size: 12px; font-weight: 700; color: var(--brown-soft);">
+                            Kailangan munang mag-pitch ng restock bago mag-schedule ng cooking batch.
+                        </p>
+                    `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Pitch Restock Now',
+                    cancelButtonText: 'Cancel Schedule',
+                    customClass: {
+                        popup: 'mm-swal-popup',
+                        title: 'mm-swal-title',
+                        confirmButton: 'mm-swal-confirm',
+                        cancelButton: 'mm-swal-cancel'
+                    },
+                    buttonsStyling: false
+                });
+
+                if (pitchConfirm.isConfirmed) {
+                    window.location.href = 'procurement.html';
+                }
+                return;
+            }
+            throw new Error(result.message || 'Server rejected batch schedule.');
+        }
 
         closeModal('addPlanModal');
         e.target.reset();
         await fetchProductionPlanningData();
         showCustomSwal('Batch Scheduled', `Batch cooking plan for "${operation}" scheduled successfully and inventory updated.`, 'success');
+
     } catch (error) {
-        showCustomSwal('Scheduling Failed', error.message || 'Could not save the batch plan.', 'warning');
+        console.error('Scheduling failed:', error);
+        showCustomSwal('Scheduling Blocked', error.message || 'Could not save the batch plan.', 'warning');
     } finally {
         if (submitBtn) submitBtn.disabled = false;
     }
@@ -494,7 +547,6 @@ async function exportBatchScheduleToPDF() {
         </tr>
     `;
 
-    // Temporarily unhide for capture
     renderWrapper.style.display = 'block';
 
     const opt = {
