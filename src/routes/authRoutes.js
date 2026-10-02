@@ -560,10 +560,19 @@ router.post('/employee-login', async (req, res) => {
 
     let isPasswordValid = false;
     if (account.password_hash) {
-      try {
-        const normalizedHash = account.password_hash.replace(/^\$2y\$/, '$2a$').replace(/^\$2b\$/, '$2a$');
-        isPasswordValid = await bcrypt.compare(password, normalizedHash);
-      } catch {
+      // bcryptjs returns false (it does NOT throw) when the stored value isn't
+      // a bcrypt hash, so the old try/catch plaintext fallback never ran and
+      // accounts with a plaintext password_hash were always rejected. Check the
+      // format first, same as /api/management/login in server.js.
+      const isBcryptHash = /^\$2[aby]\$/.test(account.password_hash);
+      if (isBcryptHash) {
+        try {
+          const normalizedHash = account.password_hash.replace(/^\$2y\$/, '$2a$').replace(/^\$2b\$/, '$2a$');
+          isPasswordValid = await bcrypt.compare(password, normalizedHash);
+        } catch {
+          isPasswordValid = false;
+        }
+      } else {
         isPasswordValid = (password === account.password_hash);
       }
     }
