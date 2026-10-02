@@ -134,28 +134,38 @@ const CUP_RECIPE_SPECS = {
   }
 };
 
-// Batch yield conversions
+// Batch yield conversions para sa bawat flavored gulaman base at tapioca
 const BATCH_YIELD_CONVERSIONS = {
-  gulaman: {
-    rawItemName: 'Gulaman',
-    cookedItemName: 'Cooked Gulaman Base',
+  'strawberry gulaman': {
+    rawItemName: 'Strawberry Powder',
+    cookedItemName: 'Cooked Strawberry Gulaman',
     gramsPerPack: 6500 / 6
   },
-  tapioca: {
+  'coffee gulaman': {
+    rawItemName: 'Coffee Jelly Powder',
+    cookedItemName: 'Cooked Coffee Gulaman',
+    gramsPerPack: 6500 / 6
+  },
+  'buko pandan gulaman': {
+    rawItemName: 'Buko Pandan Powder',
+    cookedItemName: 'Cooked Buko Pandan Gulaman',
+    gramsPerPack: 6500 / 6
+  },
+  'tapioca': {
     rawItemName: 'Tapioca Pearls',
     cookedItemName: 'Cooked Tapioca Pearls',
     gramsPerBag: 1700 / 0.25
   }
 };
 
-// Automatic inventory deductions for prepared cups
+// Automatic inventory deductions for prepared cups (Dynamic per Flavor)
 async function deductInventoryForOrder(orderId, employeeName = 'Production Kitchen') {
   if (!supabase || !orderId) return;
 
   try {
     const { data: order, error: orderErr } = await supabase
       .from('orders')
-      .select('id, order_items(item_label, quantity, size, toppings, is_custom)')
+      .select('id, order_items(item_label, quantity, size, toppings, is_custom, flavor, custom_details)')
       .eq('id', orderId)
       .maybeSingle();
 
@@ -173,8 +183,19 @@ async function deductInventoryForOrder(orderId, employeeName = 'Production Kitch
       const hasExtraCondensed = toppingsStr.includes('extra condensed') || toppingsStr.includes('more condensed');
       const totalCondensedOz = (spec.condensedMilkOz + (hasExtraCondensed ? spec.extraCondensedMilkOz : 0)) * qty;
 
+      // Dynamic Detection para sa Flavored Gulaman Base
+      const itemFlavorStr = (rawLabel + ' ' + (item.flavor || '') + ' ' + (item.custom_details || '')).toLowerCase();
+      let cookedGulamanName = 'Cooked Strawberry Gulaman';
+      if (itemFlavorStr.includes('coffee')) {
+        cookedGulamanName = 'Cooked Coffee Gulaman';
+      } else if (itemFlavorStr.includes('buko') || itemFlavorStr.includes('pandan')) {
+        cookedGulamanName = 'Cooked Buko Pandan Gulaman';
+      } else if (itemFlavorStr.includes('strawberry')) {
+        cookedGulamanName = 'Cooked Strawberry Gulaman';
+      }
+
       const deductions = [
-        { name: 'Gulaman', qty: spec.baseGulamanGrams * qty },
+        { name: cookedGulamanName, qty: spec.baseGulamanGrams * qty },
         { name: 'Condensed Milk', qty: totalCondensedOz },
         { name: spec.cupItemName, qty: 1 * qty },
         { name: 'Cup Lids', qty: 1 * qty },
@@ -2747,7 +2768,7 @@ router.get('/production-supervisor/order-production', async (req, res) => {
     if (requestedOrderId > 0) {
       const { data: order } = await supabase
         .from('orders')
-        .select('id, order_number, status, pickup_instructions, guest_name, customers(users(full_name)), order_items(item_label, quantity, size, toppings, is_custom)')
+        .select('id, order_number, status, pickup_instructions, guest_name, customers(users(full_name)), order_items(item_label, quantity, size, toppings, is_custom, flavor, custom_details)')
         .eq('id', requestedOrderId)
         .maybeSingle();
 
@@ -2766,6 +2787,7 @@ router.get('/production-supervisor/order-production', async (req, res) => {
           orderStatus: (order.status || '').toUpperCase(),
           orderType: firstItem.is_custom ? 'Pre-Order' : 'Walk-in Preset',
           itemLabel,
+          flavor: firstItem.flavor || '',
           quantity: firstItem.quantity || 1,
           cupSize: firstItem.size || '',
           toppings: firstItem.toppings ? firstItem.toppings.split(',').map(t => t.trim()).filter(Boolean) : [],
@@ -2853,6 +2875,7 @@ router.post('/production-supervisor/complete-order', async (req, res) => {
   }
 });
 
+// Batch cooking run with dynamic Flavored Gulaman conversion
 router.post('/production-supervisor/cook-batch', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -2863,14 +2886,24 @@ router.post('/production-supervisor/cook-batch', async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Valid batch_type and quantity required.' });
     }
 
-    const conversion = BATCH_YIELD_CONVERSIONS[batch_type.toLowerCase()];
+    const cleanBatchType = String(batch_type).toLowerCase().trim();
+    let conversion = BATCH_YIELD_CONVERSIONS[cleanBatchType];
+
+    // Fallback detection para sa Flavored Gulaman Batches
+    if (!conversion) {
+      if (cleanBatchType.includes('strawberry')) conversion = BATCH_YIELD_CONVERSIONS['strawberry gulaman'];
+      else if (cleanBatchType.includes('coffee')) conversion = BATCH_YIELD_CONVERSIONS['coffee gulaman'];
+      else if (cleanBatchType.includes('buko') || cleanBatchType.includes('pandan')) conversion = BATCH_YIELD_CONVERSIONS['buko pandan gulaman'];
+      else if (cleanBatchType.includes('tapioca') || cleanBatchType.includes('pearl')) conversion = BATCH_YIELD_CONVERSIONS['tapioca'];
+    }
+
     if (!conversion) {
       return res.status(400).json({ status: 'error', message: 'Invalid batch type.' });
     }
 
-    const cookedGramsProduced = batch_type.toLowerCase() === 'gulaman' 
-      ? Math.round(numQty * conversion.gramsPerPack)
-      : Math.round(numQty * conversion.gramsPerBag);
+    const cookedGramsProduced = cleanBatchType.includes('tapioca') || cleanBatchType.includes('pearl')
+      ? Math.round(numQty * conversion.gramsPerBag)
+      : Math.round(numQty * conversion.gramsPerPack);
 
     const empProfile = await getEmployeeProfile(req);
     const staffName = empProfile.fullName || 'Kitchen Staff';
@@ -2932,7 +2965,7 @@ router.post('/production-supervisor/cook-batch', async (req, res) => {
 
     return res.json({
       status: 'success',
-      message: `Batch cooked successfully: -${numQty} raw deducted, +${cookedGramsProduced}g cooked base ready.`,
+      message: `Batch cooked successfully: -${numQty} raw deducted, +${cookedGramsProduced}g ${conversion.cookedItemName} ready in chiller.`,
       gramsProduced: cookedGramsProduced
     });
 
@@ -3111,4 +3144,48 @@ router.post('/production-supervisor/edit-plan', async (req, res) => {
   }
 });
 
-module.exports = router;  
+// Requisition & Pitch Restock API Endpoint (Auto-routes to Procurement/Finance/CEO)
+router.post('/production-supervisor/pitch-restock', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+    const { item_name, quantity, unit, unit_price, rationale } = req.body;
+    const userId = req.headers['x-user-id'] || req.body?.user_id || null;
+
+    if (!item_name || isNaN(quantity) || isNaN(unit_price)) {
+      return res.status(400).json({ status: 'error', message: 'Item name, quantity, and unit price are required.' });
+    }
+
+    const numQty = parseFloat(quantity) || 0;
+    const numUnitPrice = parseFloat(unit_price) || 0;
+    const totalCost = numQty * numUnitPrice;
+    const route = routeForAmount(totalCost);
+    const tier = route === 'ceo' ? 'major' : (route === 'finance' ? 'medium' : 'micro');
+    const status = route === 'ceo' ? 'PENDING_CEO' : (route === 'finance' ? 'PENDING_FINANCE' : 'APPROVED');
+
+    const unitStr = unit ? ` ${unit}` : '';
+    const noteText = rationale ? `Qty: ${numQty}${unitStr} @ ₱${numUnitPrice}. Reason: ${rationale}` : `Qty: ${numQty}${unitStr} @ ₱${numUnitPrice}.`;
+
+    const { data: inserted, error } = await supabase.from('expenses').insert([{
+      item_name,
+      amount: totalCost,
+      tier,
+      status,
+      notes: noteText,
+      requested_by: userId || null,
+      expense_date: new Date().toISOString().split('T')[0]
+    }]).select('id, status').single();
+
+    if (error) throw error;
+
+    return res.json({
+      status: 'success',
+      message: 'Restock pitch submitted successfully and routed to Procurement.',
+      pitch: inserted
+    });
+  } catch (error) {
+    console.error('[production-supervisor/pitch-restock] error:', error.message);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+module.exports = router;

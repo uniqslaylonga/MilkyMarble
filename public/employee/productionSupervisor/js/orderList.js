@@ -5,6 +5,28 @@ let currentOrderPage = 1;
 const ORDERS_PAGE_SIZE = 5;
 let currentFilterTab = 'all';
 
+// Formatter para sa Title Case display ng anumang database status
+function formatCleanStatus(status) {
+    if (!status) return 'In Progress';
+    const clean = String(status).toUpperCase().trim();
+    const map = {
+        'READY_FOR_PICKUP': 'Ready for Pickup',
+        'PREPARING': 'In Progress',
+        'COMPLETED': 'Completed',
+        'CONFIRMED': 'Confirmed',
+        'PAID_VERIFIED': 'Payment Verified',
+        'PENDING_PAYMENT': 'Pending Payment',
+        'CANCELLED': 'Cancelled'
+    };
+    if (map[clean]) return map[clean];
+
+    return clean
+        .toLowerCase()
+        .replace(/_/g, ' ')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/\b\w/g, c => c.toUpperCase());
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Search listener (synced between topbar search and orders-queue search)
     const searchInput = document.getElementById('orderSearchInput');
@@ -105,7 +127,9 @@ async function fetchOrderListData() {
 
 // Filter logic (Search query + Tab filters)
 function applyOrderFilters() {
-    const searchVal = document.getElementById('orderSearchInput')?.value.trim().toLowerCase() || '';
+    const searchVal = document.getElementById('orderSearchInput')?.value.trim().toLowerCase()
+        || document.getElementById('orderQueueSearchInput')?.value.trim().toLowerCase()
+        || '';
 
     filteredOrders = allOrders.filter(ord => {
         if (currentFilterTab === 'preorder' && ord.type !== 'preorder') return false;
@@ -164,7 +188,29 @@ function renderOrdersTable() {
         const isPreorder = ord.type === 'preorder';
         const typeClass = isPreorder ? 'type-preorder' : 'type-preset';
         const typeText = isPreorder ? 'Pre-order' : 'Walk-in Preset';
-        const isReady = ord.statusClass === 'ready';
+
+        const rawStatus = (ord.status || '').toUpperCase();
+        const cleanLabel = formatCleanStatus(ord.statusLabel || ord.status);
+
+        const isCompleted = ord.statusClass === 'completed' || rawStatus === 'COMPLETED' || cleanLabel === 'Completed' || cleanLabel === 'Complete';
+        const isReady = ord.statusClass === 'ready' || rawStatus === 'READY_FOR_PICKUP' || cleanLabel === 'Ready for Pickup';
+
+        let badgeClass = 'inprep';
+        if (isReady) {
+            badgeClass = 'ready';
+        } else if (isCompleted) {
+            badgeClass = 'completed';
+        } else if (ord.statusClass === 'pending') {
+            badgeClass = 'pending';
+        }
+
+        // Malinaw na Action Button base sa status
+        let actionBtnText = 'Mix & Assemble';
+        if (isCompleted) {
+            actionBtnText = 'View Details';
+        } else if (isReady) {
+            actionBtnText = 'Review Recipe';
+        }
 
         return `
             <tr>
@@ -183,13 +229,13 @@ function renderOrdersTable() {
                 <td><span style="font-size: 11.5px; font-weight: 700; color: var(--text-muted);">${escapeHtml(ord.claim_slot || 'Counter Release')}</span></td>
                 <td><span class="shelf-tag-badge">${escapeHtml(ord.shelf_tag || 'Chiller Section')}</span></td>
                 <td>
-                    <span class="status-badge-prep ${isReady ? 'ready' : 'inprep'}">
-                        ${escapeHtml(ord.statusLabel)}
+                    <span class="status-badge-prep ${badgeClass}">
+                        ${escapeHtml(cleanLabel)}
                     </span>
                 </td>
                 <td>
-                    <button type="button" class="btn-kitchen-action" onclick="window.location.href='orderProduction.html?order_id=${ord.id}'">
-                        ${isReady ? 'Review Recipe' : 'Mix &amp; Assemble'}
+                    <button type="button" class="btn-kitchen-action ${isCompleted ? 'btn-completed-action' : ''}" onclick="window.location.href='orderProduction.html?order_id=${ord.id}'">
+                        ${actionBtnText}
                     </button>
                 </td>
             </tr>
@@ -224,7 +270,7 @@ function renderOrderPagerButtons(totalPages, activePage) {
     });
 }
 
-// Render Walk-in Preset Batch Allocator without emojis
+// Render Walk-in Preset Batch Allocator
 function renderPresetBatchAllocator() {
     const container = document.getElementById('presetGrid');
     if (!container) return;
