@@ -171,10 +171,17 @@
                             <path d="M12 3v18M6 8l-4 8h8l-4-8zM18 8l-4 8h8l-4-8z"></path>
                         </svg>
                     </div>
-                    <div>
+                    <div style="flex: 1;">
                         <h3>Ingredients &amp; Material Inventory Check</h3>
                         <p class="materials-sub">Auto-calculated Bill of Materials with real-time on-hand stock verification and manual portion tuning.</p>
                     </div>
+                    <button type="button" class="btn-pitch-header" onclick="openPitchRestockModal()">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>Pitch Restock</span>
+                    </button>
                 </div>
 
                 <form id="materialsForm">
@@ -197,9 +204,78 @@
     </main>
 </div>
 
+<!-- Pitch Ingredient Restock Modal (Embedded directly in Order Production) -->
+<div class="modal-overlay" id="pitchRestockModal">
+    <div class="profile-modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <h3 class="modal-title">Pitch Ingredient Restock</h3>
+                <p class="modal-subtitle">Auto-routed to Procurement, Finance, or CEO based on estimated cost.</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('pitchRestockModal')">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <form id="pitchRestockForm" class="modal-body">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Raw Ingredient / Item *</label>
+                    <input type="text" id="pitchItemName" placeholder="e.g. 12oz Plastic Cups, Condensed Milk, Tapioca Pearls" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Quantity *</label>
+                    <input type="number" id="pitchQty" min="0.1" step="any" placeholder="e.g. 2" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Unit of Measure *</label>
+                    <select id="pitchUnit" required>
+                        <option value="pcs">pcs</option>
+                        <option value="packs" selected>packs</option>
+                        <option value="grams">grams</option>
+                        <option value="kilo">kilo</option>
+                        <option value="oz">oz</option>
+                        <option value="box">box</option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label>Est. Unit Price (₱) *</label>
+                    <input type="number" id="pitchUnitPrice" min="0" step="any" placeholder="e.g. 130" required>
+                </div>
+
+                <div class="form-group full">
+                    <div class="pitch-cost-box">
+                        <span class="pitch-cost-title">Total Estimated Cost:</span>
+                        <div class="pitch-cost-val" id="pitchCostDisplay">₱0.00</div>
+                        <span class="pitch-route-badge" id="pitchRouteBadge">Direct Route: Procurement Officer (Direct Purchase Authorized)</span>
+                    </div>
+                </div>
+
+                <div class="form-group full">
+                    <label>Requisition Rationale</label>
+                    <textarea id="pitchRationale" placeholder="e.g. Out of stock during workstation cup assembly..."></textarea>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal('pitchRestockModal')">Cancel</button>
+                <button type="submit" class="btn-primary" id="btnSubmitPitch">
+                    <span>Submit Restock Pitch</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script src="../js/employeeAuth.js"></script>
 <script src="js/orderProduction.js"></script>
 <script src="/shared/js/avatarUpload.js"></script>
-    <script src="/shared/js/staffLogout.js"></script>
+<script src="/shared/js/staffLogout.js"></script>
 </body>
 </html>

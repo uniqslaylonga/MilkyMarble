@@ -435,7 +435,6 @@
 
         <form id="addPlanForm" class="modal-body">
             <div class="form-grid">
-                <!-- Dropdown limited strictly to the 4 items -->
                 <div class="form-group full">
                     <label>Ingredient / Batch Recipe Preset *</label>
                     <select id="recipeSelect" required>
@@ -452,10 +451,9 @@
                     <input type="text" id="addOpInput" placeholder="e.g. Morning Tapioca Pearls Cooking" required>
                 </div>
 
-                <!-- Input box para sa Dami at Unit (grams o pcs) -->
                 <div class="form-group">
                     <label>Raw Quantity to Cook *</label>
-                    <input type="number" id="addBatchQty" min="0.1" step="any" placeholder="e.g. 300 o 2" required>
+                    <input type="number" id="addBatchQty" min="0.1" step="any" placeholder="e.g. 300 or 2" required>
                 </div>
 
                 <div class="form-group">
@@ -468,7 +466,7 @@
 
                 <div class="form-group full">
                     <label>Expected Cooked Yield / Volume (Output)</label>
-                    <input type="text" id="addYieldInput" placeholder="e.g. 2.5 kg (50 cups) o 1 Mold Tray">
+                    <input type="text" id="addYieldInput" placeholder="e.g. 2.5 kg (50 cups) or 1 Mold Tray">
                 </div>
 
                 <div class="form-group">
@@ -568,7 +566,7 @@
     </div>
 </div>
 
-<!-- Modal 3: Pitch Ingredient Restock Modal (Naka-embed on screen para hindi mag-404) -->
+<!-- Modal 3: Pitch Ingredient Restock Modal (May Unit Selector & Malinis na Placeholders) -->
 <div class="modal-overlay" id="pitchRestockModal">
     <div class="profile-modal" onclick="event.stopPropagation()">
         <div class="modal-header">
@@ -593,10 +591,21 @@
 
                 <div class="form-group">
                     <label>Quantity *</label>
-                    <input type="number" id="pitchQty" min="1" step="any" placeholder="e.g. 2" required>
+                    <input type="number" id="pitchQty" min="0.1" step="any" placeholder="e.g. 2" required>
                 </div>
 
                 <div class="form-group">
+                    <label>Unit of Measure *</label>
+                    <select id="pitchUnit" required>
+                        <option value="pcs">pcs</option>
+                        <option value="packs" selected>packs</option>
+                        <option value="grams">grams</option>
+                        <option value="kilo">kilo</option>
+                        <option value="box">box</option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
                     <label>Est. Unit Price (₱) *</label>
                     <input type="number" id="pitchUnitPrice" min="0" step="any" placeholder="e.g. 130" required>
                 </div>

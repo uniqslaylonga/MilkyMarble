@@ -408,7 +408,7 @@ async function handleAddPlan(e) {
 
         const result = await res.json().catch(() => ({}));
 
-        // English Out-of-Stock Alert + Modal Trigger
+        // English Out-of-Stock Alert + Direct Modal Trigger
         if (!res.ok || result.status === 'insufficient_stock') {
             if (result.status === 'insufficient_stock') {
                 const pitchConfirm = await Swal.fire({
@@ -437,8 +437,8 @@ async function handleAddPlan(e) {
 
                 if (pitchConfirm.isConfirmed) {
                     closeModal('addPlanModal');
-                    // Bubuksan ang Pitch Ingredient Restock modal on-screen
-                    openPitchRestockModal(result.itemName, result.requiredStock, result.unit);
+                    // Bubuksan ang Pitch Modal nang MALINIS (walang hardcoded values, placeholders lang)
+                    openPitchRestockModal();
                 }
                 return;
             }
@@ -458,20 +458,18 @@ async function handleAddPlan(e) {
     }
 }
 
-// Opens the Pitch Ingredient Restock Modal directly on screen with pre-filled details
-function openPitchRestockModal(itemName, requiredQty, unit) {
-    const nameInput = document.getElementById('pitchItemName');
-    const qtyInput = document.getElementById('pitchQty');
-    const unitPriceInput = document.getElementById('pitchUnitPrice');
-    const rationaleInput = document.getElementById('pitchRationale');
+// Opens the Pitch Ingredient Restock Modal nang MALINIS (Placeholders lang ang lalabas)
+function openPitchRestockModal() {
+    const form = document.getElementById('pitchRestockForm');
+    if (form) form.reset();
 
-    if (nameInput) nameInput.value = itemName || '';
-    if (qtyInput) qtyInput.value = requiredQty || 2;
-    if (unitPriceInput) unitPriceInput.value = 130;
-    if (rationaleInput) {
-        rationaleInput.value = `Running low on ${itemName} (${requiredQty} ${unit} needed for scheduled batch run).`;
-    }
-
+    // I-clear ang mga textfield para tanging placeholders (e.g. 2, e.g. 130) lang ang makita
+    document.getElementById('pitchItemName').value = '';
+    document.getElementById('pitchQty').value = '';
+    document.getElementById('pitchUnitPrice').value = '';
+    document.getElementById('pitchRationale').value = '';
+    
+    // I-reset ang total display sa ₱0.00
     calculatePitchTotal();
     openModal('pitchRestockModal');
 }
@@ -480,7 +478,7 @@ function openPitchRestockModal(itemName, requiredQty, unit) {
 function calculatePitchTotal() {
     const qty = parseFloat(document.getElementById('pitchQty')?.value || 0);
     const unitPrice = parseFloat(document.getElementById('pitchUnitPrice')?.value || 0);
-    const total = qty * unitPrice;
+    const total = (isNaN(qty) ? 0 : qty) * (isNaN(unitPrice) ? 0 : unitPrice);
 
     const displayEl = document.getElementById('pitchCostDisplay');
     const badgeEl = document.getElementById('pitchRouteBadge');
@@ -512,11 +510,12 @@ async function handlePitchRestockSubmit(e) {
 
     const item_name = document.getElementById('pitchItemName').value.trim();
     const quantity = parseFloat(document.getElementById('pitchQty').value);
+    const unit = document.getElementById('pitchUnit')?.value || 'packs';
     const unit_price = parseFloat(document.getElementById('pitchUnitPrice').value);
     const rationale = document.getElementById('pitchRationale').value.trim();
 
-    if (!item_name || isNaN(quantity) || isNaN(unit_price)) {
-        showCustomSwal('Incomplete Information', 'Please provide item name, quantity, and unit price.', 'warning');
+    if (!item_name || isNaN(quantity) || isNaN(unit_price) || quantity <= 0) {
+        showCustomSwal('Incomplete Information', 'Please provide a valid item name, quantity, and unit price.', 'warning');
         return;
     }
 
@@ -527,6 +526,7 @@ async function handlePitchRestockSubmit(e) {
         const payload = {
             item_name,
             quantity,
+            unit,
             unit_price,
             rationale
         };
@@ -534,6 +534,7 @@ async function handlePitchRestockSubmit(e) {
         await apiPost('/api/production-supervisor/pitch-restock', payload);
         closeModal('pitchRestockModal');
         e.target.reset();
+        calculatePitchTotal();
         showCustomSwal('Pitch Submitted', `Restock requisition for "${item_name}" transmitted successfully to Procurement.`, 'success');
     } catch (err) {
         console.error('Pitch submission failed:', err);
