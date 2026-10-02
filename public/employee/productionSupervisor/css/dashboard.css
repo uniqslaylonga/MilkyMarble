@@ -401,7 +401,7 @@ body {
   color: var(--text-muted);
 }
 
-/* SPLIT LAYOUT: 2 Columns for Requisitions & Quality Pulse */
+/* SPLIT LAYOUT */
 .split-dashboard-layout {
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
@@ -731,7 +731,7 @@ body {
   padding: 2px 7px;
   border-radius: 6px;
   text-transform: uppercase;
-  white-space: nowrap; /* Prevents text from breaking into two lines */
+  white-space: nowrap;
 }
 
 .type-preorder {
@@ -1006,6 +1006,7 @@ body {
 }
 
 .form-group input,
+.form-group select,
 .form-group textarea {
   background-color: var(--bg-main);
   border: 1px solid var(--border-soft);
@@ -1070,7 +1071,7 @@ body {
   opacity: 0.9;
 }
 
-/* SweetAlert2 Custom Milky Marble Theme */
+/* SweetAlert2 Theme Matching */
 .swal2-popup.mm-swal-popup {
   background-color: #FFFFFF !important;
   border-radius: 20px !important;
@@ -1087,17 +1088,50 @@ body {
   letter-spacing: 0.5px !important;
 }
 
+.swal2-actions {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-top: 18px !important;
+  width: 100% !important;
+}
+
 .swal2-confirm.mm-swal-confirm {
   background-color: var(--accent-pink) !important;
   color: #ffffff !important;
   border: none !important;
   border-radius: 12px !important;
-  padding: 8px 24px !important;
+  padding: 9px 20px !important;
   font-weight: 700 !important;
   font-size: 12.5px !important;
   font-family: var(--font-family-body) !important;
   cursor: pointer !important;
   box-shadow: 0 3px 8px rgba(246, 146, 153, 0.3) !important;
+  transition: all 0.15s ease !important;
+  outline: none !important;
+}
+
+.swal2-confirm.mm-swal-confirm:hover {
+  background-color: var(--accent-pink-soft) !important;
+}
+
+.swal2-cancel.mm-swal-cancel {
+  background-color: transparent !important;
+  border: 1.5px solid var(--border-soft) !important;
+  border-radius: 12px !important;
+  padding: 8px 18px !important;
+  font-weight: 700 !important;
+  font-size: 12.5px !important;
+  font-family: var(--font-family-body) !important;
+  color: var(--brown-soft) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  outline: none !important;
+}
+
+.swal2-cancel.mm-swal-cancel:hover {
+  background-color: rgba(246, 146, 153, 0.1) !important;
 }
 
 /* Responsive */

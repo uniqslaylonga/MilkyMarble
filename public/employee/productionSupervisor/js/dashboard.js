@@ -88,7 +88,7 @@ async function fetchProductionDashboardData() {
         renderQueueTable();
         renderRestockPitches();
         renderScheduleList(data.scheduleList);
-        renderQualityPulseCard(data.qualityPulse); // Render Option A Kitchen Pulse
+        renderQualityPulseCard(data.qualityPulse);
 
     } catch (error) {
         console.error('Could not load live dashboard data:', error);
@@ -151,11 +151,11 @@ function renderQualityPulseCard(pulse) {
     }
 }
 
-// Live DOA threshold calculation without emojis
+// Live DOA threshold calculation (Malinis at ₱0.00 kapag walang laman)
 function calculateRestockThreshold() {
     const qty = parseFloat(document.getElementById('inputQuantity')?.value || 0);
     const unitPrice = parseFloat(document.getElementById('inputUnitPrice')?.value || 0);
-    const total = qty * unitPrice;
+    const total = (isNaN(qty) ? 0 : qty) * (isNaN(unitPrice) ? 0 : unitPrice);
 
     const totalEl = document.getElementById('previewTotalCost');
     const badgeEl = document.getElementById('routingBadge');
@@ -165,15 +165,15 @@ function calculateRestockThreshold() {
     }
 
     if (badgeEl) {
-        if (total <= 300) {
-            badgeEl.className = 'badge-route route-procure';
-            badgeEl.textContent = 'Direct Route: Procurement Officer (Direct Purchase Authorized)';
-        } else if (total > 300 && total <= 500) {
+        if (total > 500) {
+            badgeEl.className = 'badge-route route-ceo';
+            badgeEl.textContent = 'Executive Route: Requires CEO Approval (High Value Capital)';
+        } else if (total > 300) {
             badgeEl.className = 'badge-route route-finance';
             badgeEl.textContent = 'Escalation Route: Requires Financial Officer Endorsement';
         } else {
-            badgeEl.className = 'badge-route route-ceo';
-            badgeEl.textContent = 'Executive Route: Requires CEO Approval (High Value Capital)';
+            badgeEl.className = 'badge-route route-procure';
+            badgeEl.textContent = 'Direct Route: Procurement Officer (Direct Purchase Authorized)';
         }
     }
 }
@@ -310,7 +310,18 @@ function renderScheduleList(schedules) {
     `).join('');
 }
 
+// Opens Modal completely clean (No hardcoded values, pure sample placeholders)
 function openRestockModal() {
+    const form = document.getElementById('restockPitchForm');
+    if (form) form.reset();
+
+    document.getElementById('inputItemName').value = '';
+    document.getElementById('inputQuantity').value = '';
+    document.getElementById('inputUnitPrice').value = '';
+    document.getElementById('inputJustification').value = '';
+
+    calculateRestockThreshold();
+
     const modal = document.getElementById('restockModalOverlay');
     if (modal) {
         modal.classList.add('open');
@@ -326,33 +337,37 @@ function closeRestockModal() {
     }
 }
 
-// Handle pitch submit with themed SweetAlert
+// Handle pitch submit with themed SweetAlert and standard pitch-restock route
 async function handleRestockPitchSubmit(e) {
     e.preventDefault();
 
     const itemName = document.getElementById('inputItemName').value.trim();
-    const qty = parseFloat(document.getElementById('inputQuantity').value || 1);
-    const unitPrice = parseFloat(document.getElementById('inputUnitPrice').value || 0);
-    const totalCost = qty * unitPrice;
+    const qty = parseFloat(document.getElementById('inputQuantity').value);
+    const unit = document.getElementById('inputUnit')?.value || 'packs';
+    const unitPrice = parseFloat(document.getElementById('inputUnitPrice').value);
+    const rationale = document.getElementById('inputJustification').value.trim();
+    const totalCost = (isNaN(qty) ? 0 : qty) * (isNaN(unitPrice) ? 0 : unitPrice);
 
-    if (!itemName || !(totalCost > 0)) {
+    if (!itemName || isNaN(qty) || isNaN(unitPrice) || qty <= 0 || unitPrice <= 0) {
         showCustomSwal('Incomplete Input', 'Please enter a valid ingredient name, quantity, and unit price.', 'warning');
         return;
     }
 
-    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const submitBtn = document.getElementById('btnSubmitDashboardPitch') || e.target.querySelector('button[type="submit"]');
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-        let res;
         const payload = {
-            item_name: qty > 1 ? `${itemName} (${qty}x)` : itemName,
-            store_name: '',
-            amount: totalCost
+            item_name: itemName,
+            quantity: qty,
+            unit: unit,
+            unit_price: unitPrice,
+            rationale: rationale
         };
 
+        let res;
         if (typeof employeeFetch === 'function') {
-            res = await employeeFetch('/api/procurement-officer/add-request', {
+            res = await employeeFetch('/api/production-supervisor/pitch-restock', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -361,7 +376,7 @@ async function handleRestockPitchSubmit(e) {
             const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
             const headers = { 'Content-Type': 'application/json' };
             if (userId) headers['x-user-id'] = userId;
-            res = await fetch('/api/procurement-officer/add-request', {
+            res = await fetch('/api/production-supervisor/pitch-restock', {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(payload)
@@ -376,8 +391,7 @@ async function handleRestockPitchSubmit(e) {
         calculateRestockThreshold();
         await fetchProductionDashboardData();
 
-        const route = result.request && result.request.route;
-        const routeText = route === 'ceo' ? 'Escalated to the CEO' : (route === 'finance' ? 'Endorsed to Finance Officer' : 'Direct purchase authorized for Procurement');
+        const routeText = totalCost > 500 ? 'Escalated to the CEO' : (totalCost > 300 ? 'Endorsed to Finance Officer' : 'Direct purchase authorized for Procurement');
         showCustomSwal('Requisition Pitched', `Requisition for "${itemName}" (₱${totalCost.toFixed(2)}) has been submitted.\n\nRouting: ${routeText}`, 'success');
     } catch (error) {
         showCustomSwal('Pitch Failed', 'Could not submit requisition: ' + error.message, 'warning');
