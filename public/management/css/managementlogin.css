@@ -560,3 +560,15 @@ button.swal2-cancel.mm-swal-cancel-btn {
   cursor: pointer !important;
 }
 #forgotPasswordLink { margin-top: 6px; }
+
+/* Forgot-password popup: remove SweetAlert's default blue focus ring */
+div.swal2-popup.mm-swal-popup .swal2-input:focus,
+div.swal2-popup.mm-swal-popup .swal2-textarea:focus {
+  border-color: #F69299 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+button.swal2-cancel.mm-swal-cancel-btn:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
