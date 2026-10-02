@@ -522,12 +522,15 @@ router.post('/employee-login', async (req, res) => {
 
     const cleanUsername = username.trim();
 
-    const { data: account, error: userErr } = await supabase
+    // Staff can sign in with their username OR their email address.
+    let staffQuery = supabase
       .from('users')
       .select('id, username, email, password_hash, full_name, user_type, is_active, must_change_password')
-      .eq('username', cleanUsername)
-      .in('user_type', ['employee', 'admin', 'ceo'])
-      .maybeSingle();
+      .in('user_type', ['employee', 'admin', 'ceo']);
+    staffQuery = cleanUsername.includes('@')
+      ? staffQuery.ilike('email', cleanUsername.replace(/[%_\\]/g, '\\$&'))
+      : staffQuery.eq('username', cleanUsername);
+    const { data: account, error: userErr } = await staffQuery.maybeSingle();
 
     if (userErr) throw userErr;
 
