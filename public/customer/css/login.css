@@ -686,6 +686,7 @@ button.swal2-cancel.mm-swal-cancel-btn {
   border: none !important;
   cursor: pointer !important;
 }
+<<<<<<< HEAD
 #forgotPasswordLink { margin-top: 6px; }
 
 /* Forgot-password popup: remove SweetAlert's default blue focus ring */
@@ -762,3 +763,6 @@ div.swal2-popup.mm-swal-popup .mm-pw-wrap input.swal2-input {
   height: 20px;
   transform: translate(-50%, -50%);
 }
+=======
+#forgotPasswordLink { margin-top: 6px; }
+>>>>>>> parent of a5ac77e (blue)
