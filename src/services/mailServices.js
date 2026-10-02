@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const supabase = require('../config/supabase');
 
 // 1. Transporter configuration (RFC-compliant Gmail SMTP)
 const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10);
@@ -23,6 +24,56 @@ const transporter = nodemailer.createTransport({
 const DEFAULT_FROM = '"Milky Marble" <milkymarble.supportcenter@gmail.com>';
 const DEFAULT_REPLY_TO = 'milkymarble.supportcenter@gmail.com';
 
+// -------------------------------------------------------------
+// STORE DAYS: read from the admin "Store Settings" (store_settings.pickup_days)
+// so every email always shows the days the store is actually open.
+// 0 = Sunday ... 6 = Saturday. Falls back to Tuesday & Thursday if the
+// setting is missing or the database can't be reached.
+// -------------------------------------------------------------
+const DEFAULT_STORE_DAYS = [2, 4];
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function joinList(items, word, oxford = true) {
+    if (items.length <= 1) return items.join('');
+    if (items.length === 2) return `${items[0]} ${word} ${items[1]}`;
+    return items.slice(0, -1).join(', ') + (oxford ? ',' : '') + ` ${word} ` + items[items.length - 1];
+}
+
+function formatStoreDays(days) {
+    const sorted = [...new Set(days)].sort((a, b) => a - b);
+    const full = sorted.map(d => DAY_NAMES[d]);
+    return {
+        plural: joinList(full.map(n => n + 's'), '&'),   // "Tuesdays & Thursdays"
+        and:    joinList(full, 'and'),                    // "Tuesday and Thursday"
+        or:     joinList(full, 'or'),                     // "Tuesday or Thursday"
+        slash:  full.join(' / '),                         // "Tuesday / Thursday"
+        short:  joinList(sorted.map(d => DAY_SHORT[d]), '&', false) // "Tue & Thu"
+    };
+}
+
+async function getStoreDays() {
+    let days = DEFAULT_STORE_DAYS;
+    try {
+        const { data, error } = await supabase
+            .from('store_settings')
+            .select('value')
+            .eq('key', 'pickup_days')
+            .maybeSingle();
+
+        if (!error && data && data.value) {
+            const parsed = String(data.value)
+                .split(',')
+                .map(d => parseInt(d.trim(), 10))
+                .filter(d => Number.isInteger(d) && d >= 0 && d <= 6);
+            if (parsed.length) days = parsed;
+        }
+    } catch (e) {
+        console.warn('[Mail] Could not load store days, using default Tue/Thu:', e.message);
+    }
+    return formatStoreDays(days);
+}
+
 // Utility: HTML Escaping para maiwasan ang injection sa emails
 function escapeHtml(str = '') {
     return String(str)
@@ -36,8 +87,9 @@ function escapeHtml(str = '') {
 /**
  * Master Template Wrapper na may UCC Congressional & Social Channels
  */
-function renderEmailLayout(badgeText, mainHeading, bodyHtml) {
+async function renderEmailLayout(badgeText, mainHeading, bodyHtml) {
     const currentYear = new Date().getFullYear();
+    const sd = await getStoreDays();
 
     return `
     <!DOCTYPE html>
@@ -80,7 +132,7 @@ function renderEmailLayout(badgeText, mainHeading, bodyHtml) {
                                     
                                     <div style='font-size: 12px; color: #6E5C53; line-height: 1.7;'>
                                         <b>Pick-up Location:</b> Milky Marble, UCC Congressional Campus<br>
-                                        <b>Store Days:</b> Mondays & Thursdays only · 10:00 AM – 3:00 PM<br>
+                                        <b>Store Days:</b> ${sd.plural} only · 10:00 AM – 3:00 PM<br>
                                         <b>Email:</b> <a href='mailto:milkymarble.supportcenter@gmail.com' style='color: #D9656B; text-decoration: none;'>milkymarble.supportcenter@gmail.com</a><br>
                                         <b>Connect With Us:</b> Search <b>@Milky Marble</b> on Instagram, Facebook & TikTok
                                     </div>
@@ -112,8 +164,9 @@ async function sendOrderConfirmedEmail(toEmail, recipientName, orderData = {}) {
     if (!toEmail) return false;
 
     try {
+        const sd = await getStoreDays();
         const orderRef      = orderData.order_ref || 'MM-1048';
-        const pickupDate    = orderData.pickup_date || 'Monday / Thursday · 10:00 AM – 3:00 PM';
+        const pickupDate    = orderData.pickup_date || `${sd.slash} · 10:00 AM – 3:00 PM`;
         const paymentMethod = orderData.payment_method || 'Cash on Pick-Up';
         const totalPrice    = Number(orderData.total_price || 0).toFixed(2);
         const subtotal      = Number(orderData.subtotal ?? orderData.total_price ?? 0).toFixed(2);
@@ -190,8 +243,8 @@ async function sendOrderConfirmedEmail(toEmail, recipientName, orderData = {}) {
             to: `"${recipientName || 'Valued Customer'}" <${toEmail}>`,
             replyTo: DEFAULT_REPLY_TO,
             subject: `Order Confirmed #${orderRef} - Milky Marble`,
-            html: renderEmailLayout('Stage 1 · Order Confirmed', 'Order Confirmed', bodyContent),
-            text: `Hello ${recipientName},\n\nYour order #${orderRef} is confirmed!\n\nPick-up at UCC Congressional Campus\nStore Days: Mon & Thu (10 AM - 3 PM)\nPayment: ${paymentMethod}\n\nItems:\n${itemsPlain}\nTotal: PHP ${totalPrice}\n\nQuestions? Chat with us on FB, IG, or TikTok: @Milky Marble.`
+            html: await renderEmailLayout('Stage 1 · Order Confirmed', 'Order Confirmed', bodyContent),
+            text: `Hello ${recipientName},\n\nYour order #${orderRef} is confirmed!\n\nPick-up at UCC Congressional Campus\nStore Days: ${sd.short} (10 AM - 3 PM)\nPayment: ${paymentMethod}\n\nItems:\n${itemsPlain}\nTotal: PHP ${totalPrice}\n\nQuestions? Chat with us on FB, IG, or TikTok: @Milky Marble.`
         });
 
         return true;
@@ -210,6 +263,7 @@ async function sendOrderPreparingEmail(toEmail, recipientName, orderRef) {
     if (!toEmail) return false;
 
     try {
+        const sd = await getStoreDays();
         const bodyContent = `
         <p style='font-size: 14.5px; margin: 0 0 10px 0;'>Hello <b>${escapeHtml(recipientName)}</b>,</p>
         <p style='font-size: 14px; line-height: 1.6; margin: 0 0 18px 0; color: #55443D;'>
@@ -230,8 +284,8 @@ async function sendOrderPreparingEmail(toEmail, recipientName, orderRef) {
             to: `"${recipientName || 'Valued Customer'}" <${toEmail}>`,
             replyTo: DEFAULT_REPLY_TO,
             subject: `Now Crafting Your Sips #${orderRef} - Milky Marble`,
-            html: renderEmailLayout('Stage 2 · Kitchen Prep', 'Crafting Your Order', bodyContent),
-            text: `Hello ${recipientName},\n\nOur crew is crafting your order #${orderRef}!\nPick-up Location: UCC Congressional Campus (Mon & Thu, 10 AM - 3 PM).\nChat with us on IG, FB, or TikTok @Milky Marble.`
+            html: await renderEmailLayout('Stage 2 · Kitchen Prep', 'Crafting Your Order', bodyContent),
+            text: `Hello ${recipientName},\n\nOur crew is crafting your order #${orderRef}!\nPick-up Location: UCC Congressional Campus (${sd.short}, 10 AM - 3 PM).\nChat with us on IG, FB, or TikTok @Milky Marble.`
         });
 
         return true;
@@ -248,6 +302,7 @@ async function sendOrderReadyEmail(toEmail, recipientName, orderRef, pickupSched
     if (!toEmail) return false;
 
     try {
+        const sd = await getStoreDays();
         const bodyContent = `
         <p style='font-size: 14.5px; margin: 0 0 10px 0;'>Hello <b>${escapeHtml(recipientName)}</b>,</p>
         <p style='font-size: 14px; line-height: 1.6; margin: 0 0 18px 0; color: #55443D;'>
@@ -261,7 +316,7 @@ async function sendOrderReadyEmail(toEmail, recipientName, orderRef, pickupSched
         </div>
 
         <p style='font-size: 13.5px; line-height: 1.5; color: #6E5C53;'>
-            Our store counter is open every <b>Monday and Thursday from 10:00 AM to 3:00 PM</b>.
+            Our store counter is open every <b>${sd.and} from 10:00 AM to 3:00 PM</b>.
         </p>`;
 
         await transporter.sendMail({
@@ -269,8 +324,8 @@ async function sendOrderReadyEmail(toEmail, recipientName, orderRef, pickupSched
             to: `"${recipientName || 'Valued Customer'}" <${toEmail}>`,
             replyTo: DEFAULT_REPLY_TO,
             subject: `Your Drinks Are Ready for Pick-Up! #${orderRef} - Milky Marble`,
-            html: renderEmailLayout('Stage 3 · Ready for Pick-Up', 'Ready for Claim', bodyContent),
-            text: `Hello ${recipientName},\n\nYour drinks are ready for pick-up!\nCode: #${orderRef}\nLocation: UCC Congressional Campus (Mon & Thu · 10 AM - 3 PM).\nChat with us on FB, IG, or TikTok: @Milky Marble.`
+            html: await renderEmailLayout('Stage 3 · Ready for Pick-Up', 'Ready for Claim', bodyContent),
+            text: `Hello ${recipientName},\n\nYour drinks are ready for pick-up!\nCode: #${orderRef}\nLocation: UCC Congressional Campus (${sd.short} · 10 AM - 3 PM).\nChat with us on FB, IG, or TikTok: @Milky Marble.`
         });
 
         return true;
@@ -287,6 +342,7 @@ async function sendOrderCompletedEmail(toEmail, recipientName, orderRef) {
     if (!toEmail) return false;
 
     try {
+        const sd = await getStoreDays();
         const bodyContent = `
         <p style='font-size: 14.5px; margin: 0 0 10px 0;'>Hello <b>${escapeHtml(recipientName)}</b>,</p>
         <p style='font-size: 14px; line-height: 1.6; margin: 0 0 16px 0; color: #55443D;'>
@@ -305,7 +361,7 @@ async function sendOrderCompletedEmail(toEmail, recipientName, orderRef) {
             to: `"${recipientName || 'Valued Customer'}" <${toEmail}>`,
             replyTo: DEFAULT_REPLY_TO,
             subject: `Order Completed #${orderRef} — Hope You Loved Every Sip!`,
-            html: renderEmailLayout('Stage 4 · Completed', 'Order Fulfilled', bodyContent),
+            html: await renderEmailLayout('Stage 4 · Completed', 'Order Fulfilled', bodyContent),
             text: `Hello ${recipientName},\n\nThank you for claiming order #${orderRef} at Milky Marble UCC Congressional!\nTag us on IG, TikTok & FB @Milky Marble.`
         });
 
@@ -323,6 +379,7 @@ async function sendOrderCancelledEmail(toEmail, recipientName, orderRef) {
     if (!toEmail) return false;
 
     try {
+        const sd = await getStoreDays();
         const bodyContent = `
         <p style='font-size: 14.5px; margin: 0 0 10px 0;'>Hello <b>${escapeHtml(recipientName)}</b>,</p>
         <p style='font-size: 14px; line-height: 1.6; margin: 0 0 18px 0; color: #55443D;'>
@@ -334,7 +391,7 @@ async function sendOrderCancelledEmail(toEmail, recipientName, orderRef) {
         </div>
 
         <p style='font-size: 13.5px; line-height: 1.6; color: #6E5C53;'>
-            If this was unintended, or if you have questions, please reach out directly through our social pages (<b>@Milky Marble</b> on IG, FB, or TikTok) or visit our counter at UCC Congressional Campus on Mondays and Thursdays.
+            If this was unintended, or if you have questions, please reach out directly through our social pages (<b>@Milky Marble</b> on IG, FB, or TikTok) or visit our counter at UCC Congressional Campus on ${sd.plural}.
         </p>`;
 
         await transporter.sendMail({
@@ -342,7 +399,7 @@ async function sendOrderCancelledEmail(toEmail, recipientName, orderRef) {
             to: `"${recipientName || 'Valued Customer'}" <${toEmail}>`,
             replyTo: DEFAULT_REPLY_TO,
             subject: `Order Cancellation Notice #${orderRef} - Milky Marble`,
-            html: renderEmailLayout('Stage 5 · Cancelled', 'Order Cancelled', bodyContent),
+            html: await renderEmailLayout('Stage 5 · Cancelled', 'Order Cancelled', bodyContent),
             text: `Hello ${recipientName},\n\nYour order #${orderRef} has been cancelled. If this was a mistake, chat with us on FB, IG, or TikTok: @Milky Marble.`
         });
 
@@ -360,6 +417,7 @@ async function sendPromoWelcomeEmail(toEmail, recipientName) {
     if (!toEmail) return false;
 
     try {
+        const sd = await getStoreDays();
         const bodyContent = `
         <p style='font-size: 14.5px; margin: 0 0 10px 0;'>Hello <b>${escapeHtml(recipientName)}</b>,</p>
         <p style='font-size: 14px; line-height: 1.6; margin: 0 0 18px 0; color: #55443D;'>
@@ -373,7 +431,7 @@ async function sendPromoWelcomeEmail(toEmail, recipientName) {
         </div>
 
         <p style='font-size: 13px; color: #8C7A70; text-align: center; margin: 0;'>
-            Drop by our campus counter every Monday or Thursday from 10:00 AM to 3:00 PM to claim your treat!
+            Drop by our campus counter every ${sd.or} from 10:00 AM to 3:00 PM to claim your treat!
         </p>`;
 
         await transporter.sendMail({
@@ -381,8 +439,8 @@ async function sendPromoWelcomeEmail(toEmail, recipientName) {
             to: `"${recipientName || 'Sweet Sips Lover'}" <${toEmail}>`,
             replyTo: DEFAULT_REPLY_TO,
             subject: 'Welcome to the Milky Marble Sweet Club! Enjoy 10% Off',
-            html: renderEmailLayout('VIP Club · Welcome', 'Welcome to the Club', bodyContent),
-            text: `Hello ${recipientName},\n\nWelcome to Milky Marble! Use promo code SWEETSIP10 for 10% off at our UCC Congressional Campus counter (Mon & Thu · 10 AM - 3 PM).\nFollow @Milky Marble on IG, TikTok & FB.`
+            html: await renderEmailLayout('VIP Club · Welcome', 'Welcome to the Club', bodyContent),
+            text: `Hello ${recipientName},\n\nWelcome to Milky Marble! Use promo code SWEETSIP10 for 10% off at our UCC Congressional Campus counter (${sd.short} · 10 AM - 3 PM).\nFollow @Milky Marble on IG, TikTok & FB.`
         });
 
         return true;
@@ -421,7 +479,7 @@ async function sendSecurityOtpEmail(toEmail, recipientName, otpCode, purpose = '
             to: `"${recipientName || 'Valued Customer'}" <${toEmail}>`,
             replyTo: DEFAULT_REPLY_TO,
             subject: `${otpCode} is your Milky Marble security verification code`,
-            html: renderEmailLayout('Security · Verification', 'Account Verification', bodyContent),
+            html: await renderEmailLayout('Security · Verification', 'Account Verification', bodyContent),
             text: `Hello ${recipientName},\n\nYour Milky Marble security verification code is: ${otpCode}\nValid for 10 minutes. For assistance, chat with @Milky Marble on IG, FB, or TikTok.`
         });
 
@@ -461,7 +519,7 @@ async function sendSignupVerificationEmail(toEmail, recipientName, otpCode) {
             to: `"${recipientName || 'Valued Customer'}" <${toEmail}>`,
             replyTo: DEFAULT_REPLY_TO,
             subject: `${otpCode} is your Milky Marble sign-up verification code`,
-            html: renderEmailLayout('Sign Up · Verify Email', 'Verify Your Email', bodyContent),
+            html: await renderEmailLayout('Sign Up · Verify Email', 'Verify Your Email', bodyContent),
             text: `Hello ${recipientName},\n\nYour Milky Marble sign-up verification code is: ${otpCode}\nValid for 10 minutes. If you didn't request this, ignore this email.`
         });
 
