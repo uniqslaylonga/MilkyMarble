@@ -467,6 +467,9 @@ button.login-btn:active{ transform:scale(0.99); }
 }
 
 .wave img{ display:block; width:100%; height:auto; }
+/* The decorative wave sits on top of the card on wide/short screens; let clicks pass through it */
+.wave{ pointer-events:none; z-index:0; }
+.card{ position:relative; z-index:1; }
 /* Milky Marble SweetAlert System Style */
 .swal2-container.mm-swal-container-top,
 div.swal2-container.mm-swal-container-top {

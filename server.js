@@ -434,7 +434,7 @@ function staticCacheHeaders(res, filePath) {
   }
   // Login-page scripts (incl. the shared forgot-password script) must never be
   // served stale, or fixes don't reach staff until the cache expires.
-  if (/(staffForgotPassword|employeelogin|managementlogin)\.js$/i.test(filePath)) {
+  if (/(staffForgotPassword|employeelogin|managementlogin)\.(js|css)$/i.test(filePath)) {
     res.setHeader('Cache-Control', 'no-cache');
     return;
   }
