@@ -389,7 +389,7 @@
                     </tr>
                     <tr>
                         <td><strong>12oz Portion Allocation</strong></td>
-                        <td>200g Cooked Gulaman + 1.5oz Milk</td>
+                        <td>200g Cooked Gulaman + 1.0oz Milk</td>
                         <td>1 Finished 12oz Cup</td>
                         <td>Release-ready counter stock</td>
                     </tr>
@@ -423,7 +423,7 @@
         <div class="modal-header">
             <div class="modal-header-left">
                 <h3 class="modal-title">Schedule Batch Cooking Run</h3>
-                <p class="modal-subtitle">Configure morning boiling of tapioca pearls, steeping of tea, or setting of gulaman jellies.</p>
+                <p class="modal-subtitle">Configure cooking runs for Tapioca Pearls or Gulaman Flavors.</p>
             </div>
             <button type="button" class="modal-close" onclick="closeModal('addPlanModal')">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -435,29 +435,40 @@
 
         <form id="addPlanForm" class="modal-body">
             <div class="form-grid">
+                <!-- Dropdown limited strictly to the 4 items -->
                 <div class="form-group full">
                     <label>Ingredient / Batch Recipe Preset *</label>
                     <select id="recipeSelect" required>
-                        <option value="">-- Choose Macro Recipe Preset --</option>
-                        <option value="Tapioca Pearls (Batch 1)">Tapioca Pearls (Batch 1)</option>
-                        <option value="Tapioca Pearls (Batch 2)">Tapioca Pearls (Batch 2)</option>
-                        <option value="Assam Black Tea Base (Urn 1)">Assam Black Tea Base (Urn 1)</option>
-                        <option value="Jasmine Green Tea Base (Urn 2)">Jasmine Green Tea Base (Urn 2)</option>
-                        <option value="Roasted Oolong Tea Base (Urn 3)">Roasted Oolong Tea Base (Urn 3)</option>
-                        <option value="Grass Jelly / Gulaman Tray">Grass Jelly / Gulaman Tray</option>
-                        <option value="Egg Pudding Custard Mold">Egg Pudding Custard Mold</option>
-                        <option value="Brown Sugar Syrup Melting">Brown Sugar Syrup Melting</option>
+                        <option value="">-- Choose Recipe to Cook --</option>
+                        <option value="Tapioca Pearls">Tapioca Pearls</option>
+                        <option value="Strawberry Gulaman">Strawberry Gulaman</option>
+                        <option value="Coffee Gulaman">Coffee Gulaman</option>
+                        <option value="Buko Pandan Gulaman">Buko Pandan Gulaman</option>
                     </select>
                 </div>
 
                 <div class="form-group full">
                     <label>Custom Batch Operation Name *</label>
-                    <input type="text" id="addOpInput" placeholder="e.g. Morning Tapioca Pearls Pot 1" required>
+                    <input type="text" id="addOpInput" placeholder="e.g. Morning Tapioca Pearls Cooking" required>
+                </div>
+
+                <!-- Input box para sa Dami at Unit (grams o pcs) -->
+                <div class="form-group">
+                    <label>Raw Quantity to Cook *</label>
+                    <input type="number" id="addBatchQty" min="0.1" step="any" placeholder="e.g. 300 o 2" required>
                 </div>
 
                 <div class="form-group">
-                    <label>Target Yield / Volume *</label>
-                    <input type="text" id="addYieldInput" placeholder="e.g. 2.5 kg (50 cups)" required>
+                    <label>Unit of Measurement *</label>
+                    <select id="addBatchUnit" required>
+                        <option value="grams">grams</option>
+                        <option value="pcs">pcs</option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label>Expected Cooked Yield / Volume (Output)</label>
+                    <input type="text" id="addYieldInput" placeholder="e.g. 2.5 kg (50 cups) o 1 Mold Tray">
                 </div>
 
                 <div class="form-group">
@@ -560,6 +571,6 @@
 <script src="../js/employeeAuth.js"></script>
 <script src="js/productionPlanning.js"></script>
 <script src="/shared/js/avatarUpload.js"></script>
-    <script src="/shared/js/staffLogout.js"></script>
+<script src="/shared/js/staffLogout.js"></script>
 </body>
 </html>

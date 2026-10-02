@@ -22,12 +22,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnBoard) btnBoard.addEventListener('click', () => switchPlanView('board'));
     if (btnList) btnList.addEventListener('click', () => switchPlanView('list'));
 
-    // Recipe auto-fill
+    // Recipe auto-fill & Smart Unit Suggestion (grams vs pcs)
     const recipeSelect = document.getElementById('recipeSelect');
     if (recipeSelect) {
         recipeSelect.addEventListener('change', function() {
-            if (this.value) {
-                document.getElementById('addOpInput').value = this.value;
+            const val = this.value;
+            if (val) {
+                document.getElementById('addOpInput').value = `${val} Cooking Run`;
+                const unitSelect = document.getElementById('addBatchUnit');
+                const qtyInput = document.getElementById('addBatchQty');
+
+                if (val.includes('Tapioca')) {
+                    if (unitSelect) unitSelect.value = 'grams';
+                    if (qtyInput && !qtyInput.value) qtyInput.value = 300;
+                } else {
+                    // Gulaman Flavors (Strawberry, Coffee, Buko Pandan)
+                    if (unitSelect) unitSelect.value = 'pcs';
+                    if (qtyInput && !qtyInput.value) qtyInput.value = 2;
+                }
             }
         });
     }
@@ -339,35 +351,45 @@ function filterByTimeRange() {
     renderAllViews();
 }
 
+// Submits batch cooking run & sends quantity/unit to backend for Supabase inventory deduction
 async function handleAddPlan(e) {
     e.preventDefault();
 
+    const recipePreset = document.getElementById('recipeSelect')?.value || '';
     const operation = document.getElementById('addOpInput').value.trim();
-    const yieldText = document.getElementById('addYieldInput').value.trim();
+    const batchQty = parseFloat(document.getElementById('addBatchQty')?.value || 0);
+    const batchUnit = document.getElementById('addBatchUnit')?.value || 'grams';
+    const customYield = document.getElementById('addYieldInput')?.value.trim();
     const due_date = document.getElementById('addDueDate').value;
     const schedule_time = document.getElementById('addScheduleTime').value;
     const status = document.getElementById('addStatus').value;
 
-    if (!operation || !due_date || !schedule_time) {
-        showCustomSwal('Incomplete Information', 'Please fill out the operation recipe name, date, and schedule start time.', 'warning');
+    if (!operation || !due_date || !schedule_time || !batchQty) {
+        showCustomSwal('Incomplete Information', 'Please fill out the recipe name, quantity to cook, date, and time.', 'warning');
         return;
     }
 
-    const fullOperation = yieldText ? `${operation} (${yieldText})` : operation;
+    const yieldSummary = customYield || `${batchQty} ${batchUnit}`;
+    const fullOperation = `${operation} (${batchQty} ${batchUnit})`;
     const submitBtn = e.target.querySelector('button[type="submit"]');
     if (submitBtn) submitBtn.disabled = true;
 
     try {
         await apiPost('/api/production-supervisor/add-plan', {
+            recipe_name: recipePreset || operation,
+            raw_qty: batchQty,
+            raw_unit: batchUnit,
+            yield_volume: yieldSummary,
             operation: fullOperation,
             due_date,
             schedule_time,
             status
         });
+
         closeModal('addPlanModal');
         e.target.reset();
         await fetchProductionPlanningData();
-        showCustomSwal('Batch Scheduled', `Batch cooking plan for "${operation}" scheduled successfully.`, 'success');
+        showCustomSwal('Batch Scheduled', `Batch cooking plan for "${operation}" scheduled successfully and inventory updated.`, 'success');
     } catch (error) {
         showCustomSwal('Scheduling Failed', error.message || 'Could not save the batch plan.', 'warning');
     } finally {
@@ -417,7 +439,7 @@ async function handleEditPlan(e) {
     }
 }
 
-// Option A: Corporate Kitchen Batch & BOM Schedule PDF Export Engine
+// Corporate Kitchen Batch & BOM Schedule PDF Export Engine
 async function exportBatchScheduleToPDF() {
     const renderWrapper = document.getElementById('corporatePdfRenderWrapper');
     if (!renderWrapper) return;
