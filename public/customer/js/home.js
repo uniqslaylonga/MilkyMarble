@@ -1553,7 +1553,9 @@ async function loadRecentOrders() {
       if (isCompleted) {
         actionsHTML = `
           <button type="button" class="home-btn-action-primary" onclick="event.stopPropagation(); buyAgainOrder('${encodeURIComponent(rawTitle)}')">Buy Again</button>
-          <button type="button" class="home-btn-action-secondary" onclick="event.stopPropagation(); rateOrderSips('${order.order_number}', '${encodeURIComponent(rawTitle)}')">Rate your Sips</button>
+          ${meta.is_custom
+            ? `<button type="button" class="home-btn-action-secondary" onclick="event.stopPropagation(); window.location.href='orders.html?orderId=${order.id || order.order_number}&saveBuild=1'"><i class="fa-solid fa-bookmark"></i> Save Build</button>`
+            : `<button type="button" class="home-btn-action-secondary" onclick="event.stopPropagation(); rateOrderSips('${order.order_number}', '${encodeURIComponent(rawTitle)}')">Rate your Sips</button>`}
         `;
       }
 

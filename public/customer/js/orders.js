@@ -251,6 +251,18 @@ async function loadOrders() {
     const data = await res.json();
     allOrdersList = data.orders || [];
     renderOrders(allOrdersList);
+
+    // Arrived from Home / Notifications via a "Save Build" button
+    // (orders.html?orderId=...&saveBuild=1): save it and show Saved Builds.
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('saveBuild') && params.get('orderId')) {
+      const target = allOrdersList.find(o =>
+        String(o.id) === params.get('orderId') || String(o.order_number) === params.get('orderId'));
+      if (target) {
+        window.saveOrderAsBuild(encodeURIComponent(JSON.stringify(target)), true);
+        history.replaceState(null, '', window.location.pathname);
+      }
+    }
   } catch (err) {
     if (container) {
       container.innerHTML = `
@@ -489,7 +501,7 @@ function renderOrders(orders) {
 
             <div class="order-card-footer">
               <div class="order-actions-group" onclick="event.stopPropagation()">
-                ${renderOrderButtons(order.id, statusKey, orderDataEncoded)}
+                ${renderOrderButtons(order.id, statusKey, orderDataEncoded, assets.is_custom)}
               </div>
 
               <div class="order-total-block">
@@ -505,7 +517,7 @@ function renderOrders(orders) {
   }).join('');
 }
 
-function renderOrderButtons(orderId, statusKey, orderDataEncoded) {
+function renderOrderButtons(orderId, statusKey, orderDataEncoded, isCustom = false) {
   if (statusKey === 'confirmed' || statusKey === 'awaiting payment') {
     return `<button type="button" class="btn-action-primary" onclick="cancelOrder('${orderId}')">Cancel Order</button>`;
   } else if (statusKey === 'ready for pickup') {
@@ -516,9 +528,16 @@ function renderOrderButtons(orderId, statusKey, orderDataEncoded) {
       </button>
     `;
   } else if (statusKey === 'completed') {
+    // Custom drinks can't be rated (they aren't a menu item), so they get a
+    // Save Build button that bookmarks the build and opens Saved Builds.
+    const secondaryBtn = isCustom
+      ? `<button type="button" class="btn-action-secondary" onclick="saveOrderAsBuild('${orderDataEncoded}', true)" title="Save this custom drink to your Saved Builds">
+           <i class="fa-solid fa-bookmark"></i> Save Build
+         </button>`
+      : `<button type="button" class="btn-action-secondary" onclick="openRateModal('${orderId}')">Rate your Sips</button>`;
     return `
       <button type="button" class="btn-action-primary" onclick="reorderCup('${orderDataEncoded}')">Buy Again</button>
-      <button type="button" class="btn-action-secondary" onclick="openRateModal('${orderId}')">Rate your Sips</button>
+      ${secondaryBtn}
     `;
   } else if (statusKey === 'cancelled') {
     return `<button type="button" class="btn-action-primary" onclick="reorderCup('${orderDataEncoded}')">Reorder</button>`;
@@ -861,7 +880,7 @@ window.reorderCup = function(encodedOrder) {
 // Bookmarks this order's items as a "Saved Build" so the customer can jump
 // straight to checkout with the same drink(s) later from the navbar's Saved
 // Builds icon (see navbar.js). Reuses the same item-extraction as reorderCup.
-window.saveOrderAsBuild = function(encodedOrder) {
+window.saveOrderAsBuild = function(encodedOrder, openPanel = false) {
   const order = JSON.parse(decodeURIComponent(encodedOrder));
   const items = (order.items && order.items.length > 0) ? order.items : [{
     title: cleanItemTitle(order.title || 'Custom Marble Cup'),
@@ -881,8 +900,11 @@ window.saveOrderAsBuild = function(encodedOrder) {
   const firstToppings = Array.isArray(first.toppings) ? first.toppings.join(' + ') : (first.toppings || '');
   const previewAssets = resolveDisplayAssets(first, cleanItemTitle(first.title || ''), first.size, firstToppings);
 
+  const sourceOrder = String(order.id || order.order_number || '');
+
   const build = {
     id: 'build_' + Date.now(),
+    source_order: sourceOrder,
     label,
     saved_at: new Date().toISOString(),
     preview: {
@@ -902,10 +924,20 @@ window.saveOrderAsBuild = function(encodedOrder) {
     savedBuilds = [];
   }
 
-  savedBuilds.unshift(build);
-  savedBuilds = savedBuilds.slice(0, 10); // keep only the 10 most recent saved builds
-  localStorage.setItem('mm_saved_builds', JSON.stringify(savedBuilds));
+  // Don't pile up duplicates if the same order is saved more than once.
+  const alreadySaved = sourceOrder && savedBuilds.some(b => b.source_order === sourceOrder);
+  if (!alreadySaved) {
+    savedBuilds.unshift(build);
+    savedBuilds = savedBuilds.slice(0, 10); // keep only the 10 most recent saved builds
+    localStorage.setItem('mm_saved_builds', JSON.stringify(savedBuilds));
+  }
   if (typeof window.refreshSavedBuildsBadge === 'function') window.refreshSavedBuildsBadge();
+
+  // From a completed custom order: take the customer straight to Saved Builds.
+  if (openPanel && typeof window.openSavedBuildsPanel === 'function') {
+    window.openSavedBuildsPanel();
+    return;
+  }
 
   if (typeof Swal !== 'undefined') {
     Swal.fire({

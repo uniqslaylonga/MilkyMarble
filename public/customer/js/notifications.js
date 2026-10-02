@@ -368,9 +368,15 @@ async function loadCustomerNotifications() {
       let actionBtnHTML = `<button type="button" class="btn-notif-action" onclick="event.stopPropagation(); openOrderDetailsModal('${order.id}')">View Details</button>`;
 
       if (rawStatus.includes('COMPLET')) {
-        notifTitle = 'Order Complete! How was your sip?';
-        notifDesc = 'Tell us what you think of your sips! Rate your drink and share the love.';
-        actionBtnHTML = `<button type="button" class="btn-notif-action" onclick="event.stopPropagation(); openRateModal('${order.id}')">Rate your Sips</button>`;
+        if (assets.is_custom) {
+          notifTitle = 'Order Complete! Loved your build?';
+          notifDesc = 'Save your custom drink so you can reorder it anytime from Saved Builds.';
+          actionBtnHTML = `<button type="button" class="btn-notif-action" onclick="event.stopPropagation(); window.location.href='orders.html?orderId=${order.id}&saveBuild=1'">Save Build</button>`;
+        } else {
+          notifTitle = 'Order Complete! How was your sip?';
+          notifDesc = 'Tell us what you think of your sips! Rate your drink and share the love.';
+          actionBtnHTML = `<button type="button" class="btn-notif-action" onclick="event.stopPropagation(); openRateModal('${order.id}')">Rate your Sips</button>`;
+        }
       } else if (rawStatus.includes('READY')) {
         notifTitle = 'Ready for Pick-up!';
         notifDesc = 'Your sweet cups are chilled and waiting for you at the counter!';
