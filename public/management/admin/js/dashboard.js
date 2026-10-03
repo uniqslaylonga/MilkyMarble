@@ -47,10 +47,10 @@ async function fetchAdminDashboardData() {
         if (userAvatarEl && data.user?.avatarSrc) userAvatarEl.src = data.user.avatarSrc;
 
         // 2. Overview KPIs
-        const totalCustomers = Number(data.stats?.totalCustomers || 34);
-        const totalBatches = Number(data.stats?.totalBatches || 4);
-        const activeStaff = Number(data.stats?.totalActiveStaff || 5);
-        const totalStaff = Number(data.stats?.totalStaff || 5);
+        const totalCustomers = Number(data.stats?.totalCustomers ?? 0);
+        const totalBatches = Number(data.stats?.totalBatches ?? 0);
+        const activeStaff = Number(data.stats?.totalActiveStaff ?? 0);
+        const totalStaff = Number(data.stats?.totalStaff ?? 0);
 
         setText('statCustomers', totalCustomers.toLocaleString());
         setText('statBatches', totalBatches.toLocaleString());
@@ -94,8 +94,8 @@ function initAdminOperationsChart(chartPayload) {
     if (adminChartInstance) adminChartInstance.destroy();
 
     const labels = chartPayload?.labels || ['Week -3', 'Week -2', 'Week -1', 'Active Week'];
-    const signupsData = chartPayload?.signups || [8, 14, 19, 31];
-    const batchesData = chartPayload?.batches || [1, 2, 3, 4];
+    const signupsData = chartPayload?.signups ?? [0, 0, 0, 0];
+    const batchesData = chartPayload?.batches ?? [0, 0, 0, 0];
 
     adminChartInstance = new Chart(ctx, {
         type: 'bar',
