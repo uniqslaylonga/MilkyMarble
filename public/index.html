@@ -773,6 +773,7 @@
             const answer = matchedFaq.querySelector(".faq-answer");
             if (answer) {
               answer.style.maxHeight = answer.scrollHeight + 32 + "px";
+              setTimeout(() => { answer.style.maxHeight = answer.scrollHeight + 32 + "px"; }, 450);
             }
             matchedFaq.scrollIntoView({ behavior: "smooth", block: "center" });
             flashHighlight(matchedFaq);
@@ -789,10 +790,18 @@
           });
 
           if (matchedTerm) {
+            document.querySelectorAll(".terms-item.open").forEach((el) => {
+              if (el !== matchedTerm) {
+                el.classList.remove("open");
+                const c = el.querySelector(".terms-content");
+                if (c) c.style.maxHeight = null;
+              }
+            });
             matchedTerm.classList.add("open");
             const content = matchedTerm.querySelector(".terms-content");
             if (content) {
               content.style.maxHeight = content.scrollHeight + 32 + "px";
+              setTimeout(() => { content.style.maxHeight = content.scrollHeight + 32 + "px"; }, 450);
             }
             matchedTerm.scrollIntoView({ behavior: "smooth", block: "center" });
             flashHighlight(matchedTerm);
@@ -862,9 +871,23 @@
           searchInput.addEventListener("keydown", function (e) {
             if (e.key === "Enter") {
               e.preventDefault();
-              performIndexSearch();
+              submitIndexSearch();
             }
           });
+        }
+
+        // Enter key and the search icon both go through here so they behave the same.
+        // On mobile we first close the keyboard and wait for the screen to settle,
+        // otherwise the scroll/expand runs while the keyboard is still open and ends up cut off.
+        function submitIndexSearch() {
+          if (!searchInput || !searchInput.value.trim()) return;
+          if (!window.matchMedia("(max-width: 860px)").matches) {
+            performIndexSearch();
+            return;
+          }
+          searchInput.blur();
+          clearTimeout(window._mmSearchRun);
+          window._mmSearchRun = setTimeout(performIndexSearch, 350);
         }
 
         // ---------- MOBILE: tap icon to expand, tap again to search ----------
@@ -899,18 +922,16 @@
                 collapseSearch();
                 return;
               }
-              performIndexSearch();
-              searchInput.blur(); // close keyboard so the result is visible
+              submitIndexSearch();
               return;
             }
-            performIndexSearch();
+            submitIndexSearch();
           });
         }
 
         if (searchInput) {
           searchInput.addEventListener("keydown", function (e) {
             if (e.key === "Escape" && isMobileSearch()) collapseSearch();
-            if (e.key === "Enter" && isMobileSearch()) searchInput.blur();
           });
         }
 
