@@ -350,13 +350,27 @@ document.addEventListener('DOMContentLoaded', () => {
           We sent a 6-digit code to <b>${email}</b>. Enter it below along with your new password.
         </p>
         <input type="text" id="fpOtp" class="swal2-input" placeholder="6-digit code" maxlength="6" style="margin:0 0 10px;">
-        <input type="password" id="fpNewPassword" class="swal2-input" placeholder="New password" style="margin:0 0 10px;">
-        <input type="password" id="fpConfirmPassword" class="swal2-input" placeholder="Confirm new password" style="margin:0;">
+        <div class="mm-pw-wrap" style="margin:0 0 10px;"><input type="password" id="fpNewPassword" class="swal2-input" placeholder="New password"><button type="button" class="mm-pw-toggle" data-target="fpNewPassword" aria-label="Show password"><svg class="eye-open" viewBox="0 0 40 40" width="20" height="20" style="display:none"><path d="M8 20 C11 13 15.5 10 20 10 C24.5 10 29 13 32 20 C29 27 24.5 30 20 30 C15.5 30 11 27 8 20 Z" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linejoin="round" /><circle cx="20" cy="20" r="5" fill="#ffffff" /></svg><svg class="eye-closed" viewBox="0 0 40 40" width="20" height="20"><path d="M8 20 C11 13 15.5 10 20 10 C24.5 10 29 13 32 20 C29 27 24.5 30 20 30 C15.5 30 11 27 8 20 Z" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linejoin="round" /><circle cx="20" cy="20" r="5" fill="#ffffff" /><line x1="9" y1="31" x2="31" y2="9" stroke="#F69299" stroke-width="3.4" stroke-linecap="round" /><line x1="9" y1="31" x2="31" y2="9" stroke="#ffffff" stroke-width="2" stroke-linecap="round" /></svg></button></div>
+        <div class="mm-pw-wrap" style="margin:0;"><input type="password" id="fpConfirmPassword" class="swal2-input" placeholder="Confirm new password"><button type="button" class="mm-pw-toggle" data-target="fpConfirmPassword" aria-label="Show password"><svg class="eye-open" viewBox="0 0 40 40" width="20" height="20" style="display:none"><path d="M8 20 C11 13 15.5 10 20 10 C24.5 10 29 13 32 20 C29 27 24.5 30 20 30 C15.5 30 11 27 8 20 Z" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linejoin="round" /><circle cx="20" cy="20" r="5" fill="#ffffff" /></svg><svg class="eye-closed" viewBox="0 0 40 40" width="20" height="20"><path d="M8 20 C11 13 15.5 10 20 10 C24.5 10 29 13 32 20 C29 27 24.5 30 20 30 C15.5 30 11 27 8 20 Z" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linejoin="round" /><circle cx="20" cy="20" r="5" fill="#ffffff" /><line x1="9" y1="31" x2="31" y2="9" stroke="#F69299" stroke-width="3.4" stroke-linecap="round" /><line x1="9" y1="31" x2="31" y2="9" stroke="#ffffff" stroke-width="2" stroke-linecap="round" /></svg></button></div>
       `,
       showCancelButton: true,
       confirmButtonText: 'Reset Password',
       cancelButtonText: 'Cancel',
       focusConfirm: false,
+      didOpen: (popup) => {
+      popup.querySelectorAll('.mm-pw-toggle').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const input = document.getElementById(btn.getAttribute('data-target'));
+          const eyeOpen = btn.querySelector('.eye-open');
+          const eyeClosed = btn.querySelector('.eye-closed');
+          const show = input.type === 'password';
+          input.type = show ? 'text' : 'password';
+          btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+          if (eyeOpen) eyeOpen.style.display = show ? 'block' : 'none';
+          if (eyeClosed) eyeClosed.style.display = show ? 'none' : 'block';
+        });
+      });
+      },
       preConfirm: () => {
         const otp = document.getElementById('fpOtp').value.trim();
         const pass = document.getElementById('fpNewPassword').value;
