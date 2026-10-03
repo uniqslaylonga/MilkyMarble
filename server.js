@@ -2049,6 +2049,23 @@ app.get('/api/admin/dashboard', async (req, res) => {
       supervisor: log.users ? log.users.full_name : 'Staff'
     }));
 
+    // Weekly operations chart (last 4 rolling 7-day windows; last = active week)
+    const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    const nowMs = Date.now();
+    const chartStart = new Date(nowMs - 4 * WEEK_MS).toISOString();
+    const signups = [0, 0, 0, 0];
+    const batches = [0, 0, 0, 0];
+    const bucketOf = (iso) => {
+      const age = nowMs - new Date(iso).getTime();
+      if (isNaN(age) || age < 0 || age >= 4 * WEEK_MS) return -1;
+      return 3 - Math.floor(age / WEEK_MS);
+    };
+    const { data: signupRows } = await supabase.from('users').select('created_at').eq('user_type', 'customer').gte('created_at', chartStart);
+    (signupRows || []).forEach(r => { const i = bucketOf(r.created_at); if (i >= 0) signups[i]++; });
+    const { data: batchRows } = await supabase.from('production_logs').select('cooked_at').gte('cooked_at', chartStart);
+    (batchRows || []).forEach(r => { const i = bucketOf(r.cooked_at); if (i >= 0) batches[i]++; });
+    const weeklyOperations = { labels: ['Week -3', 'Week -2', 'Week -1', 'Active Week'], signups, batches };
+
     return res.json({
       status: 'success',
       user: { fullName: userFullName, avatar: userAvatar },
@@ -2060,6 +2077,7 @@ app.get('/api/admin/dashboard', async (req, res) => {
       },
       recentCustomers: recentCustomers || [],
       productionLogs: formattedLogs,
+      weeklyOperations,
       staffList: formattedStaff
     });
   } catch (error) {
