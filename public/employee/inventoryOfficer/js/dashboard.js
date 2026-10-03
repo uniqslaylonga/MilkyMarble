@@ -249,7 +249,7 @@ function applyRequestsFilter() {
     renderPurchaseRequests();
 }
 
-// Render purchase requests table (With Punto 1 Receiving Flow)
+// Render purchase requests table with strict DOA Approval & Procurement Execution
 function renderPurchaseRequests() {
     const tbody = document.getElementById('purchaseRequestsList');
     const pageInfo = document.getElementById('prPageInfo');
@@ -286,26 +286,41 @@ function renderPurchaseRequests() {
         const badge = routeBadge(pr.route);
         const statusUpper = String(pr.status || '').toUpperCase();
 
-        const canDirectBuy = pr.route === 'procure' && statusUpper !== 'PURCHASED' && statusUpper !== 'RECEIVED';
-        const isReadyToReceive = statusUpper === 'PURCHASED' || statusUpper === 'APPROVED';
+        // LOGIC MATRIX:
+        // 1. Pwedeng bilhin ni Procurement kung:
+        //    - Direct buy (Micro Tier <= 300) at Pending / Ready, O KAYA
+        //    - Na-approve na ng Finance / CEO (Status: 'APPROVED')
+        const canProcurementBuy = (pr.route === 'procure' && (statusUpper === 'PENDING' || statusUpper === 'APPROVED')) || statusUpper === 'APPROVED';
+
+        // 2. Ready for Receiving & Audit kapag nabili na ni Procurement
+        const isReadyToReceive = statusUpper === 'PURCHASED';
 
         let actionButtonHtml = '';
-        if (canDirectBuy) {
+        if (canProcurementBuy) {
+            const isEscalatedApproved = pr.route !== 'procure' && statusUpper === 'APPROVED';
+            const label = isEscalatedApproved ? 'Buy Now (Approved)' : 'Buy Instant';
             actionButtonHtml = `
-                <button type="button" class="btn-buy-instant" onclick="handleDirectBuy(${Number(pr.id)})">
-                    Buy Instant
+                <button type="button" class="btn-buy-instant" onclick="handleBuyAction(${Number(pr.id)}, '${escapeHtml(pr.route)}')">
+                    ${label}
                 </button>
             `;
-        } else if (isReadyToReceive && statusUpper !== 'RECEIVED') {
+        } else if (isReadyToReceive) {
             actionButtonHtml = `
                 <button type="button" class="btn-receive-audit" onclick="openReceiveDeliveryModal(${Number(pr.id)})">
                     Receive &amp; Audit
                 </button>
             `;
+        } else if (statusUpper === 'RECEIVED') {
+            actionButtonHtml = `
+                <span style="display: inline-block; padding: 4px 8px; border-radius: 8px; background: rgba(46, 125, 50, 0.15); color: #2E7D32; font-weight: 700; font-size: 11px;">
+                    Completed
+                </span>
+            `;
         } else {
+            // Naghihintay pa ng opisyal na clearance mula kay Finance o CEO
             actionButtonHtml = `
                 <button type="button" class="btn-view-status" onclick="showRouteInfo(${Number(pr.id)})">
-                    View Route
+                    Pending Clearance
                 </button>
             `;
         }
@@ -516,14 +531,20 @@ function renderPrPagerButtons(totalPages, activePage) {
     });
 }
 
-// Direct Buy for requests ≤ ₱300 with SweetAlert2 confirmation
-async function handleDirectBuy(prId) {
+// Unified Buy Execution handler for Procurement Officer (Supports Direct Buy & Approved Clearances)
+async function handleBuyAction(prId, route) {
     const item = allRequests.find(r => r.id === prId);
     if (!item) return;
 
+    const isDirect = (route === 'procure');
+    const titleText = isDirect ? 'Authorize Direct Buy?' : 'Execute Approved Purchase?';
+    const subText = isDirect
+        ? 'Requisitions of ₱300 or less fall within your direct purchase authority.'
+        : 'This requisition has received official clearance and is authorized for procurement purchase.';
+
     const res = await MMSwal.fire({
-        title: 'Authorize Direct Buy?',
-        html: `Mark <strong>"${escapeHtml(item.name)}"</strong> (₱${formatPeso(item.total_price)}) as purchased?<br><br><small style="color:var(--text-muted);">Requisitions of ₱300 or less fall within your direct purchase authority.</small>`,
+        title: titleText,
+        html: `Mark <strong>"${escapeHtml(item.name)}"</strong> (₱${formatPeso(item.total_price)}) as purchased?<br><br><small style="color:var(--text-muted);">${subText}</small>`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Confirm Purchase',
@@ -533,12 +554,15 @@ async function handleDirectBuy(prId) {
     if (!res.isConfirmed) return;
 
     try {
-        await apiPost('/api/procurement-officer/mark-purchased', { expense_id: prId });
+        await apiPost('/api/procurement-officer/mark-purchased', { 
+            expense_id: prId,
+            status: 'PURCHASED'
+        });
         await fetchProcurementDashboardData();
         MMSwal.fire({
             icon: 'success',
             title: 'Purchase Recorded',
-            text: `"${item.name}" marked as purchased. You may now inspect and receive items once delivered.`
+            text: `"${item.name}" has been marked as purchased. You may now inspect and receive items once delivered.`
         });
     } catch (error) {
         MMSwal.fire({

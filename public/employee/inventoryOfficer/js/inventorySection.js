@@ -24,8 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('tabCatPackaging')?.addEventListener('click', function () { filterCategory('packaging', this); });
     document.getElementById('tabCatEquipment')?.addEventListener('click', function () { filterCategory('equipment', this); });
 
-    // Search and Status Filters
-    document.getElementById('inventorySearchInput')?.addEventListener('input', applyInventoryFilters);
+    // Status Filter (All / Critical Low / Adequate)
     document.getElementById('statusFilter')?.addEventListener('change', applyInventoryFilters);
 
     // Form Handlers
@@ -49,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// The database stores 'raw_material' | 'packaging' | 'equipment'.
+// The database stores 'raw_material' | 'packaging' | 'equipment'
 function categoryOf(item) {
     const t = String(item.item_type || '').toLowerCase();
     if (t === 'packaging') return 'packaging';
@@ -119,9 +118,8 @@ async function fetchInventorySectionData() {
     }
 }
 
-// Category and Search Filtering
+// Category and Status Filter logic
 function applyInventoryFilters() {
-    const q = document.getElementById('inventorySearchInput')?.value.toLowerCase().trim() || '';
     const statusFilter = document.getElementById('statusFilter')?.value || '';
 
     filteredItems = allItems.filter(item => {
@@ -134,16 +132,10 @@ function applyInventoryFilters() {
         if (statusFilter === 'low' && !isLow) return false;
         if (statusFilter === 'normal' && isLow) return false;
 
-        if (q) {
-            const name = (item.name || '').toLowerCase();
-            const sku = (item.sku_code || '').toLowerCase();
-            if (!name.includes(q) && !sku.includes(q)) return false;
-        }
-
         return true;
     });
 
-    // Real badge counts
+    // Count Badges
     document.getElementById('totalCount').textContent = allItems.length;
     document.getElementById('ingCount').textContent = allItems.filter(i => categoryOf(i) === 'ingredients').length;
     document.getElementById('pkgCount').textContent = allItems.filter(i => categoryOf(i) === 'packaging').length;
@@ -161,7 +153,7 @@ function filterCategory(cat, btn) {
     applyInventoryFilters();
 }
 
-// Render Inventory Table with Permanent Numbered Pager (Reserved Column Removed per Punto 2)
+// Render Inventory Table with Permanent Numbered Pager
 function renderInventoryTable() {
     const tbody = document.getElementById('inventoryTableBody');
     const pageInfo = document.getElementById('inventoryPageInfo');
@@ -266,45 +258,60 @@ function renderInvPagerButtons(totalPages, activePage) {
     });
 }
 
-// Quick restock prompt using themed SweetAlert2
+// Quick restock prompt with DOA routing awareness
 async function quickRestockItem(itemId) {
     const item = allItems.find(i => i.id === itemId);
     if (!item) return;
 
-    const { value: amountStr } = await MMSwal.fire({
+    const { value: formValues } = await MMSwal.fire({
         title: `Pitch Restock: ${item.name}`,
-        input: 'number',
-        inputLabel: 'Estimated Total Cost (₱)',
-        inputPlaceholder: 'Enter total estimated expense...',
+        html: `
+            <div style="display:flex; flex-direction:column; gap:10px; text-align:left; font-size:13px;">
+                <label style="font-weight:700; color:var(--brown-soft);">Estimated Total Cost (₱) *</label>
+                <input id="swalRestockAmount" type="number" step="0.5" min="1" placeholder="e.g. 250" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
+                
+                <label style="font-weight:700; color:var(--brown-soft); margin-top:6px;">Estimated Quantity Needed</label>
+                <input id="swalRestockQty" type="number" min="1" step="1" value="5" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
+            </div>
+        `,
+        focusConfirm: false,
         showCancelButton: true,
-        confirmButtonText: 'Submit Restock Pitch',
+        confirmButtonText: 'Submit Restock Requisition',
         cancelButtonText: 'Cancel',
-        inputValidator: (val) => {
-            if (!val || parseFloat(val) <= 0) {
-                return 'Please enter a valid amount greater than 0.';
+        preConfirm: () => {
+            const amount = parseFloat(document.getElementById('swalRestockAmount').value);
+            const qty = parseFloat(document.getElementById('swalRestockQty').value || 1);
+            if (!amount || amount <= 0) {
+                Swal.showValidationMessage('Please enter a valid expense amount greater than 0');
+                return false;
             }
+            return { amount, qty };
         }
     });
 
-    if (!amountStr) return;
-    const amount = parseFloat(amountStr);
+    if (!formValues) return;
+    const { amount, qty } = formValues;
 
     try {
+        const unit = item.unit_of_measure || 'units';
+        const formattedItemName = `Restock: ${item.name} (${qty} ${unit})`;
         const result = await apiPost('/api/procurement-officer/add-request', {
-            item_name: `Restock: ${item.name}`,
-            store_name: '',
-            amount
+            item_name: formattedItemName,
+            store_name: 'Regular Supplier',
+            amount: amount,
+            quantity: qty,
+            unit: unit
         });
 
         const route = result.request && result.request.route;
         let routeText = 'Direct purchase authorized for Procurement';
         if (route === 'finance') routeText = 'Escalated to Finance Officer';
-        if (route === 'ceo') routeText = 'Escalated to the CEO';
+        if (route === 'ceo') routeText = 'Escalated to CEO';
 
         MMSwal.fire({
             icon: 'success',
             title: 'Restock Requisition Sent',
-            text: `Restock requisition for "${item.name}" (₱${amount.toFixed(2)}) submitted.\n\nRouting: ${routeText}`
+            text: `Requisition for "${item.name}" (₱${amount.toFixed(2)}) submitted.\n\nRouting: ${routeText}`
         });
     } catch (error) {
         MMSwal.fire({
@@ -337,7 +344,14 @@ async function handleAddStock(e) {
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-        await apiPost('/api/procurement-officer/add-stock', { name, department, quantity, unit, reorder_level });
+        await apiPost('/api/procurement-officer/add-stock', { 
+            name, 
+            department, 
+            quantity, 
+            unit, 
+            reorder_level 
+        });
+
         closeModal('addStockModal');
         e.target.reset();
         await fetchInventorySectionData();

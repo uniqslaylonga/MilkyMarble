@@ -40,11 +40,14 @@ function setText(id, value) {
     if (el) el.textContent = value;
 }
 
+function formatPeso(n) {
+    return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     fetchStockControlData();
 
-    // Search and Date Filter Listeners
-    document.getElementById('stockSearchInput')?.addEventListener('input', applyMovementFilters);
+    // Date Filter Listener (No search bar dependency)
     document.getElementById('dateFilter')?.addEventListener('change', applyMovementFilters);
 
     // Pagination buttons
@@ -113,19 +116,12 @@ async function fetchStockControlData() {
     }
 }
 
-// Unified Movement Filter
+// Movement Filter by Date Group
 function applyMovementFilters() {
-    const q = document.getElementById('stockSearchInput')?.value.toLowerCase().trim() || '';
     const dateFilter = document.getElementById('dateFilter')?.value || 'all';
 
     filteredMovementLogs = allMovementLogs.filter(log => {
         if (dateFilter !== 'all' && log.dateGroup !== dateFilter) return false;
-        if (q) {
-            const name = (log.item_name || '').toLowerCase();
-            const staff = (log.employee_name || '').toLowerCase();
-            const time = (log.displayTime || '').toLowerCase();
-            if (!name.includes(q) && !staff.includes(q) && !time.includes(q)) return false;
-        }
         return true;
     });
 
@@ -305,34 +301,50 @@ function renderLowStockAlerts(alerts) {
     }).join('');
 }
 
-// Quick Reorder Trigger using themed SweetAlert2 Dialog
+// Quick Reorder Trigger with Complete Payload and DOA Routing Preview
 async function quickHandleAlert(itemId) {
     const alertItem = allLowStockAlerts.find(a => a.id === itemId);
     if (!alertItem) return;
 
-    const { value: amountStr } = await MMSwal.fire({
+    const unit = alertItem.unit || 'units';
+
+    const { value: formValues } = await MMSwal.fire({
         title: `Pitch Reorder: ${alertItem.name}`,
-        input: 'number',
-        inputLabel: 'Estimated Total Requisition Amount (₱)',
-        inputPlaceholder: 'Enter total estimated cost...',
+        html: `
+            <div style="display:flex; flex-direction:column; gap:10px; text-align:left; font-size:13px;">
+                <label style="font-weight:700; color:var(--brown-soft);">Estimated Total Requisition Amount (₱) *</label>
+                <input id="swalAlertAmount" type="number" step="0.5" min="1" placeholder="e.g. 250" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
+                
+                <label style="font-weight:700; color:var(--brown-soft); margin-top:6px;">Quantity Needed (${escapeHtml(unit)})</label>
+                <input id="swalAlertQty" type="number" min="1" step="1" value="5" class="swal2-input" style="width:100%; margin:0; box-sizing:border-box;">
+            </div>
+        `,
+        focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Submit Requisition',
         cancelButtonText: 'Cancel',
-        inputValidator: (val) => {
-            if (!val || parseFloat(val) <= 0) {
-                return 'Please enter a valid amount greater than 0.';
+        preConfirm: () => {
+            const amount = parseFloat(document.getElementById('swalAlertAmount').value);
+            const qty = parseFloat(document.getElementById('swalAlertQty').value || 1);
+            if (!amount || amount <= 0) {
+                Swal.showValidationMessage('Please enter a valid expense amount greater than 0');
+                return false;
             }
+            return { amount, qty };
         }
     });
 
-    if (!amountStr) return;
-    const amount = parseFloat(amountStr);
+    if (!formValues) return;
+    const { amount, qty } = formValues;
 
     try {
+        const formattedItemName = `Restock: ${alertItem.name} (${qty} ${unit})`;
         const result = await apiPost('/api/procurement-officer/add-request', {
-            item_name: `Restock: ${alertItem.name}`,
-            store_name: '',
-            amount
+            item_name: formattedItemName,
+            store_name: 'Regular Supplier',
+            amount: amount,
+            quantity: qty,
+            unit: unit
         });
 
         const route = result.request && result.request.route;
@@ -343,7 +355,7 @@ async function quickHandleAlert(itemId) {
         await MMSwal.fire({
             icon: 'success',
             title: 'Requisition Created',
-            text: `Requisition for "${alertItem.name}" (₱${amount.toFixed(2)}) submitted.\n\nRouting: ${routeText}`
+            text: `Requisition for "${alertItem.name}" (₱${formatPeso(amount)}) submitted.\n\nRouting: ${routeText}`
         });
 
         window.location.href = 'procurement.html';
