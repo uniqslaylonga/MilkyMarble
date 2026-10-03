@@ -319,7 +319,7 @@
         </main>
     </div>
 
-    <!-- MODAL 1: ADD PURCHASE REQUEST (HYBRID SUPPLIER VIA DATALIST) -->
+    <!-- MODAL 1: ADD PURCHASE REQUEST (HYBRID SUPPLIER VIA DATALIST + UNIT OF MEASURE) -->
     <div class="modal-overlay" id="addRequestModal">
         <div class="profile-modal" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -353,12 +353,27 @@
 
                     <div class="form-group">
                         <label for="requestQty">Quantity *</label>
-                        <input type="number" id="requestQty" min="1" step="1" value="1" required>
+                        <input type="number" id="requestQty" min="1" step="1" value="1" placeholder="e.g. 2" required>
                     </div>
 
+                    <!-- Added Unit of Measure Field -->
                     <div class="form-group">
+                        <label for="requestUnit">Unit of Measure *</label>
+                        <select id="requestUnit" required>
+                            <option value="packs" selected>packs</option>
+                            <option value="pcs">pcs</option>
+                            <option value="box">box</option>
+                            <option value="cans">cans</option>
+                            <option value="bags">bags</option>
+                            <option value="kg">kg</option>
+                            <option value="grams">grams</option>
+                            <option value="bottles">bottles</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group full">
                         <label for="unitCost">Est. Unit Cost (₱) *</label>
-                        <input type="number" id="unitCost" min="1" step="0.5" placeholder="0.00" required>
+                        <input type="number" id="unitCost" min="1" step="0.5" placeholder="e.g. 130" required>
                     </div>
 
                     <!-- LIVE ROUTING PREVIEW BOX -->
@@ -448,9 +463,11 @@
                             <option value="grams" selected>grams</option>
                             <option value="pcs">pcs</option>
                             <option value="packs">packs</option>
+                            <option value="box">box</option>
                             <option value="cans">cans</option>
                             <option value="bags">bags</option>
                             <option value="kg">kg</option>
+                            <option value="bottles">bottles</option>
                         </select>
                     </div>
 

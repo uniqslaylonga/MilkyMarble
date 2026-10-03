@@ -333,7 +333,7 @@ function renderPurchaseRequests() {
     }).join('');
 }
 
-// Punto 1: Open Delivery Receiving Inspection Dialog
+// Punto 1: Open Delivery Receiving Inspection Dialog with Unit auto-match
 function openReceiveDeliveryModal(prId) {
     const pr = allRequests.find(r => r.id === prId);
     if (!pr) return;
@@ -341,11 +341,26 @@ function openReceiveDeliveryModal(prId) {
     document.getElementById('receivePrId').value = pr.id;
     document.getElementById('receiveItemRawName').value = pr.name;
 
-    // Parse expected quantity from string if available (e.g., "Condensed Milk (10x)")
+    // Parse expected quantity and unit from string if available (e.g., "Condensed Milk (10 packs)" or "(10x)")
     let expectedQty = 1;
-    const match = pr.name.match(/\(([0-9.]+)x\)/i);
-    if (match) {
-        expectedQty = parseFloat(match[1]);
+    let matchedUnit = '';
+    const matchWithUnit = pr.name.match(/\(([0-9.]+)\s*([a-zA-Z]+)\)/i);
+    const matchX = pr.name.match(/\(([0-9.]+)x\)/i);
+
+    if (matchWithUnit) {
+        expectedQty = parseFloat(matchWithUnit[1]);
+        matchedUnit = matchWithUnit[2].toLowerCase();
+    } else if (matchX) {
+        expectedQty = parseFloat(matchX[1]);
+    }
+
+    // Auto-select unit in receiving modal if matched
+    const destUnitSelect = document.getElementById('destinationUnit');
+    if (destUnitSelect && matchedUnit) {
+        const optionExists = Array.from(destUnitSelect.options).some(opt => opt.value === matchedUnit);
+        if (optionExists) {
+            destUnitSelect.value = matchedUnit;
+        }
     }
 
     document.getElementById('expectedUnitsCount').value = expectedQty;
@@ -391,7 +406,7 @@ async function handleReceiveDeliverySubmit(e) {
     e.preventDefault();
 
     const prId = document.getElementById('receivePrId').value;
-    const itemName = document.getElementById('receiveItemRawName').value.replace(/\s*\([0-9.]+x\)/i, '').trim();
+    const itemName = document.getElementById('receiveItemRawName').value.replace(/\s*\([0-9.]+\s*[a-zA-Z]*\)/i, '').trim();
     const expectedQty = parseFloat(document.getElementById('expectedUnitsCount').value || 0);
     const usableQty = parseFloat(document.getElementById('usableReceivedUnits').value || 0);
     const department = document.getElementById('destinationCategory').value;
@@ -620,13 +635,14 @@ function renderAttentionCallout(count, items) {
     detail.textContent = `${shown}${more} ${n === 1 ? 'is' : 'are'} at or below safety stock points.`;
 }
 
-// Submit purchase request (Punto 3: Hybrid supplier name captured)
+// Submit purchase request (Punto 3: Hybrid supplier name & Unit of Measure captured)
 async function handleAddRequestSubmit(e) {
     e.preventDefault();
 
     const itemName = document.getElementById('itemName').value.trim();
     const storeName = document.getElementById('storeName').value.trim();
     const qty = parseFloat(document.getElementById('requestQty').value || 1);
+    const unit = document.getElementById('requestUnit')?.value || 'pcs';
     const unitCost = parseFloat(document.getElementById('unitCost').value || 0);
     const totalCost = qty * unitCost;
 
@@ -643,10 +659,13 @@ async function handleAddRequestSubmit(e) {
     if (submitBtn) submitBtn.disabled = true;
 
     try {
+        const formattedItemName = `${itemName} (${qty} ${unit})`;
         const result = await apiPost('/api/procurement-officer/add-request', {
-            item_name: qty > 1 ? `${itemName} (${qty}x)` : itemName,
+            item_name: formattedItemName,
             store_name: storeName,
-            amount: totalCost
+            amount: totalCost,
+            quantity: qty,
+            unit: unit
         });
 
         closeModal('addRequestModal');
