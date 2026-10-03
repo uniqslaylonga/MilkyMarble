@@ -306,7 +306,7 @@ function renderPresetBatchAllocator() {
                         </svg>
                         <span>${escapeHtml(preset.chiller_rack || 'Main Chiller Rack')}</span>
                     </span>
-                    <button type="button" class="btn-batch-action" onclick="window.location.href='orderProduction.html?batch_name=${encodeURIComponent(preset.name)}'">
+                    <button type="button" class="btn-batch-action" onclick="window.location.href='productionPlanning.html?batch_name=${encodeURIComponent(preset.name)}'">
                         Brew / Seal More
                     </button>
                 </div>

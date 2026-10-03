@@ -113,7 +113,15 @@ async function fetchOrderProductionDetails(orderId) {
 
     } catch (error) {
         console.error('Could not load production order details:', error);
-        showCustomSwal('Error Loading Order', error.message || 'Failed to retrieve order assembly specs.', 'warning');
+        const noOrder = /no order found/i.test(error.message || '');
+        showCustomSwal(
+            'Error Loading Order',
+            noOrder
+                ? 'There is no order to display. Open an order from the Order List (or wait for an active order to come in).'
+                : (error.message || 'Failed to retrieve order assembly specs.'),
+            'warning'
+        );
+        if (noOrder) setTimeout(() => { window.location.href = 'orderList.html'; }, 2500);
     }
 }
 
