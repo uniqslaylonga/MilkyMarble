@@ -677,9 +677,15 @@ body {
     border-color: #664638;
 }
 
-.spoon-option-col {
-    margin-top: 12px;
+.spoon-option-block {
+    margin-top: 4px;
 }
+
+.spoon-pills-row {
+    display: flex;
+    gap: 8px;
+}
+
 
 /* ==================================================== */
 /* TOTALS BREAKDOWN & SUBMIT BUTTON                     */
