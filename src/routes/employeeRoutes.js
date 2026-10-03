@@ -165,7 +165,7 @@ async function deductInventoryForOrder(orderId, employeeName = 'Production Kitch
   try {
     const { data: order, error: orderErr } = await supabase
       .from('orders')
-      .select('id, order_items(item_label, quantity, size, toppings, is_custom, flavor, custom_details)')
+      .select('id, order_items(item_label, quantity, size, toppings, is_custom, custom_details)')
       .eq('id', orderId)
       .maybeSingle();
 
@@ -2771,11 +2771,13 @@ router.get('/production-supervisor/order-production', async (req, res) => {
     let orderData = null;
 
     if (requestedOrderId > 0) {
-      const { data: order } = await supabase
+      const { data: order, error: orderLookupErr } = await supabase
         .from('orders')
-        .select('id, order_number, status, pickup_instructions, guest_name, customers(users(full_name)), order_items(item_label, quantity, size, toppings, is_custom, flavor, custom_details)')
+        .select('id, order_number, status, pickup_instructions, guest_name, customers(users(full_name)), order_items(item_label, quantity, size, toppings, is_custom, custom_details)')
         .eq('id', requestedOrderId)
         .maybeSingle();
+
+      if (orderLookupErr) throw orderLookupErr;
 
       if (order) {
         const firstItem = (order.order_items && order.order_items[0]) || {};
@@ -2792,7 +2794,7 @@ router.get('/production-supervisor/order-production', async (req, res) => {
           orderStatus: (order.status || '').toUpperCase(),
           orderType: firstItem.is_custom ? 'Pre-Order' : 'Walk-in Preset',
           itemLabel,
-          flavor: firstItem.flavor || '',
+          flavor: firstItem.flavor || firstItem.custom_details || '',
           quantity: firstItem.quantity || 1,
           cupSize: firstItem.size || '',
           toppings: firstItem.toppings ? firstItem.toppings.split(',').map(t => t.trim()).filter(Boolean) : [],
