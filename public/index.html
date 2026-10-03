@@ -834,7 +834,8 @@
             notice.id = "indexSearchNotice";
             notice.style.position = "fixed";
             notice.style.top = "80px";
-            notice.style.right = "48px";
+            notice.style.right = window.innerWidth <= 860 ? "16px" : "48px";
+            if (window.innerWidth <= 860) { notice.style.left = "16px"; notice.style.textAlign = "center"; }
             notice.style.background = "#594a42";
             notice.style.color = "#ffffff";
             notice.style.padding = "10px 20px";
@@ -866,12 +867,73 @@
           });
         }
 
+        // ---------- MOBILE: tap icon to expand, tap again to search ----------
+        const searchBox = document.querySelector(".nav-search-box");
+        const navWrapper = document.querySelector(".navbar-wrapper");
+        const isMobileSearch = () => window.matchMedia("(max-width: 860px)").matches;
+
+        function expandSearch() {
+          if (!searchBox) return;
+          searchBox.classList.add("expanded");
+          if (navWrapper) navWrapper.classList.add("search-expanded");
+          if (searchInput) searchInput.focus();
+        }
+
+        function collapseSearch() {
+          if (!searchBox) return;
+          searchBox.classList.remove("expanded");
+          if (navWrapper) navWrapper.classList.remove("search-expanded");
+          if (searchInput) searchInput.blur();
+        }
+
         if (searchBtn) {
           searchBtn.addEventListener("click", function (e) {
             e.preventDefault();
+            e.stopPropagation();
+            if (isMobileSearch()) {
+              if (!searchBox.classList.contains("expanded")) {
+                expandSearch();
+                return;
+              }
+              if (!searchInput.value.trim()) {
+                collapseSearch();
+                return;
+              }
+              performIndexSearch();
+              searchInput.blur(); // close keyboard so the result is visible
+              return;
+            }
             performIndexSearch();
           });
         }
+
+        if (searchInput) {
+          searchInput.addEventListener("keydown", function (e) {
+            if (e.key === "Escape" && isMobileSearch()) collapseSearch();
+            if (e.key === "Enter" && isMobileSearch()) searchInput.blur();
+          });
+        }
+
+        // Tap on the collapsed circle (not just the icon) also opens it
+        if (searchBox) {
+          searchBox.addEventListener("click", function () {
+            if (isMobileSearch() && !searchBox.classList.contains("expanded")) expandSearch();
+          });
+        }
+
+        // Tap outside closes it when empty
+        document.addEventListener("click", function (e) {
+          if (!isMobileSearch() || !searchBox) return;
+          if (!searchBox.contains(e.target) && !searchInput.value.trim()) collapseSearch();
+        });
+
+        // Reset when rotating / resizing to desktop width
+        window.addEventListener("resize", function () {
+          if (!isMobileSearch() && searchBox) {
+            searchBox.classList.remove("expanded");
+            if (navWrapper) navWrapper.classList.remove("search-expanded");
+          }
+        });
       });
     </script>
     <script>

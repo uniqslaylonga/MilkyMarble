@@ -808,3 +808,48 @@ body {
     letter-spacing: 1px;
   }
 }
+
+
+/* ============================================================ */
+/* MOBILE SEARCH: icon that expands on tap (overrides navbar.css) */
+/* ============================================================ */
+@media (max-width: 860px) {
+  .nav-search-box {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: none;
+    justify-content: center;
+    cursor: pointer;
+    transition: width 0.3s ease, background 0.2s ease;
+  }
+
+  .nav-search-box input {
+    width: 0;
+    opacity: 0;
+    padding: 0;
+    pointer-events: none;
+    font-size: 16px; /* prevents iOS auto-zoom on focus */
+  }
+
+  .nav-search-box.expanded {
+    width: calc(100vw - 150px) !important;
+    max-width: 260px;
+    height: 36px;
+    border-radius: 20px;
+    background: #ffffff;
+    border: 1.5px solid var(--accent-pink, #f48a8e);
+    padding: 0 8px 0 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    justify-content: space-between;
+  }
+
+  .nav-search-box.expanded input {
+    width: 100%;
+    opacity: 1;
+    padding: 4px 0;
+    pointer-events: auto;
+  }
+}
