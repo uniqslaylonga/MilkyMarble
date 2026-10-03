@@ -349,10 +349,24 @@ function renderOrderDetails(order) {
                 </span>
             `;
         }
-        tagsHtml += order.needsSpoon === false
-            ? '<span class="spec-tag" id="spoonTag" style="background:#F1F1F1;color:#6b6b6b;"><span>&#x1F944; No spoon</span></span>'
-            : '<span class="spec-tag highlight" id="spoonTag"><span>&#x1F944; Include spoon</span></span>';
         tagRow.innerHTML = tagsHtml || '<span class="spec-tag">Standard Recipe Portion</span>';
+    }
+
+    // Spoon requirement banner (own row so it is easy to notice)
+    let spoonBanner = document.getElementById('spoonBanner');
+    if (!spoonBanner && tagRow) {
+        spoonBanner = document.createElement('div');
+        spoonBanner.id = 'spoonBanner';
+        tagRow.insertAdjacentElement('afterend', spoonBanner);
+    }
+    if (spoonBanner) {
+        const needsSpoon = order.needsSpoon !== false;
+        const spoonSvg = '<svg class="spoon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="8.5" cy="7.5" rx="3.2" ry="5" transform="rotate(-45 8.5 7.5)"></ellipse><path d="M11.5 11.5L20 20"></path>' + (needsSpoon ? '' : '<path d="M3 21L21 3" class="spoon-slash"></path>') + '</svg>';
+        spoonBanner.className = 'spoon-banner ' + (needsSpoon ? 'spoon-yes' : 'spoon-no');
+        spoonBanner.innerHTML = spoonSvg +
+            '<span class="spoon-banner-text">' +
+            (needsSpoon ? 'SPOON NEEDED &mdash; include a disposable spoon' : 'NO SPOON &mdash; customer does not want a spoon') +
+            '</span>';
     }
 
     const notesEl = document.getElementById('recipeInstructions');
