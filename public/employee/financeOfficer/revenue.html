@@ -79,7 +79,7 @@
             <header class="topbar">
                 <div class="topbar-status-strip open" id="registerStatusBanner">
                     <span class="status-pulse-dot"></span>
-                    <span id="registerStatusText">Revenue &amp; Settlement Desk  &bull; Sales &amp; Payment Reconciliation</span>
+                    <span id="registerStatusText">Revenue &amp; Settlement Desk &bull; Sales &amp; Payment Reconciliation</span>
                 </div>
                 <div class="topbar-right">
                     <div class="user-profile">
@@ -177,9 +177,9 @@
                                 <polyline points="12 6 12 12 16 14" />
                             </svg>
                         </div>
-                        <div class="stat-body"><span id="dsoValue" class="stat-value">12 Days</span></div>
+                        <div class="stat-body"><span id="dsoValue" class="stat-value">—</span></div>
                         <div class="stat-footer" id="dsoFooterText">
-                            <span class="badge-dso-target good">Target: &lt; 45 Days</span>
+                            <span class="badge-dso-target good">Target: &le; 45 Days</span>
                             <small class="dso-sub">Low Liquidity Risk</small>
                         </div>
                     </div>
@@ -197,12 +197,12 @@
                             </svg>
                         </div>
                         <div class="stat-body"><span id="avgCupMargin" class="stat-value">—</span></div>
-                        <div class="stat-footer" id="avgCupMarginFooter">Net Profit Margin: 41.2%</div>
+                        <div class="stat-footer" id="avgCupMarginFooter">Awaiting calculation...</div>
                     </div>
                 </div>
             </section>
 
-            <!-- WORKSPACE TABS BAR (REVENUE ANALYTICS VS PAYMENTS SETTLEMENT LEDGER) -->
+            <!-- WORKSPACE TABS BAR -->
             <div class="workspace-tabs-bar">
                 <button type="button" class="work-tab-btn active" id="tabBtnRevenue">
                     <svg viewBox="0 0 24 24" class="tab-svg" fill="none" stroke="currentColor" stroke-width="2">
@@ -224,9 +224,8 @@
                 </button>
             </div>
 
-            <!-- VIEW 1: REVENUE VELOCITY & FLAVOR CONTRIBUTION (ACTIVE) -->
+            <!-- VIEW 1: REVENUE VELOCITY & FLAVOR CONTRIBUTION -->
             <div class="workspace-view active" id="revenueViewArea">
-                <!-- SPLIT CHARTS: TUE/THU TREND (LEFT) + CHANNEL MIX (RIGHT) -->
                 <div class="split-revenue-layout">
                     <!-- Chart 1: Tuesday vs. Thursday Revenue Performance -->
                     <div class="directory-card chart-panel-card">
@@ -257,7 +256,7 @@
                             </div>
                             <div class="channel-legend-list">
                                 <div class="channel-legend-item">
-                                    <span class="legend-color-sq" style="background:#f28b95;"></span>
+                                    <span class="legend-color-sq" style="background:#F69299;"></span>
                                     <div>
                                         <div class="channel-name">Pre-Orders (Custom)</div>
                                         <strong class="channel-val" id="preordersLegendVal">—</strong>
@@ -318,7 +317,7 @@
                         </table>
                     </div>
 
-                    <!-- PERMANENT NUMBERED PAGINATION BAR (REVENUE) -->
+                    <!-- PAGINATION BAR (REVENUE) -->
                     <div class="tx-pagination-bar" id="revenuePaginationBar">
                         <span class="tx-page-info" id="revenuePageInfo">Showing 0 of 0 items</span>
                         <div class="tx-pager-buttons">
@@ -336,7 +335,7 @@
                 </section>
             </div>
 
-            <!-- VIEW 2: CUSTOMER PAYMENTS & SETTLEMENT AUDIT TRAIL (CONSOLIDATED FROM PAYMENTS) -->
+            <!-- VIEW 2: CUSTOMER PAYMENTS & SETTLEMENT AUDIT TRAIL -->
             <div class="workspace-view" id="settlementsViewArea" style="display: none;">
                 <section class="directory-card">
                     <div class="panel-header-bar">
@@ -374,7 +373,7 @@
                         </table>
                     </div>
 
-                    <!-- PERMANENT NUMBERED PAGINATION BAR (PAYMENTS) -->
+                    <!-- PAGINATION BAR (PAYMENTS) -->
                     <div class="tx-pagination-bar" id="paymentsPaginationBar">
                         <span class="tx-page-info" id="payPageInfo">Showing 0 of 0 transactions</span>
                         <div class="tx-pager-buttons">
@@ -394,7 +393,7 @@
         </main>
     </div>
 
-    <!-- MODAL 1: BLIND DRAWER CASH RECONCILIATION MODAL (PUNTO 1 AUDITING STANDARD) -->
+    <!-- MODAL 1: BLIND DRAWER CASH RECONCILIATION MODAL -->
     <div class="modal-overlay" id="reconcileModal">
         <div class="profile-modal" onclick="event.stopPropagation()">
             <div class="modal-header">

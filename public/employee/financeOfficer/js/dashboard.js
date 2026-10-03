@@ -14,7 +14,8 @@ const MMSwal = Swal.mixin({
         popup: 'mm-swal-popup',
         title: 'mm-swal-title',
         confirmButton: 'mm-swal-confirm',
-        cancelButton: 'mm-swal-cancel'
+        cancelButton: 'mm-swal-cancel',
+        denyButton: 'mm-swal-deny'
     },
     buttonsStyling: false
 });
@@ -48,15 +49,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+function getAuthHeaders() {
+    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    const headers = { 'Content-Type': 'application/json' };
+    if (userId) {
+        headers['x-user-id'] = userId;
+    }
+    return headers;
+}
+
 async function fetchFinanceDashboardData() {
     try {
         let response;
         if (typeof employeeFetch === 'function') {
             response = await employeeFetch('/api/finance-officer/dashboard');
         } else {
-            const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-            const headers = userId ? { 'x-user-id': userId } : {};
-            response = await fetch('/api/finance-officer/dashboard', { headers });
+            response = await fetch('/api/finance-officer/dashboard', { headers: getAuthHeaders() });
         }
 
         if (!response.ok) {
@@ -152,7 +160,6 @@ function renderFinanceTable() {
 
     if (!tbody) return;
 
-    // Dynamically adjust headers based on tab
     if (headerRow) {
         if (currentFinanceTab === 'preapproval') {
             headerRow.innerHTML = `
@@ -211,7 +218,7 @@ function renderFinanceTable() {
                     <td><span class="badge-route route-finance"><span class="badge-dot dot-finance"></span> Endorsed to Finance</span></td>
                     <td style="text-align: right;">
                         <button type="button" class="btn-approve-finance" onclick="reviewAndEndorseModal(${item.id})">
-                            Review &amp; Endorse
+                            Review &amp; Approve
                         </button>
                     </td>
                 </tr>
@@ -262,7 +269,7 @@ function renderFinPagerButtons(totalPages, activePage) {
     });
 }
 
-// Punto 2: Hybrid Quick Action Review Modal para sa ₱301–₱500 Requisitions
+// Quick Action Review Modal para sa ₱301–₱500 Requisitions
 async function reviewAndEndorseModal(itemId) {
     const item = allPreApprovals.find(i => i.id === itemId);
     if (!item) return;
@@ -277,36 +284,52 @@ async function reviewAndEndorseModal(itemId) {
                 <div style="margin-bottom: 6px;"><strong>DOA Threshold:</strong> <span class="badge-route route-finance"><span class="badge-dot dot-finance"></span> ₱301–₱500 Middle-Tier Clearance</span></div>
                 
                 <div style="background: var(--bg-main); padding: 10px 12px; border-radius: 10px; margin: 10px 0; border-left: 3.5px solid var(--accent-pink);">
-                    <strong>Operating Budget Check:</strong> Sufficient funds in active Raw Materials envelope.<br>
-                    <small style="color: var(--text-muted);">Endorsing will notify Procurement to proceed with vendor purchase.</small>
-                </div>
-
-                <div style="text-align: right; margin-top: 8px;">
-                    <a href="budget.html" style="color: var(--accent-pink); font-size: 11.5px; font-weight: 700; text-decoration: none;">Open Full Budget &amp; Expense Ledger &rarr;</a>
+                    <strong>Operating Note:</strong> Approving authorizes the requisition in Supabase. Procurement will receive the clearance and execute the actual purchase.
                 </div>
             </div>
         `,
         icon: 'question',
         showCancelButton: true,
         showDenyButton: true,
-        confirmButtonText: 'Endorse & Release Funds',
+        confirmButtonText: 'Approve for Procurement',
         denyButtonText: 'Reject Request',
         cancelButtonText: 'Cancel'
     });
 
     if (res.isConfirmed) {
-        allPreApprovals = allPreApprovals.filter(i => i.id !== itemId);
-        applyFinanceFilters();
-        MMSwal.fire({
-            icon: 'success',
-            title: 'Requisition Endorsed',
-            text: `Funds authorized for "${item.item_name}". Procurement has been notified to execute purchase.`
-        });
+        try {
+            const patchRes = await fetch(`/api/finance-officer/expenses/${itemId}/approve`, {
+                method: 'PATCH',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ approver_id: localStorage.getItem('userId') || null })
+            });
+
+            if (!patchRes.ok) {
+                const err = await patchRes.json().catch(() => ({}));
+                throw new Error(err.message || 'Failed to update approval in Supabase');
+            }
+
+            allPreApprovals = allPreApprovals.filter(i => i.id !== itemId);
+            applyFinanceFilters();
+
+            MMSwal.fire({
+                icon: 'success',
+                title: 'Requisition Approved',
+                text: `Purchase for "${item.item_name}" has been approved. Procurement Officer is authorized to buy.`
+            });
+        } catch (error) {
+            console.error('Approval failed:', error);
+            MMSwal.fire({
+                icon: 'error',
+                title: 'Failed to Approve',
+                text: error.message || 'Database error occurred while approving.'
+            });
+        }
     } else if (res.isDenied) {
         const { value: reason } = await MMSwal.fire({
             title: 'Reject Requisition',
             input: 'textarea',
-            inputLabel: 'Reason for Rejection / Deferred Clearance',
+            inputLabel: 'Reason for Rejection',
             inputPlaceholder: 'State reason for rejecting this disbursement...',
             showCancelButton: true,
             confirmButtonText: 'Confirm Rejection',
@@ -316,22 +339,43 @@ async function reviewAndEndorseModal(itemId) {
         });
 
         if (reason) {
-            allPreApprovals = allPreApprovals.filter(i => i.id !== itemId);
-            applyFinanceFilters();
-            MMSwal.fire({
-                icon: 'info',
-                title: 'Requisition Rejected',
-                text: `Request for "${item.item_name}" was rejected. Rationale logged: "${reason}"`
-            });
+            try {
+                const rejectRes = await fetch(`/api/finance-officer/expenses/${itemId}/reject`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ reason })
+                });
+
+                if (!rejectRes.ok) {
+                    const err = await rejectRes.json().catch(() => ({}));
+                    throw new Error(err.message || 'Failed to record rejection');
+                }
+
+                allPreApprovals = allPreApprovals.filter(i => i.id !== itemId);
+                applyFinanceFilters();
+
+                MMSwal.fire({
+                    icon: 'info',
+                    title: 'Requisition Rejected',
+                    text: `Request for "${item.item_name}" was rejected. Rationale logged to database.`
+                });
+            } catch (error) {
+                console.error('Rejection failed:', error);
+                MMSwal.fire({
+                    icon: 'error',
+                    title: 'Action Failed',
+                    text: error.message || 'Could not update record.'
+                });
+            }
         }
     }
 }
 
-// Action: Verify Receipt & Liquidate (≤ ₱300) gamit ang SweetAlert2
+// Action: Verify Receipt & Liquidate (≤ ₱300)
 async function verifyAndLiquidate(id, itemName, cost) {
     const res = await MMSwal.fire({
         title: 'Verify & Replenish Petty Cash?',
-        html: `Confirm that Official Receipt / Voucher for <strong>"${escapeHtml(itemName)}"</strong> (₱${cost.toFixed(2)}) has been inspected?<br><br><small style="color:var(--text-muted);">Amount will be added to the petty cash fund replenishment schedule.</small>`,
+        html: `Confirm that Official Receipt / Voucher for <strong>"${escapeHtml(itemName)}"</strong> (₱${cost.toFixed(2)}) has been inspected?<br><br><small style="color:var(--text-muted);">Amount will be settled against the petty cash fund.</small>`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Liquidate & Replenish',
@@ -340,17 +384,36 @@ async function verifyAndLiquidate(id, itemName, cost) {
 
     if (!res.isConfirmed) return;
 
-    allLiquidations = allLiquidations.filter(i => i.id !== id);
-    applyFinanceFilters();
+    try {
+        const response = await fetch(`/api/finance-officer/expenses/${id}/liquidate`, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+        });
 
-    MMSwal.fire({
-        icon: 'success',
-        title: 'Disbursement Liquidated',
-        text: `₱${cost.toFixed(2)} added to petty cash replenishment schedule.`
-    });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.message || 'Failed to update liquidation');
+        }
+
+        allLiquidations = allLiquidations.filter(i => i.id !== id);
+        applyFinanceFilters();
+
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Disbursement Liquidated',
+            text: `₱${cost.toFixed(2)} recorded in petty cash replenishment audit.`
+        });
+    } catch (error) {
+        console.error('Liquidation failed:', error);
+        MMSwal.fire({
+            icon: 'error',
+            title: 'Liquidation Error',
+            text: error.message || 'Failed to liquidate expense.'
+        });
+    }
 }
 
-// Chart 1: Tuesday vs Thursday Cash Flow
+// Chart 1: Release Day Cash Flow
 function initReleaseDayChart(customData) {
     const ctx = document.getElementById('releaseDayBarChart')?.getContext('2d');
     if (!ctx) return;
@@ -461,14 +524,42 @@ async function handleDisbursementSubmit(e) {
     const amount = parseFloat(document.getElementById('disburseAmount').value || 0);
     const orNum = document.getElementById('disburseOrNum').value.trim();
 
-    closeDisbursementModal();
-    e.target.reset();
+    try {
+        const response = await fetch('/api/finance-officer/expenses/voucher', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                description: desc,
+                category: cat,
+                amount: amount,
+                or_number: orNum
+            })
+        });
 
-    MMSwal.fire({
-        icon: 'success',
-        title: 'Disbursement Voucher Posted',
-        text: `Disbursement Voucher for "${desc}" (₱${amount.toFixed(2)}) successfully posted under ${cat}.`
-    });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.message || 'Failed to submit disbursement voucher.');
+        }
+
+        closeDisbursementModal();
+        e.target.reset();
+
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Disbursement Voucher Posted',
+            text: `Disbursement Voucher for "${desc}" (₱${amount.toFixed(2)}) successfully saved to database.`
+        });
+
+        // I-reload ang updated metrics at records
+        fetchFinanceDashboardData();
+    } catch (error) {
+        console.error('Voucher submission error:', error);
+        MMSwal.fire({
+            icon: 'error',
+            title: 'Error Posting Voucher',
+            text: error.message || 'Could not save voucher to Supabase.'
+        });
+    }
 }
 
 function formatAmount(val) {
