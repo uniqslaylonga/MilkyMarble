@@ -655,6 +655,32 @@ body {
     border-color: #664638;
 }
 
+.spoon-pill {
+    border: 1.5px solid #FCE1DD;
+    background: #FFFFFF;
+    color: var(--text-dark);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 12px;
+    border-radius: 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex: 1;
+    text-align: center;
+}
+
+.spoon-pill.active {
+    background: #664638;
+    color: #ffffff;
+    border-color: #664638;
+}
+
+.spoon-option-col {
+    margin-top: 12px;
+}
+
 /* ==================================================== */
 /* TOTALS BREAKDOWN & SUBMIT BUTTON                     */
 /* ==================================================== */

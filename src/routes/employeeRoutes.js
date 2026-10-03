@@ -2798,7 +2798,8 @@ router.get('/production-supervisor/order-production', async (req, res) => {
           quantity: firstItem.quantity || 1,
           cupSize: firstItem.size || '',
           toppings: firstItem.toppings ? firstItem.toppings.split(',').map(t => t.trim()).filter(Boolean) : [],
-          claimSlot
+          claimSlot,
+          needsSpoon: !/Spoon:\s*No/i.test(order.pickup_instructions || '')
         };
       }
     }

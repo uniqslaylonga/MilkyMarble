@@ -349,6 +349,9 @@ function renderOrderDetails(order) {
                 </span>
             `;
         }
+        tagsHtml += order.needsSpoon === false
+            ? '<span class="spec-tag" id="spoonTag" style="background:#F1F1F1;color:#6b6b6b;"><span>&#x1F944; No spoon</span></span>'
+            : '<span class="spec-tag highlight" id="spoonTag"><span>&#x1F944; Include spoon</span></span>';
         tagRow.innerHTML = tagsHtml || '<span class="spec-tag">Standard Recipe Portion</span>';
     }
 

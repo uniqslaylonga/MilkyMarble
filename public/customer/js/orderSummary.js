@@ -4,6 +4,7 @@ let currentSubtotal = 0.0;
 let appliedPromoDiscount = 0.0;
 let appliedLoyaltyDiscount = 0.0;
 let selectedPaymentMethod = '';
+let selectedSpoon = 'yes'; // 'yes' | 'no'
 let availableLoyaltyPoints = 0.0;
 let lastPlacedOrderData = null;
 
@@ -290,6 +291,8 @@ window.renderOrderSummaryModal = async function(items = []) {
   appliedPromoDiscount = 0.0;
   appliedLoyaltyDiscount = 0.0;
   selectedPaymentMethod = '';
+  selectedSpoon = 'yes';
+  document.querySelectorAll('.spoon-pill').forEach(b => b.classList.toggle('active', b.getAttribute('data-spoon') === 'yes'));
 
   const activeCustomer = await getActiveCustomerProfile();
   const isGuest = !activeCustomer;
@@ -554,6 +557,12 @@ function updateSummaryTotals() {
 // ==========================================
 // PAYMENT METHOD & PICKUP DATE VALIDATION
 // ==========================================
+window.selectSpoonOption = function(btnElement) {
+  document.querySelectorAll('.spoon-pill').forEach(b => b.classList.remove('active'));
+  btnElement.classList.add('active');
+  selectedSpoon = btnElement.getAttribute('data-spoon') === 'no' ? 'no' : 'yes';
+};
+
 window.selectPaymentMethod = function(btnElement) {
   document.querySelectorAll('.payment-method-pill').forEach(b => b.classList.remove('active'));
   btnElement.classList.add('active');
@@ -974,6 +983,7 @@ function buildReceiptDOM(order) {
         <div><strong>Email:</strong> ${customerEmail}</div>
         <div><strong>Pick-up Schedule:</strong> ${order.pickup_date || 'N/A'}</div>
         <div><strong>Payment:</strong> ${selectedPaymentMethod || 'Cash on Pick-Up'}</div>
+        <div><strong>Spoon:</strong> ${selectedSpoon === 'no' ? 'No' : 'Yes'}</div>
       </div>
 
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 14px;">
@@ -1145,7 +1155,7 @@ window.confirmPlaceOrder = async function() {
     total_amount: finalPayableTotal,
     payment_method: paymentMethodForOrder,
     pickup_date: pickupInput.value,
-    pickup_instructions: `Pick-up: ${pickupInput.value}`,
+    pickup_instructions: `Pick-up: ${pickupInput.value} | Spoon: ${selectedSpoon === 'no' ? 'No' : 'Yes'}`,
     guest_name: cleanName,
     guest_email: cleanEmail,
     recipient_name: cleanName,
