@@ -199,7 +199,7 @@ body {
   background-color: var(--bg-main);
   border-left: 2px solid var(--border-soft);
   margin: -24px -36px 24px -24px;
-  padding: 18px 36px 18px 24px;
+  padding: 15px 36px 15px 20px;
 }
 
 .topbar-status-strip {
@@ -605,7 +605,7 @@ body {
   font-family: var(--font-family-heading);
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: .7px;
+  letter-spacing: .8px;
   color: var(--brown-soft);
   background: var(--card-white);
   padding: 4px 10px;
@@ -908,7 +908,7 @@ body {
 .modal-title {
   font-family: var(--font-family-heading);
   font-size: 18px;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
   color: var(--brown-soft);
 }
 

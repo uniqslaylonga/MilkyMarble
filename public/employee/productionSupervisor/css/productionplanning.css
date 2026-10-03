@@ -1109,7 +1109,7 @@ body {
 .modal-title {
   font-family: var(--font-family-heading);
   font-size: 18px;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
   color: var(--brown-soft);
 }
 

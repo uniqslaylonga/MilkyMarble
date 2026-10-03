@@ -417,7 +417,7 @@ body {
   font-size: 15px;
   font-weight: 700;
   color: var(--text-dark);
-  letter-spacing: 0.5px;
+  letter-spacing: 1.5px;
   white-space: nowrap;
 }
 
@@ -487,7 +487,7 @@ body {
   font-size: 18px;
   font-weight: 700;
   color: var(--text-dark);
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
 }
 
 .section-sub-text {
@@ -555,13 +555,14 @@ body {
   font-family: var(--font-family-heading);
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: .5px;
+  letter-spacing: 0.8px;
   color: var(--brown-soft);
 }
 
 .pnl-row.net-income-row {
   background: #E8F5E9;
   color: #2E7D32;
+  letter-spacing: 0.8px;
   border: 1.5px solid rgba(46, 125, 50, 0.3);
 }
 

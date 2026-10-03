@@ -198,7 +198,7 @@ body.swal2-height-auto {
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: end;
+  justify-content: space-between;
   gap: 20px;
   position: sticky;
   top: 0;
@@ -207,6 +207,27 @@ body.swal2-height-auto {
   border-left: 2px solid var(--border-soft);
   margin: -24px -36px 24px -24px;
   padding: 15px 36px 15px 20px;
+}
+
+.topbar-status-strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 700;
+  background-color: var(--card-white);
+  box-shadow: 0 2px 6px rgba(246, 146, 153, 0.08);
+  transition: all 0.2s ease;
+}
+
+.status-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--accent-pink);
+  box-shadow: 0 0 6px var(--accent-pink);
 }
 
 .search-box {
@@ -366,7 +387,7 @@ body.swal2-height-auto {
   font-size: 18px;
   font-weight: 700;
   color: var(--text-dark);
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
 }
 
 .section-sub-text {
@@ -413,7 +434,7 @@ body.swal2-height-auto {
   font-size: 13px;
   font-weight: 700;
   color: var(--text-dark);
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
   white-space: nowrap;
 }
 
