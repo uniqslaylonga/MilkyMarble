@@ -373,13 +373,17 @@ async function verifyPasswordOtp() { //[cite: 4]
 
     const localUser = JSON.parse(localStorage.getItem('mm_user') || '{}');
     const targetCustomerId = (currentCustomerData && currentCustomerData.id) || localUser.customer_id;
-    if (!targetCustomerId) {
+    const targetEmail = (currentCustomerData && currentCustomerData.users && currentCustomerData.users.email)
+                     || (currentCustomerData && currentCustomerData.email)
+                     || localUser.email;
+    if (!targetCustomerId || !targetEmail) {
         SettingsSwal.fire({ icon: 'error', title: 'Session Error', text: 'Please log in again to change your password.' });
         return;
     }
 
     const payload = { //[cite: 4]
         customer_id: targetCustomerId,
+        email: targetEmail,
         current_password: document.getElementById('current_password').value, //[cite: 4]
         new_password: document.getElementById('new_password').value, //[cite: 4]
         confirm_password: document.getElementById('confirm_password').value, //[cite: 4]
