@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../config/supabase');
 const { generateCashTransactionId } = require('../utils/transactionId');
+const { dispatchOrderStatusEmail } = require('../services/mailServices');
 
 // Optional SDK load for Google Gemini AI
 let GoogleGenAI;
@@ -2867,14 +2868,38 @@ router.post('/production-supervisor/complete-order', async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Order ID is required.' });
     }
 
-    const { error } = await supabase
+    const { data: readyOrder, error } = await supabase
       .from('orders')
       .update({ status: 'READY_FOR_PICKUP', completed_at: new Date().toISOString() })
-      .eq('id', order_id);
+      .eq('id', order_id)
+      .select(`
+        id, order_number, pickup_date, pickup_instructions, guest_name, guest_email, customer_id,
+        customers ( user_id, notify_pickup, users ( email, full_name, username ) )
+      `)
+      .maybeSingle();
     if (error) throw error;
 
     const empName = await getEmployeeProfile(req);
     await deductInventoryForOrder(order_id, empName.fullName || 'Production Kitchen');
+
+    // Tell the customer their order is ready to claim. Fire-and-forget so a
+    // mail hiccup never blocks the kitchen. Respects the customer's
+    // "pick-up notification" setting (guests have no setting, so they get it).
+    if (readyOrder) {
+      const recipientEmail = readyOrder.guest_email || readyOrder.customers?.users?.email;
+      const wantsPickupEmail = readyOrder.customers ? readyOrder.customers.notify_pickup !== false : true;
+
+      if (recipientEmail && wantsPickupEmail) {
+        const recipientName = readyOrder.guest_name || readyOrder.customers?.users?.full_name || readyOrder.customers?.users?.username || 'Valued Customer';
+        let schedule = readyOrder.pickup_date || '';
+        if (!schedule && readyOrder.pickup_instructions) {
+          const m = readyOrder.pickup_instructions.match(/Pick-up:\s*([^|]+)/i);
+          if (m) schedule = m[1].trim();
+        }
+        dispatchOrderStatusEmail(recipientEmail, recipientName, readyOrder.order_number, 'READY_FOR_PICKUP', schedule)
+          .catch(err => console.error('[production-supervisor] Ready-for-pickup email failed:', err.message));
+      }
+    }
 
     return res.json({ status: 'success', message: 'Order marked ready for pickup and ingredients deducted.' });
   } catch (error) {
