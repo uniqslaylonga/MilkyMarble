@@ -1291,19 +1291,14 @@ app.put(['/api/customer/profile', '/api/customers/profile'], async (req, res) =>
       }
     }
 
-    // I-update ang customers table gamit ang 'avatar' column
-    const customerUpdates = {
-      phone: phone_number || '',
-      phone_number: phone_number || ''
-    };
-    if (finalAvatarUrl !== undefined && finalAvatarUrl) {
-      customerUpdates.avatar = finalAvatarUrl;
-    }
-
-    await supabase
+    // I-update ang customers table. 'phone' lang ang column dito; ang avatar
+    // ay nasa users table (ina-update sa ibaba).
+    const { error: custErr } = await supabase
       .from('customers')
-      .update(customerUpdates)
+      .update({ phone: phone_number ? String(phone_number).trim() : null })
       .eq('user_id', targetUserId);
+
+    if (custErr) throw custErr;
 
     // I-update ang users table gamit ang 'avatar' column lamang
     const userUpdates = {};

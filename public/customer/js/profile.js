@@ -532,8 +532,6 @@ function setupProfileForm() {
 
             localUser.full_name = fullName;
             localUser.username = username;
-            localUser.phone = phone;
-            localUser.phone_number = phone;
             if (avatarSrc) {
                 localUser.avatar = sanitizeAvatarString(avatarSrc);
                 localUser.profile_picture = sanitizeAvatarString(avatarSrc);
@@ -549,7 +547,7 @@ function setupProfileForm() {
                 text: data.message || 'Profile changes saved successfully!',
                 confirmButtonText: 'Got It'
             }).then(() => {
-                loadProfileDetails();
+                window.location.reload();
             });
 
         } catch (err) {
