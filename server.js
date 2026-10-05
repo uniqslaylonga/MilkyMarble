@@ -2606,7 +2606,7 @@ function ceoFlavorKey(item) {
 async function ceoLoadSaleOrders() {
   return ceoFetchAll(() => supabase
     .from('orders')
-    .select('id, placed_at, total_amount, customer_id, guest_name, order_items(line_total, quantity, item_label, flavor_value_id)')
+    .select('id, placed_at, total_amount, guest_name, order_items(line_total, quantity, item_label, flavor_value_id)')
     .in('status', CEO_SALE_STATUSES)
     .order('id', { ascending: true }));
 }
@@ -2629,7 +2629,7 @@ function ceoAggregateSales(orders) {
 
   orders.forEach(o => {
     totalSales += parseFloat(o.total_amount) || 0;
-    if (!o.customer_id) guestOrders++;
+    if (o.guest_name) guestOrders++;
     const parts = ceoPhParts(o.placed_at);
 
     (o.order_items || []).forEach(it => {
