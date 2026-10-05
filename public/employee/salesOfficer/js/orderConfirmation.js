@@ -206,13 +206,16 @@ function renderPaginatedOrders() {
                 </td>
                 <td>
                     <span class="payment-method-pill">${escapeHtml(ord.payment_method || 'Cash on Pick-Up')}</span>
+                    ${ord.gcash_reference ? `<span class="order-time-sub" style="display:block; margin-top:4px;">GCash ref: <b>${escapeHtml(ord.gcash_reference)}</b></span>` : ''}
                 </td>
                 <td>
                     <span class="order-total-val">₱${amount}</span>
                 </td>
                 <td style="text-align: center;">
                     <div class="action-btn-group">
-                        <button type="button" class="btn-confirm" onclick="confirmOrder(${ord.id})" title="Approve &amp; Send to Kitchen">Confirm</button>
+                        ${ord.gcash_reference
+                            ? `<button type="button" class="btn-confirm" onclick="verifyGcashPayment(${ord.id})" title="Check your GCash history, then verify this payment">Verify Payment</button>`
+                            : `<button type="button" class="btn-confirm" onclick="confirmOrder(${ord.id})" title="Approve &amp; Send to Kitchen">Confirm</button>`}
                         <button type="button" class="btn-reject" onclick="rejectOrder(${ord.id})" title="Cancel Order">Reject</button>
                     </div>
                 </td>
@@ -264,6 +267,40 @@ function renderPagerButtons(totalPages, activePage) {
             }
         });
     });
+}
+
+// Manual GCash: the officer compares the customer's reference number and the
+// amount with the store's GCash transaction history, then verifies the payment.
+async function verifyGcashPayment(orderId) {
+    const ord = allPendingOrders.find(o => o.id === orderId);
+    if (!ord || !ord.gcash_reference) return;
+
+    const amount = Number(ord.total_amount || 0).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+
+    const ok = await SalesCommon.confirm(
+        'Verify GCash Payment?',
+        `Open the store's GCash history and confirm you received exactly ₱${amount} with reference no. ${ord.gcash_reference} (order ${ord.order_number}). Only verify if both match.`,
+        'Yes, Payment Received',
+        'Cancel'
+    );
+    if (!ok) return;
+
+    try {
+        const response = await fetch(`/api/sales-officer/orders/${orderId}/verify-gcash`, { method: 'POST' });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || 'Could not verify payment.');
+
+        ord.status = 'PAID_VERIFIED';
+        ord.gcash_reference = null;
+        applyOrderFilters();
+        SalesCommon.alert('Payment Verified', `Order ${ord.order_number} is now paid. You can confirm it to send it to the kitchen.`, 'success');
+    } catch (err) {
+        console.error('Error verifying GCash payment:', err);
+        SalesCommon.alert('Verification Failed', err.message || 'Could not verify payment.', 'warning');
+    }
 }
 
 // Push to kitchen with register-lock guard & themed confirm

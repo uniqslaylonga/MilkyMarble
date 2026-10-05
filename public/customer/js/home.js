@@ -48,18 +48,6 @@ const PRESET_SIGNATURES = [
     price_8oz: 15.00,
     price_12oz: 19.00,
     rating: "0.0"
-  },
-   {
-    id: 5,
-    title: "Test Item\n(₱1 Payment Check)",
-    flavor: "Pandan",
-    variation: "Cubes",
-    toppings: ["Cheese"],
-    accent_color: "#8bb35c",
-    image: "images/Cheesy Pandan Cubes.png",
-    price_8oz: 1.00,
-    price_12oz: 1.00,
-    rating: "0.0"
   }
 ];
 

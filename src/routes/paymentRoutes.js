@@ -236,7 +236,14 @@ router.post('/webhook', async (req, res) => {
     const secret = process.env.PAYMONGO_WEBHOOK_SECRET;
     const signatureHeader = req.headers['paymongo-signature'];
 
-    if (secret && !secret.includes('REPLACE_WITH') && signatureHeader && req.rawBody) {
+    // Fail closed: with no secret, no signature header, or no raw body, the
+    // event cannot be authenticated, so it is rejected (never processed).
+    if (!secret || secret.includes('REPLACE_WITH') || !signatureHeader || !req.rawBody) {
+      console.warn('[PayMongo Webhook] Missing secret/signature - rejecting unauthenticated event.');
+      return res.status(401).json({ status: 'error', message: 'Unauthorized webhook.' });
+    }
+
+    {
       const parts = {};
       String(signatureHeader).split(',').forEach((chunk) => {
         const [k, v] = chunk.split('=');
@@ -256,8 +263,6 @@ router.post('/webhook', async (req, res) => {
         console.warn('[PayMongo Webhook] Invalid signature - rejecting.');
         return res.status(400).json({ status: 'error', message: 'Invalid signature.' });
       }
-    } else {
-      console.warn('[PayMongo Webhook] PAYMONGO_WEBHOOK_SECRET not set - skipping signature check.');
     }
 
     const event = req.body;
@@ -289,6 +294,77 @@ router.post('/webhook', async (req, res) => {
     // Still ack with 200 so PayMongo doesn't hammer retries for a local bug;
     // the order can be reconciled via GET /api/payments/verify/:orderId.
     return res.status(200).json({ status: 'error', message: err.message });
+  }
+});
+
+// ==========================================
+// MANUAL GCASH PAYMENT (no PayMongo)
+// Customer pays to the store's GCash number, then submits the 13-digit
+// GCash reference number. The reference is saved on the order as
+// transaction_id = "GCASH-<ref>" and the order stays PENDING_PAYMENT until a
+// Sales Officer checks it against the store's GCash history and verifies it
+// (see POST /api/sales-officer/orders/:id/verify-gcash in employeeRoutes.js).
+// ==========================================
+const GCASH_NUMBER = process.env.GCASH_NUMBER || '09763417233';
+const GCASH_ACCOUNT_NAME = process.env.GCASH_ACCOUNT_NAME || 'Milky Marble';
+
+router.get('/gcash-info', (req, res) => {
+  res.json({ status: 'success', number: GCASH_NUMBER, account_name: GCASH_ACCOUNT_NAME });
+});
+
+router.post('/manual-gcash/reference', async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ status: 'error', message: 'Database not configured.' });
+
+    const { order_id, order_number } = req.body || {};
+    const reference = String((req.body && req.body.reference) || '').replace(/\s+/g, '');
+
+    if (!order_id || !order_number) {
+      return res.status(400).json({ status: 'error', message: 'order_id and order_number are required.' });
+    }
+    if (!/^\d{13}$/.test(reference)) {
+      return res.status(400).json({ status: 'error', message: 'Enter the 13-digit GCash reference number from your receipt.' });
+    }
+
+    const { data: order, error: orderErr } = await supabase
+      .from('orders')
+      .select('id, order_number, status, payment_method, total_amount')
+      .eq('id', order_id)
+      .eq('order_number', order_number)
+      .maybeSingle();
+
+    if (orderErr || !order) {
+      return res.status(404).json({ status: 'error', message: 'Order not found.' });
+    }
+    if (order.payment_method !== 'E-Wallet') {
+      return res.status(400).json({ status: 'error', message: 'This order is not an E-Wallet order.' });
+    }
+    if (order.status !== 'PENDING_PAYMENT') {
+      return res.status(409).json({ status: 'error', message: 'This order is no longer waiting for payment.' });
+    }
+
+    const tag = `GCASH-${reference}`;
+    const { data: dup, error: dupErr } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('transaction_id', tag)
+      .neq('id', order.id)
+      .limit(1);
+    if (dupErr) throw dupErr;
+    if (dup && dup.length) {
+      return res.status(409).json({ status: 'error', message: 'That reference number was already used on another order.' });
+    }
+
+    const { error: updErr } = await supabase
+      .from('orders')
+      .update({ transaction_id: tag, updated_at: new Date().toISOString() })
+      .eq('id', order.id);
+    if (updErr) throw updErr;
+
+    return res.json({ status: 'success', message: 'Reference received. We will verify your payment shortly.' });
+  } catch (err) {
+    console.error('[payments] manual-gcash reference error:', err.message);
+    return res.status(500).json({ status: 'error', message: err.message });
   }
 });
 

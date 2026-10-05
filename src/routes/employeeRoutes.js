@@ -907,7 +907,7 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
       .from('orders')
       .select(`
         id, order_number, status, total_amount, payment_method, placed_at,
-        guest_name, customer_id,
+        transaction_id, guest_name, customer_id,
         customers(users(full_name)),
         order_items(item_label, quantity)
       `)
@@ -916,7 +916,26 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
 
     if (pendingErr) throw pendingErr;
 
-    const pendingOrders = (pendingRows || []).map(o => {
+    // Manual GCash: orders still PENDING_PAYMENT whose customer has submitted a
+    // GCash reference number. They wait here for the officer to verify them.
+    const { data: gcashRows, error: gcashErr } = await supabase
+      .from('orders')
+      .select(`
+        id, order_number, status, total_amount, payment_method, placed_at,
+        transaction_id, guest_name, customer_id,
+        customers(users(full_name)),
+        order_items(item_label, quantity)
+      `)
+      .eq('status', 'PENDING_PAYMENT')
+      .like('transaction_id', 'GCASH-%')
+      .order('placed_at', { ascending: false });
+
+    if (gcashErr) throw gcashErr;
+
+    const allReviewRows = [...(gcashRows || []), ...(pendingRows || [])]
+      .sort((a, b) => new Date(b.placed_at) - new Date(a.placed_at));
+
+    const pendingOrders = allReviewRows.map(o => {
       const itemLines = (o.order_items || []).map(
         it => `${it.quantity || 1}x ${cleanItemLabel(it.item_label, 'Item')}`
       );
@@ -929,7 +948,11 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
         items_summary: itemLines.length ? itemLines.join(', ') : 'Custom drink order',
         payment_method: o.payment_method || 'N/A',
         total_amount: parseFloat(o.total_amount || 0),
-        placed_at: o.placed_at
+        placed_at: o.placed_at,
+        status: o.status,
+        gcash_reference: (o.status === 'PENDING_PAYMENT' && String(o.transaction_id || '').startsWith('GCASH-'))
+          ? String(o.transaction_id).slice('GCASH-'.length)
+          : null
       };
     });
 
@@ -958,6 +981,69 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
   } catch (error) {
     console.error('[sales-officer/order-confirmation] error:', error.message);
     return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+router.post('/sales-officer/orders/:id/verify-gcash', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+    const orderId = req.params.id;
+
+    const { data: order, error: orderErr } = await supabase
+      .from('orders')
+      .select(`
+        id, order_number, total_amount, subtotal, discount_amount, status, payment_method,
+        transaction_id, pickup_date, pickup_instructions, guest_name, guest_email, customer_id,
+        order_items (item_label, quantity, unit_price),
+        customers ( user_id, users ( email, full_name, username ) )
+      `)
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (orderErr) throw orderErr;
+    if (!order) return res.status(404).json({ status: 'error', message: 'Order not found.' });
+    if (order.status !== 'PENDING_PAYMENT') {
+      return res.status(409).json({ status: 'error', message: 'This order is not waiting for payment verification.' });
+    }
+    if (!String(order.transaction_id || '').startsWith('GCASH-')) {
+      return res.status(400).json({ status: 'error', message: 'The customer has not submitted a GCash reference yet.' });
+    }
+
+    const { error: updErr } = await supabase
+      .from('orders')
+      .update({ status: 'PAID_VERIFIED', updated_at: new Date().toISOString() })
+      .eq('id', order.id)
+      .eq('status', 'PENDING_PAYMENT');
+    if (updErr) throw updErr;
+
+    // Order-confirmed email. A mail failure must never undo the verification.
+    try {
+      const recipientEmail = order.guest_email || order.customers?.users?.email;
+      if (recipientEmail) {
+        const recipientName = order.guest_name || order.customers?.users?.full_name || order.customers?.users?.username || 'Valued Customer';
+        let schedule = order.pickup_date || 'N/A';
+        if (schedule === 'N/A' && order.pickup_instructions) {
+          const m = order.pickup_instructions.match(/Pick-up:\s*([^|]+)/i);
+          if (m) schedule = m[1].trim();
+        }
+        await dispatchOrderStatusEmail(recipientEmail, recipientName, order.order_number, 'PAID_VERIFIED', schedule, {
+          order_ref: order.order_number,
+          pickup_date: schedule,
+          payment_method: order.payment_method,
+          total_price: order.total_amount,
+          subtotal: order.subtotal,
+          discount: order.discount_amount,
+          items: (order.order_items || []).map(it => ({ title: it.item_label, quantity: it.quantity, unit_price: it.unit_price }))
+        });
+      }
+    } catch (mailErr) {
+      console.error('[sales-officer/verify-gcash] email failed:', mailErr.message);
+    }
+
+    return res.json({ status: 'success', message: `Order ${order.order_number} payment verified.` });
+  } catch (err) {
+    console.error('[sales-officer/verify-gcash] error:', err.message);
+    return res.status(500).json({ status: 'error', message: err.message });
   }
 });
 

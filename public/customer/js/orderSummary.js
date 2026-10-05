@@ -563,6 +563,104 @@ window.selectSpoonOption = function(btnElement) {
   selectedSpoon = btnElement.getAttribute('data-spoon') === 'no' ? 'no' : 'yes';
 };
 
+// ==========================================
+// MANUAL GCASH PAYMENT DIALOG
+// Used right after placing an E-Wallet order and from the Orders page
+// ("Pay with GCash"). Shows the store's GCash number + exact amount and
+// submits the customer's 13-digit GCash reference number for staff to verify.
+// Resolves to { submitted: true|false }.
+// ==========================================
+window.mmPromptGcashPayment = async function(order) {
+  if (typeof Swal === 'undefined' || !order) return { submitted: false };
+
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+
+  let info = { number: '09763417233', account_name: 'Milky Marble' };
+  try {
+    const r = await fetch('/api/payments/gcash-info');
+    const d = await r.json();
+    if (d && d.number) info = d;
+  } catch (e) { /* fall back to the defaults above */ }
+
+  const amount = Number(order.total_amount || 0).toFixed(2);
+  const orderNumber = order.order_number || '';
+
+  const result = await Swal.fire({
+    target: document.body,
+    customClass: {
+      container: 'mm-swal-container-top',
+      popup: 'mm-swal-popup',
+      title: 'mm-swal-title',
+      htmlContainer: 'mm-swal-html',
+      actions: 'mm-swal-actions',
+      confirmButton: 'mm-swal-confirm-btn',
+      cancelButton: 'mm-swal-cancel-btn'
+    },
+    buttonsStyling: false,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    title: 'Pay with GCash',
+    html: `
+      <div style="text-align:left; font-size:14px; line-height:1.6;">
+        <div>1. Open GCash and <b>Send Money</b> to:</div>
+        <div style="margin:6px 0 10px; padding:10px 12px; border-radius:10px; background:#FFF3E6;">
+          <div style="font-size:18px; font-weight:800; letter-spacing:.5px;">${esc(info.number)}</div>
+          <div style="font-size:12px;">${esc(info.account_name)}</div>
+        </div>
+        <div>2. Send exactly <b>₱${esc(amount)}</b>. Order: <b>${esc(orderNumber)}</b></div>
+        <div>3. Enter the <b>13-digit reference no.</b> from your GCash receipt:</div>
+      </div>`,
+    input: 'text',
+    inputPlaceholder: '13-digit GCash reference no.',
+    inputAttributes: { inputmode: 'numeric', maxlength: '20', autocomplete: 'off' },
+    showCancelButton: true,
+    confirmButtonText: 'Submit Reference',
+    cancelButtonText: "I'll pay later",
+    reverseButtons: true,
+    showLoaderOnConfirm: true,
+    preConfirm: async (value) => {
+      const reference = String(value || '').replace(/\s+/g, '');
+      if (!/^\d{13}$/.test(reference)) {
+        Swal.showValidationMessage('Enter the 13-digit reference number from your GCash receipt.');
+        return false;
+      }
+      try {
+        const res = await fetch('/api/payments/manual-gcash/reference', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: order.id, order_number: orderNumber, reference })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.status !== 'success') {
+          Swal.showValidationMessage(data.message || 'Could not save your reference number.');
+          return false;
+        }
+        return true;
+      } catch (e) {
+        Swal.showValidationMessage('Network error. Please try again.');
+        return false;
+      }
+    }
+  });
+
+  if (result && result.isConfirmed && result.value === true) {
+    await Swal.fire({
+      target: document.body,
+      icon: 'success',
+      title: 'Reference Received',
+      text: 'Thank you! We will verify your GCash payment shortly. Your order will be confirmed once it is verified.',
+      confirmButtonText: 'OK',
+      customClass: { container: 'mm-swal-container-top', popup: 'mm-swal-popup', confirmButton: 'mm-swal-confirm-btn' },
+      buttonsStyling: false
+    });
+    return { submitted: true };
+  }
+  return { submitted: false };
+};
+
 window.selectPaymentMethod = function(btnElement) {
   document.querySelectorAll('.payment-method-pill').forEach(b => b.classList.remove('active'));
   btnElement.classList.add('active');
@@ -1221,42 +1319,14 @@ window.confirmPlaceOrder = async function() {
       };
 
       if (needsEwalletPayment) {
+        // Manual GCash: the order is saved as "awaiting payment". Show the store's
+        // GCash number + amount and collect the customer's GCash reference number.
+        // If they choose "I'll pay later", they can still pay from the Orders page.
+        await clearCartRequest();
         try {
-          const payRes = await fetch('/api/payments/create-checkout', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              order_id: orderObj.id || orderObj.order_id,
-              billing_name: cleanName,
-              billing_email: cleanEmail,
-              customer_id: customerId,
-              user_id: userId
-            })
-          });
-          const payData = await payRes.json();
-
-          if (payRes.ok && payData.status === 'success' && payData.checkout_url) {
-            await clearCartRequest();
-            window.location.href = payData.checkout_url;
-            return;
-          }
-
-          throw new Error(payData.message || 'Could not start PayMongo checkout.');
-        } catch (payErr) {
-          console.error('PayMongo checkout error:', payErr);
-          showSweetAlert({
-            icon: 'error',
-            title: 'Payment Could Not Start',
-            text: payErr.message || 'We placed your order, but could not open the PayMongo payment page. Please try paying again from your Orders page.',
-            confirmButtonText: 'OK',
-            showCancelButton: false
-          });
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerText = 'Place Order';
-          }
-          return;
+          await window.mmPromptGcashPayment(orderObj);
+        } catch (gcashErr) {
+          console.error('GCash payment prompt error:', gcashErr);
         }
       }
 
