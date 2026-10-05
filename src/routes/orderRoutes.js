@@ -9,7 +9,6 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABAS
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 const { dispatchOrderStatusEmail } = require('../services/mailServices');
 const { generateCashTransactionId } = require('../utils/transactionId');
-const { readToken, COOKIE_NAME } = require('../middleware/staffAuth');
 
 // Resolves the name/email to send order emails to, for either a
 // logged-in customer (via users table) or a guest checkout.
@@ -594,23 +593,6 @@ router.patch('/:id/status', async (req, res) => {
 
     if (!VALID_STATUSES.includes(cleanStatus)) {
       return res.status(400).json({ status: 'error', message: `Status must be one of: ${VALID_STATUSES.join(', ')}` });
-    }
-
-    // This endpoint is reachable without a login (customers use it to cancel an
-    // order or mark it received), so it must never be able to grant payment or
-    // move an order through the kitchen on its own:
-    //  - payment states are only set by the payment-verification code paths
-    //    (webhook, /api/payments/verify, Sales Officer verify-gcash);
-    //  - PREPARING / READY_FOR_PICKUP require a signed-in staff session.
-    if (cleanStatus === 'PAID_VERIFIED' || cleanStatus === 'PENDING_PAYMENT') {
-      return res.status(403).json({ status: 'error', message: 'Payment status cannot be set from this endpoint.' });
-    }
-    if (cleanStatus === 'PREPARING' || cleanStatus === 'READY_FOR_PICKUP') {
-      const staffSession = readToken(req.cookies && req.cookies[COOKIE_NAME]);
-      const isStaff = !!staffSession && ['employee', 'admin', 'ceo'].includes(staffSession.type);
-      if (!isStaff) {
-        return res.status(403).json({ status: 'error', message: 'Staff login required.' });
-      }
     }
 
     // Guard against a stale/late cancel request clobbering an order that has

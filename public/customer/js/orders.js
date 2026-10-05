@@ -518,21 +518,7 @@ function renderOrders(orders) {
 }
 
 function renderOrderButtons(orderId, statusKey, orderDataEncoded, isCustom = false) {
-  if (statusKey === 'awaiting payment') {
-    const o = (allOrdersList || []).find(x => String(x.id) === String(orderId)) || {};
-    if (o.payment_method === 'E-Wallet') {
-      // Manual GCash: once a reference is submitted the order is under review and
-      // can no longer be cancelled by the customer (money may already be sent).
-      if (String(o.transaction_id || '').startsWith('GCASH-')) {
-        return `<span style="font-size:12px; font-weight:700; color:#7C4F38;"><i class="fa-solid fa-hourglass-half"></i> GCash payment under review</span>`;
-      }
-      return `
-        <button type="button" class="btn-action-primary" onclick="payOrderWithGcash('${orderId}')">Pay with GCash</button>
-        <button type="button" class="btn-action-secondary" onclick="cancelOrder('${orderId}')">Cancel Order</button>
-      `;
-    }
-    return `<button type="button" class="btn-action-primary" onclick="cancelOrder('${orderId}')">Cancel Order</button>`;
-  } else if (statusKey === 'confirmed') {
+  if (statusKey === 'confirmed' || statusKey === 'awaiting payment') {
     return `<button type="button" class="btn-action-primary" onclick="cancelOrder('${orderId}')">Cancel Order</button>`;
   } else if (statusKey === 'ready for pickup') {
     return `
@@ -966,14 +952,6 @@ window.saveOrderAsBuild = function(encodedOrder, openPanel = false) {
       }
     });
   }
-};
-
-// Re-opens the manual GCash dialog for an order that is still awaiting payment.
-window.payOrderWithGcash = async function(orderId) {
-  const order = (allOrdersList || []).find(x => String(x.id) === String(orderId));
-  if (!order || typeof window.mmPromptGcashPayment !== 'function') return;
-  const result = await window.mmPromptGcashPayment(order);
-  if (result && result.submitted) loadOrders();
 };
 
 window.cancelOrder = function(orderId) {
