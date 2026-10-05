@@ -1,0 +1,116 @@
+@font-face {
+  font-family: 'Bootzy TM';
+  src: url('/customer/images/BootzyTM.ttf') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Urbanist';
+  src: url('/customer/images/Urbanist.ttf') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Kawaii RT';
+  src: url('/customer/images/KawaiiRT-Mona.ttf') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-family-heading: 'Bootzy TM', sans-serif;
+  --font-family-body: 'Urbanist', sans-serif;
+  --font-family-name: 'Kawaii RT', cursive;
+
+  --bg-main: #FAF0F0;
+  --card-bg: #FCEBEB;
+  --accent-pink: #F39E9E;
+  --accent-pink-soft: #FFB8B0;
+  --brown-soft: #7C4F38;
+  --text-dark: #4A3535;
+  --text-muted: #8C6D6D;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 230px;
+  height: 100vh;
+  background-color: var(--bg-main);
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  z-index: 100;
+}
+
+.brand-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 30px;
+}
+
+.brand-logo-img {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+}
+
+.brand-title {
+  font-family: var(--font-family-name);
+  font-size: 24px;
+  font-weight: 500;
+  color: #F69299;
+  letter-spacing: 1.5px;
+  -webkit-text-stroke: 1px var(--brown-soft);
+  text-align: center;
+}
+
+.nav-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-radius: 20px;
+  text-decoration: none;
+  color: var(--text-dark);
+  font-family: var(--font-family-body);
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.nav-item i {
+  font-size: 16px;
+  color: var(--accent-pink);
+}
+
+.nav-item:hover,
+.nav-item.active {
+  background-color: var(--accent-pink-soft);
+  color: #FFFFFF;
+}
+
+.nav-item:hover i,
+.nav-item.active i {
+  color: #FFFFFF;
+}
+
+.logout-item {
+  margin-top: auto;
+}

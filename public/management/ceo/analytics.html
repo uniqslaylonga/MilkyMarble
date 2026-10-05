@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — CEO Strategic Analytics &amp; AI Intelligence</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="css/analytics.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- FIXED STICKY SIDEBAR (CONSOLIDATED 4-LINK STANDARD) -->
+        <aside class="sidebar">
+            <div class="brand-section">
+                <div class="brand-logo-wrap">
+                    <img src="/customer/images/logo.png" alt="Milky Marble Logo" class="brand-logo-img">
+                </div>
+                <h1 class="brand-title">Milky Marble</h1>
+            </div>
+
+            <nav class="nav-menu">
+                <!-- 1. Dashboard -->
+                <a href="dashboard.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+
+                <!-- 2. Budget Approval -->
+                <a href="budgetApproval.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="12" y1="18" x2="12" y2="12" />
+                        <line x1="9" y1="15" x2="15" y2="15" />
+                    </svg>
+                    <span>Budget Approval</span>
+                </a>
+
+                <!-- 3. Analytics (Active) -->
+                <a href="analytics.html" class="nav-link active">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+                        <path d="M22 12A10 10 0 0 0 12 2v10z" />
+                    </svg>
+                    <span>Analytics</span>
+                </a>
+
+                <!-- 4. Enterprise Audit -->
+                <a href="enterpriseAudit.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                    <span>Enterprise Audit</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <a href="../login.html" class="nav-link logout-btn">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+                    </svg>
+                    <span>Log out</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- MAIN SCROLLABLE CONTENT -->
+        <main class="main-content">
+            <!-- TOPBAR -->
+            <header class="top-bar"> 
+                <div class="role-tag-badge">Chief Executive Officer</div>
+                <div class="header-actions">                                       
+                    <div class="user-profile">
+                        <div class="user-avatar" id="userAvatarContainer">
+                            <img id="userAvatarImg" src="/customer/images/account.png" alt="CEO Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                        </div>
+                        <span id="userFullNameDisplay">—</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- EXECUTIVE BANNER (CLEAN & STRATEGIC) -->
+            <section class="welcome-card">
+                <div class="welcome-card-flex">
+                    <div>
+                        <div class="executive-pill-tag">Enterprise Strategic Intelligence • Gemini AI Pulse</div>
+                        <h1 class="welcome-title">Cross-Functional Market Analytics</h1>
+                        <p class="welcome-sub">Comprehensive evaluation of product velocity, customer sentiment analysis, and release channel economics.</p>
+                    </div>
+                    <div class="ai-sync-pill">
+                        <span class="ai-live-dot"></span>
+                        <span>Gemini 2.5 Flash Synced</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- OVERVIEW: 4 OPERATIONAL MACRO KPIS -->
+            <section class="section">
+                <h2 class="section-title">Operations &amp; Velocity Overview</h2>
+                <div class="stats-grid">
+                    <!-- 1. Realized Revenue -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Completed Gross Revenue</span>
+                            <svg class="stat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
+                                <path d="M12 18V6" />
+                            </svg>
+                        </div>
+                        <div class="stat-body">
+                            <span id="statSales" class="stat-value">—</span>
+                        </div>
+                        <div class="stat-change">Total Reconciled Collections</div>
+                    </div>
+
+                    <!-- 2. Pre-Order Volume -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Active Pre-Orders</span>
+                            <svg class="stat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#68B0AB" stroke-width="2">
+                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                            </svg>
+                        </div>
+                        <div class="stat-body">
+                            <span id="statPreOrders" class="stat-value">—</span>
+                        </div>
+                        <div class="stat-change">Orders still in the pipeline</div>
+                    </div>
+
+                    <!-- 3. Total Realized Orders -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Realized Cup Orders</span>
+                            <svg class="stat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#F69299" stroke-width="2">
+                                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                                <line x1="3" y1="6" x2="21" y2="6" />
+                            </svg>
+                        </div>
+                        <div class="stat-body">
+                            <span id="statNewOrders" class="stat-value">—</span>
+                        </div>
+                        <div class="stat-change" id="statCupsNote">Cups across realized orders</div>
+                    </div>
+
+                    <!-- 4. Customer Satisfaction Index -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Customer CSAT Rating</span>
+                            <svg class="stat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#EAA342" stroke-width="2">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                        </div>
+                        <div class="stat-body">
+                            <span id="statCsatScore" class="stat-value" style="color: #B26A00;">—</span>
+                        </div>
+                        <div class="stat-change" id="statCsatNote">No ratings yet</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- STRATEGIC SPLIT GRID: VELOCITY CHART (LEFT) + GEMINI AI SENTIMENT PULSE (RIGHT) -->
+            <section class="section">
+                <div class="split-analytics-layout">
+                    <!-- Left: Flavor Sales Velocity Chart -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 class="chart-title">Flavor Sales Velocity &amp; Demand Trajectory</h3>
+                                <p class="chart-sub-text">Revenue curve for the current year across Coffee Jelly, Strawberry Marble, Pandan Bliss and other flavors</p>
+                            </div>
+                            <div class="toggle-group">
+                                <button type="button" class="toggle-btn active" id="btnMonths">Months</button>
+                                <button type="button" class="toggle-btn" id="btnYears">Years</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="revenueAnalyticsChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Right: GEMINI AI CUSTOMER SENTIMENT & QUALITY PULSE CARD -->
+                    <div class="chart-card ai-sentiment-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 class="chart-title">Customer Sentiment Pulse</h3>
+                                <p class="chart-sub-text">Computed from customer ratings and written reviews</p>
+                            </div>
+                            <span class="ai-badge-chip">Ratings Pulse</span>
+                        </div>
+
+                        <div class="ai-card-body">
+                            <!-- Sentiment Ratio Bars -->
+                            <div class="sentiment-meter-block">
+                                <div class="meter-head-row">
+                                    <span class="meter-label">Overall Customer Sentiment</span>
+                                    <strong class="meter-score" id="aiPositivePct">—</strong>
+                                </div>
+                                <div class="sentiment-split-bar">
+                                    <div class="bar-fill positive" id="barPositive" style="width: 0%;"></div>
+                                    <div class="bar-fill neutral" id="barNeutral" style="width: 0%;"></div>
+                                    <div class="bar-fill negative" id="barNegative" style="width: 0%;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Latest real written reviews -->
+                            <div class="ai-insights-block">
+                                <div class="ai-sub-heading">Latest Customer Feedback:</div>
+                                <div class="feedback-quote-tile" id="quotePositiveTile" style="display: none;">
+                                    <svg class="quote-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+
+                                    </svg>
+                                    <div class="quote-content">
+                                        <p class="quote-text" id="quotePositiveText"></p>
+                                        <span class="quote-meta" id="quotePositiveMeta"></span>
+                                    </div>
+                                </div>
+
+                                <div class="feedback-quote-tile alert-tile" id="quoteCriticalTile" style="display: none;">
+                                    <svg class="quote-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                                        <circle cx="12" cy="12" r="10"></circle>
+
+                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+
+                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+
+                                    </svg>
+                                    <div class="quote-content">
+                                        <p class="quote-text" id="quoteCriticalText"></p>
+                                        <span class="quote-meta" id="quoteCriticalMeta"></span>
+                                    </div>
+                                </div>
+                                <p class="quote-text" id="quoteEmptyText" style="margin-top: 8px;">No written reviews yet.</p>
+                            </div>
+
+                            <div class="ai-card-footer">
+                                <small id="sentimentFooter">Based on customer ratings</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEGMENTATION & ERP STRATEGIC BENCHMARKS STRIP -->
+            <section class="section">
+                <div class="split-analytics-layout">
+                    <!-- Customer Channel Inflow Mix Donut -->
+                    <div class="chart-card compact-donut-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 class="chart-title">Customer Segmentation &amp; Channel Mix</h3>
+                                <p class="chart-sub-text">Realized orders: registered members vs. guest checkouts</p>
+                            </div>
+                            <span class="section-badge-pink">Loyalty Mix</span>
+                        </div>
+                        <div class="donut-content-layout">
+                            <div class="donut-box">
+                                <canvas id="customerSegmentDonutChart"></canvas>
+                            </div>
+                            <div class="donut-legend-wrap">
+                                <div class="legend-entry">
+                                    <span class="legend-bullet" style="background: #f28b95;"></span>
+                                    <div class="legend-text">
+                                        <span>Registered Members</span>
+                                        <strong id="legendRegisteredVal">—</strong>
+                                    </div>
+                                </div>
+                                <div class="legend-entry">
+                                    <span class="legend-bullet" style="background: #EAA342;"></span>
+                                    <div class="legend-text">
+                                        <span>Guest Checkouts</span>
+                                        <strong id="legendGuestsVal">—</strong>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Slide 9 ERP Benchmark Governance Grid -->
+                    <div class="erp-benchmark-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 class="chart-title">ERP Benchmark Governance</h3>
+                                <p class="chart-sub-text">Cross-departmental maturity standards (MM-SOP-MASTER-2026)</p>
+                            </div>
+                            <span class="section-badge-pink">Benchmark Targets</span>
+                        </div>
+
+                        <div class="benchmark-mini-grid">
+                            <div class="benchmark-cell" data-bm="dso">
+                                <div class="bm-header">
+                                    <span class="bm-label">Days Sales Out. (DSO)</span>
+                                    <span class="bm-pill nodata" data-bm-status>No data</span>
+                                </div>
+                                <div class="bm-value-row">
+                                    <strong data-bm-value>—</strong>
+                                    <small>Target: &lt; 45 Days</small>
+                                </div>
+                                <div class="bm-progress-bar"><div class="bm-progress-fill" style="width: 0%;"></div></div>
+                                <span class="bm-desc" data-bm-desc></span>
+                            </div>
+
+                            <div class="benchmark-cell" data-bm="o2c">
+                                <div class="bm-header">
+                                    <span class="bm-label">Order-to-Cash Cycle</span>
+                                    <span class="bm-pill nodata" data-bm-status>No data</span>
+                                </div>
+                                <div class="bm-value-row">
+                                    <strong data-bm-value>—</strong>
+                                    <small>Target: &lt; 5 Days</small>
+                                </div>
+                                <div class="bm-progress-bar"><div class="bm-progress-fill" style="width: 0%;"></div></div>
+                                <span class="bm-desc" data-bm-desc></span>
+                            </div>
+
+                            <div class="benchmark-cell" data-bm="otd">
+                                <div class="bm-header">
+                                    <span class="bm-label">On-Time Fulfillment (OTD)</span>
+                                    <span class="bm-pill nodata" data-bm-status>No data</span>
+                                </div>
+                                <div class="bm-value-row">
+                                    <strong data-bm-value>—</strong>
+                                    <small>Target: &gt; 95%</small>
+                                </div>
+                                <div class="bm-progress-bar"><div class="bm-progress-fill" style="width: 0%;"></div></div>
+                                <span class="bm-desc" data-bm-desc></span>
+                            </div>
+
+                            <div class="benchmark-cell" data-bm="fpy">
+                                <div class="bm-header">
+                                    <span class="bm-label">First-Pass Yield (FPY)</span>
+                                    <span class="bm-pill nodata" data-bm-status>No data</span>
+                                </div>
+                                <div class="bm-value-row">
+                                    <strong data-bm-value>—</strong>
+                                    <small>Target: &gt; 90%</small>
+                                </div>
+                                <div class="bm-progress-bar"><div class="bm-progress-fill" style="width: 0%;"></div></div>
+                                <span class="bm-desc" data-bm-desc></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- DETAILED FLAVOR VELOCITY & MARGIN CONTRIBUTION DIRECTORY -->
+            <section class="section">
+                <div class="directory-card">
+                    <div class="panel-header-bar">
+                        <div>
+                            <h2 class="section-title">Flavor Velocity &amp; Unit Contribution Margins</h2>
+                            <p class="section-sub-text">Itemized product performance records across recipe batches and checkout channels.</p>
+                        </div>
+                        <div class="header-right-group">
+                            <div class="search-wrapper">
+                                <svg class="search-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="7" />
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                </svg>
+                                <input type="text" id="analyticsSearchInput" class="search-input-sm" placeholder="Search flavor or category..." />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="cust-table" id="analyticsTable">
+                            <thead>
+                                <tr>
+                                    <th>Flavor / Recipe Batch</th>
+                                    <th>Category</th>
+                                    <th>Units Sold</th>
+                                    <th>Gross Revenue</th>
+                                    <th>Est. COGS</th>
+                                    <th>Net Margin (%)</th>
+                                    <th style="text-align: right;">Strategic Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analyticsTableBody">
+                                <tr>
+                                    <td colspan="7" class="loading-state-text">Loading sales analytics records...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- PERMANENT NUMBERED PAGINATION BAR -->
+                    <div class="tx-pagination-bar" id="analyticsPaginationBar">
+                        <span class="tx-page-info" id="analyticsPageInfo">Showing 0 of 0 items</span>
+                        <div class="tx-pager-buttons">
+                            <button type="button" class="pager-btn" id="prevAnalyticsBtn" title="Previous Page" disabled>
+                                <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
+                            <div class="pager-numbers" id="analyticsPagerNumbers">
+                                <button type="button" class="pager-num-btn active" disabled>1</button>
+                            </div>
+                            <button type="button" class="pager-btn" id="nextAnalyticsBtn" title="Next Page" disabled>
+                                <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/benchmarks.js"></script>
+    <script src="js/analytics.js"></script>
+    <script src="/shared/js/avatarUpload.js"></script>
+    <script src="/shared/js/staffLogout.js"></script>
+</body>
+</html>

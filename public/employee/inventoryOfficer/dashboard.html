@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Procurement &amp; Inventory Dashboard</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- STICKY SIDEBAR -->
+        <aside class="sidebar">
+            <div class="brand-section">
+                <div class="brand-logo-wrap">
+                    <img src="/customer/images/logo.png" alt="Milky Marble Logo" class="brand-logo-img">
+                </div>
+                <div class="brand-title">Milky Marble</div>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="dashboard.html" class="nav-link active">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="procurement.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="9" cy="21" r="1"></circle>
+                        <circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                    </svg>
+                    <span>Procurement</span>
+                </a>
+                <a href="inventorySection.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                    <span>Inventory Section</span>
+                </a>
+                <a href="stockControl.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v18h18"></path>
+                        <path d="M18 17V9"></path>
+                        <path d="M13 17V5"></path>
+                        <path d="M8 17v-3"></path>
+                    </svg>
+                    <span>Stock Control</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <a href="../login.html" class="nav-link logout-btn">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span>Log out</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- TOPBAR -->
+            <header class="topbar">
+                <div class="topbar-status-strip open" id="registerStatusBanner">
+                    <span class="status-pulse-dot"></span>
+                    <span id="registerStatusText">Procurement Command Center &bull; Requests &amp; Inventory Oversight</span>
+                </div>
+                <div class="topbar-right">
+                    <div class="user-profile">
+                        <div class="user-avatar">
+                            <img id="userAvatar" src="/customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                        </div>
+                        <span id="userName" class="user-name">Loading...</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- WELCOME BANNER -->
+            <section class="welcome-banner">
+                <div class="welcome-banner-content">
+                    <div class="welcome-text-col">
+                        <div class="banner-badge-row">
+                            <span class="shift-subtag">DOA Matrix Active (≤ ₱300 Direct Buy)</span>
+                        </div>
+                        <h1 class="welcome-title" id="welcomeTitle">Glad to have you here!</h1>
+                        <p class="welcome-sub">Manage purchase requisitions, physical stock inspection &amp; variance audits, and warehouse safety levels.</p>
+                    </div>
+                    <div class="banner-action-col">
+                        <button type="button" class="btn-primary" onclick="openModal('addRequestModal')">
+                            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            <span>Add Purchase Request</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4 OPERATIONAL KPI CARDS -->
+            <section class="section">
+                <div class="overview-grid four-col-grid">
+                    <!-- 1. Direct Buy Queue -->
+                    <div class="stat-card" onclick="filterRequestsByRoute('procure')" style="cursor: pointer;">
+                        <div class="stat-header">
+                            <span class="stat-title">Direct Buy (≤ ₱300)</span>
+                            <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                            </svg>
+                        </div>
+                        <div class="stat-body"><span id="directBuyCount" class="stat-value">—</span></div>
+                        <div class="stat-footer">Instant Procurement Approval</div>
+                    </div>
+
+                    <!-- 2. Escalated to Finance/CEO -->
+                    <div class="stat-card" onclick="filterRequestsByRoute('escalated')" style="cursor: pointer;">
+                        <div class="stat-header">
+                            <span class="stat-title">Escalated (₱301+)</span>
+                            <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#EAA342" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                        </div>
+                        <div class="stat-body"><span id="escalatedCount" class="stat-value">—</span></div>
+                        <div class="stat-footer">Pending Finance / CEO Review</div>
+                    </div>
+
+                    <!-- 3. Monitored Items -->
+                    <div class="stat-card" onclick="window.location.href='inventorySection.html'" style="cursor: pointer;">
+                        <div class="stat-header">
+                            <span class="stat-title">Items Monitored</span>
+                            <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="var(--accent-pink)" stroke-width="2">
+                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                            </svg>
+                        </div>
+                        <div class="stat-body"><span id="itemsMonitored" class="stat-value">—</span></div>
+                        <div class="stat-footer">Tracked in inventory</div>
+                    </div>
+
+                    <!-- 4. Low Stock Alerts -->
+                    <div class="stat-card" onclick="window.location.href='stockControl.html'" style="cursor: pointer;">
+                        <div class="stat-header">
+                            <span class="stat-title">Critical Attention</span>
+                            <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#D9534F" stroke-width="2">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                        </div>
+                        <div class="stat-body"><span id="attentionCount" class="stat-value">—</span></div>
+                        <div class="stat-footer">Below safety reserve level</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MID GRID: PURCHASE REQUESTS & VENDOR DESK -->
+            <section class="mid-grid">
+                <!-- PURCHASE REQUESTS DIRECTORY -->
+                <div class="directory-card">
+                    <div class="panel-header-bar">
+                        <div>
+                            <h2 class="section-title">Latest Purchase Requests</h2>
+                            <p class="section-sub-text">Hierarchy routing applied based on estimated expense threshold.</p>
+                        </div>
+                        <div class="order-filter-tabs">
+                            <button type="button" class="tab-btn active" data-filter="all">All Requests</button>
+                            <button type="button" class="tab-btn" data-filter="procure">≤ ₱300 (Direct)</button>
+                            <button type="button" class="tab-btn" data-filter="finance">₱301–₱500</button>
+                            <button type="button" class="tab-btn" data-filter="ceo">&gt; ₱500</button>
+                        </div>
+                    </div>
+
+                    <!-- THRESHOLD LEGEND PILLS -->
+                    <div class="threshold-legend-row">
+                        <span class="badge-route route-procure"><span class="badge-dot dot-procure"></span> ≤ ₱300: Procurement Direct Approval</span>
+                        <span class="badge-route route-finance"><span class="badge-dot dot-finance"></span> ₱301–₱500: Finance Endorsement</span>
+                        <span class="badge-route route-ceo"><span class="badge-dot dot-ceo"></span> &gt; ₱500: CEO Clearance</span>
+                    </div>
+
+                    <!-- REQUESTS TABLE -->
+                    <div class="table-container">
+                        <table class="cust-table">
+                            <thead>
+                                <tr>
+                                    <th>PR Code &amp; Item</th>
+                                    <th>Requested By / Supplier</th>
+                                    <th>Total Cost</th>
+                                    <th>DOA Routing Status</th>
+                                    <th style="text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="purchaseRequestsList">
+                                <tr>
+                                    <td colspan="5" class="loading-state-text">Loading purchase requests...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- PERMANENT NUMBERED PAGINATION BAR -->
+                    <div class="tx-pagination-bar" id="prPaginationBar">
+                        <span class="tx-page-info" id="prPageInfo">Showing 0 of 0 requests</span>
+                        <div class="tx-pager-buttons">
+                            <button type="button" class="pager-btn" id="prevPrBtn" title="Previous Page" disabled>
+                                <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
+                            <div class="pager-numbers" id="prPagerNumbers">
+                                <button type="button" class="pager-num-btn active" disabled>1</button>
+                            </div>
+                            <button type="button" class="pager-btn" id="nextPrBtn" title="Next Page" disabled>
+                                <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VENDOR DIRECTORY -->
+                <div class="directory-card">
+                    <div class="panel-header-bar">
+                        <div>
+                            <h2 class="section-title">Supplier Desk</h2>
+                            <p class="section-sub-text">Suppliers on file for purchase requests</p>
+                        </div>
+                        <button class="circle-arrow-btn" onclick="window.location.href='procurement.html'" title="Open Procurement Directory">
+                            <svg class="arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div id="vendorList" class="vendor-list">
+                        <p class="loading-state-text">Loading active suppliers...</p>
+                    </div>
+
+                    <div class="vendor-footer-stats">
+                        <div><strong id="totalVendorsCount">—</strong> Suppliers in Directory</div>
+                        <div><strong id="activeVendorsPercent">—</strong> Active Suppliers</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- BOTTOM PANEL: WAREHOUSE INVENTORY SUMMARY -->
+            <section class="directory-card" style="margin-top: 24px;">
+                <div class="panel-header-bar">
+                    <div>
+                        <h2 class="section-title">Warehouse Inventory Summary</h2>
+                        <p class="section-sub-text">Stock levels monitored for raw materials, packaging, and equipment.</p>
+                    </div>
+                    <a href="inventorySection.html" class="view-link">
+                        <span>Open Full Inventory</span>
+                        <svg class="link-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="inventory-overview-grid">
+                    <div class="bars-container">
+                        <div class="bars-header">
+                            <span>Available Units by Classification</span>
+                            <span class="total-units"><strong id="totalAvailableUnits">0</strong> Total Units</span>
+                        </div>
+
+                        <div class="progress-row">
+                            <span class="row-label">Ingredients (Tea, Boba, Sugar)</span>
+                            <div class="progress-track">
+                                <div id="ingFill" class="progress-fill" style="width: 0%;"></div>
+                            </div>
+                            <span id="ingUnits" class="row-count">0</span>
+                        </div>
+
+                        <div class="progress-row">
+                            <span class="row-label">Packaging (Cups, Sealing Film)</span>
+                            <div class="progress-track">
+                                <div id="pkgFill" class="progress-fill" style="width: 0%;"></div>
+                            </div>
+                            <span id="pkgUnits" class="row-count">0</span>
+                        </div>
+
+                        <div class="progress-row">
+                            <span class="row-label">Equipment &amp; Utensils</span>
+                            <div class="progress-track">
+                                <div id="eqpFill" class="progress-fill" style="width: 0%;"></div>
+                            </div>
+                            <span id="eqpUnits" class="row-count">0</span>
+                        </div>
+                    </div>
+
+                    <div class="stock-callout-card">
+                        <div class="callout-icon">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                        </div>
+                        <div class="callout-content">
+                            <span class="callout-tag">STOCK CONTROL ALERT</span>
+                            <h3><span id="attentionCountBottom">—</span> items deserve attention</h3>
+                            <p id="attentionDetail">Checking stock levels...</p>
+                            <a href="stockControl.html" class="callout-link">
+                                <span>View Critical Thresholds</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL 1: ADD PURCHASE REQUEST (HYBRID SUPPLIER VIA DATALIST + UNIT OF MEASURE) -->
+    <div class="modal-overlay" id="addRequestModal">
+        <div class="profile-modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <h3 class="modal-title">New Purchase Requisition</h3>
+                    <p class="modal-subtitle">Automatically routed to Procurement, Finance, or CEO based on total cost.</p>
+                </div>
+                <button type="button" class="modal-close" onclick="closeModal('addRequestModal')">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="addRequestForm" class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label for="itemName">Item Name / Description *</label>
+                        <input type="text" id="itemName" placeholder="e.g. Raw Tapioca Pearls (1kg), Condensed Milk" required>
+                    </div>
+
+                    <!-- Punto 3: Hybrid Supplier Input (Dropdown Suggestions + Free Typing) -->
+                    <div class="form-group full">
+                        <label for="storeName">Supplier / Store (Select or Type Local Store) *</label>
+                        <input type="text" id="storeName" list="vendorDatalist" placeholder="Select registered vendor or type local sari-sari/market..." required>
+                        <datalist id="vendorDatalist">
+                            <!-- Populated dynamically via JS -->
+                        </datalist>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="requestQty">Quantity *</label>
+                        <input type="number" id="requestQty" min="1" step="1" value="1" placeholder="e.g. 2" required>
+                    </div>
+
+                    <!-- Added Unit of Measure Field -->
+                    <div class="form-group">
+                        <label for="requestUnit">Unit of Measure *</label>
+                        <select id="requestUnit" required>
+                            <option value="packs" selected>packs</option>
+                            <option value="pcs">pcs</option>
+                            <option value="box">box</option>
+                            <option value="cans">cans</option>
+                            <option value="bags">bags</option>
+                            <option value="kg">kg</option>
+                            <option value="grams">grams</option>
+                            <option value="bottles">bottles</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group full">
+                        <label for="unitCost">Est. Unit Cost (₱) *</label>
+                        <input type="number" id="unitCost" min="1" step="0.5" placeholder="e.g. 130" required>
+                    </div>
+
+                    <!-- LIVE ROUTING PREVIEW BOX -->
+                    <div class="form-group full">
+                        <div class="routing-preview-box">
+                            <span class="routing-label">Total Estimated Cost:</span>
+                            <strong id="previewTotalCost" class="routing-total-val">₱0.00</strong>
+                            <div id="routingBadge" class="badge-route route-procure">
+                                <span class="badge-dot dot-procure"></span> Direct Route: Procurement Officer (Direct Purchase Authorized)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('addRequestModal')">Cancel</button>
+                    <button type="submit" class="btn-primary">
+                        <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>Submit Requisition</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: PHYSICAL RECEIVING & DELIVERY VARIANCE AUDIT (Punto 1) -->
+    <div class="modal-overlay" id="receiveDeliveryModal">
+        <div class="profile-modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <h3 class="modal-title">Receive &amp; Audit Delivery</h3>
+                    <p class="modal-subtitle">Inspect delivered goods against purchase order. Only usable stock will be added to inventory.</p>
+                </div>
+                <button type="button" class="modal-close" onclick="closeModal('receiveDeliveryModal')">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="receiveDeliveryForm" class="modal-body">
+                <input type="hidden" id="receivePrId">
+                <input type="hidden" id="receiveItemRawName">
+
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Item / Requisition Manifest</label>
+                        <div class="readonly-display-box" id="receiveManifestDisplay">Loading manifest...</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expectedUnitsCount">Expected Units Ordered</label>
+                        <input type="number" id="expectedUnitsCount" readonly style="opacity: 0.8; background: #FFF5F4;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="usableReceivedUnits">Usable Units Received *</label>
+                        <input type="number" id="usableReceivedUnits" min="0" step="0.1" required>
+                    </div>
+
+                    <div class="form-group full">
+                        <div class="variance-feedback-box" id="varianceNoticeBox">
+                            <div class="variance-row">
+                                <span>Variance / Discrepancy:</span>
+                                <strong id="calculatedVarianceText" class="variance-ok">0 units discrepancy</strong>
+                            </div>
+                            <small id="varianceExplanation" style="color: var(--text-muted);">All expected items accounted for.</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="destinationCategory">Inventory Department *</label>
+                        <select id="destinationCategory" required>
+                            <option value="raw_material" selected>Raw Material / Ingredient</option>
+                            <option value="packaging">Packaging (Cups, Lids, Straws)</option>
+                            <option value="equipment">Equipment &amp; Utensils</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="destinationUnit">Unit of Measure *</label>
+                        <select id="destinationUnit" required>
+                            <option value="grams" selected>grams</option>
+                            <option value="pcs">pcs</option>
+                            <option value="packs">packs</option>
+                            <option value="box">box</option>
+                            <option value="cans">cans</option>
+                            <option value="bags">bags</option>
+                            <option value="kg">kg</option>
+                            <option value="bottles">bottles</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group full">
+                        <label for="receivingAuditNotes">Inspection &amp; Audit Notes</label>
+                        <textarea id="receivingAuditNotes" rows="2" placeholder="e.g. 1 unit damaged in transit; 9 usable units accepted into chiller shelf A..."></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('receiveDeliveryModal')">Cancel</button>
+                    <button type="submit" class="btn-primary">
+                        <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>Verify &amp; Add to Inventory</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../js/employeeAuth.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="/shared/js/avatarUpload.js"></script>
+    <script src="/shared/js/staffLogout.js"></script>
+</body>
+</html>

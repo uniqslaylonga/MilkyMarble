@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Customer Accounts &amp; CRM Directory</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="css/customerRecord.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div class="app-container">
+
+        <!-- FIXED STICKY SIDEBAR (CONSOLIDATED 4-LINK STANDARD) -->
+        <aside class="sidebar">
+            <div class="brand-section">
+                <div class="brand-logo-wrap">
+                    <img src="/customer/images/logo.png" alt="Milky Marble Logo" class="brand-logo-img">
+                </div>
+                <h1 class="brand-title">Milky Marble</h1>
+            </div>
+
+            <nav class="nav-menu">
+                <!-- 1. Dashboard -->
+                <a href="dashboard.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+
+                <!-- 2. Employee Records -->
+                <a href="employeeRecord.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    <span>Employee Records</span>
+                </a>
+
+                <!-- 3. Customer Records (Active) -->
+                <a href="customerRecord.html" class="nav-link active">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    <span>Customer Records</span>
+                </a>
+
+                <!-- 4. Store Settings -->
+                <a href="settings.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <span>Store Settings</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-bottom">
+              <a href="../login.html" class="nav-link logout-btn">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+                    </svg>
+                    <span>Log out</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- MAIN SCROLLABLE CONTENT -->
+        <main class="main-content">
+            <!-- TOPBAR -->
+            <header class="topbar">
+                <div class="topbar-right">
+                    <div class="role-tag-badge">Admin</div>
+                    <div class="user-profile">
+                        <div class="user-avatar" id="userAvatarContainer">
+                            <img id="userAvatarImg" src="/customer/images/account.png" alt="Admin Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                        </div>
+                        <span id="userFullName" class="user-name">Angeline J. Ang</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- CUSTOMER OVERVIEW KPIS (3 CARDS) -->
+            <section class="section">
+                <div class="section-head-bar">
+                    <div>
+                        <h2 class="section-title">Customer Portfolio Overview</h2>
+                        <p class="section-sub-text">Registered customer accounts, repeat order rates, and wholesale accounts.</p>
+                    </div>
+                </div>
+
+                <div class="overview-grid">
+                    <!-- 1. Total Customer Accounts -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Accounts</span>
+                            <div class="stat-icon-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#F69299" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                    <circle cx="9" cy="7" r="4" />
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="stat-body">
+                            <span id="totalAccounts" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-footer">Registered customer profiles</div>
+                    </div>
+
+                    <!-- 2. Corporate & Wholesale Buyers -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Corporate &amp; Wholesale</span>
+                            <div class="stat-icon-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#7C4F38" stroke-width="2">
+                                    <rect x="2" y="7" width="20" height="14" rx="2" />
+                                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="stat-body">
+                            <span id="corporateCount" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-footer">High-volume &amp; loyalty accounts</div>
+                    </div>
+
+                    <!-- 3. Repeat Customer Rate -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Repeat Customer Rate</span>
+                            <div class="stat-icon-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2.5">
+                                    <path d="M17 1l4 4-4 4" />
+                                    <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                                    <path d="M7 23l-4-4 4-4" />
+                                    <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="stat-body">
+                            <span id="repeatRate" class="stat-value" style="color: #2E7D32;">0.0%</span>
+                        </div>
+                        <div class="stat-footer">Loyal returning buyers</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CUSTOMER DIRECTORY TABLE -->
+            <section class="section">
+                <div class="directory-card">
+                    <div class="panel-header-bar">
+                        <div class="panel-title-group">
+                            <h2 class="section-title">Customer Account Directory</h2>
+                            <p class="section-sub-text"><span id="visibleCustomerCount">0</span> customers currently matching search filter</p>
+                        </div>
+                        <label class="search-box customer-search-box">
+                            <input type="search" id="customerSearchInput" placeholder="Search customers..." aria-label="Search customers">
+                            <svg class="search-icon" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="11" cy="11" r="7"></circle>
+                                <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+                            </svg>
+                        </label>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="cust-table" id="customerTable">
+                            <thead>
+                                <tr>
+                                    <th>Customer Info</th>
+                                    <th>Email &amp; Contact</th>
+                                    <th>Transaction Summary</th>
+                                    <th>Account Status</th>
+                                    <th style="text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customerTableBody">
+                                <tr>
+                                    <td colspan="5" class="loading-state-text">Loading customer records...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- PERMANENT NUMBERED PAGINATION BAR -->
+                    <div class="tx-pagination-bar" id="customerPaginationBar">
+                        <span class="tx-page-info" id="custPageInfo">Showing 0 of 0 customers</span>
+                        <div class="tx-pager-buttons">
+                            <button type="button" class="pager-btn" id="prevCustBtn" title="Previous Page" disabled>
+                                <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
+                            <div class="pager-numbers" id="custPagerNumbers">
+                                <button type="button" class="pager-num-btn active" disabled>1</button>
+                            </div>
+                            <button type="button" class="pager-btn" id="nextCustBtn" title="Next Page" disabled>
+                                <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- VIEW PROFILE MODAL -->
+        <div class="modal-overlay" id="profileModalOverlay">
+            <div class="profile-modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <div class="modal-header-left">
+                        <h3 class="modal-title">Customer Profile Record</h3>
+                        <span class="modal-id-badge" id="mCustId">CUST-ID</span>
+                    </div>
+                    <button type="button" class="modal-close" onclick="closeModal()">
+                        <svg class="close-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="avatar-upload-container">
+                        <div class="avatar-wrapper">
+                            <img id="mAvatarImg" src="/customer/images/account.png" alt="Customer Avatar" class="modal-avatar-img" onerror="this.src='/customer/images/account.png';">
+                        </div>
+                    </div>
+
+                    <div class="modal-section">
+                        <div class="modal-label">Personal &amp; Contact Details</div>
+                        <div class="modal-details-grid">
+                            <div class="detail-box">
+                                <span class="detail-label">Full Name</span>
+                                <strong class="detail-val" id="mModalFullName">Customer Name</strong>
+                            </div>
+                            <div class="detail-box">
+                                <span class="detail-label">Account Status</span>
+                                <strong class="detail-val" id="mStatus">Active</strong>
+                            </div>
+                            <div class="detail-box">
+                                <span class="detail-label">Contact Number</span>
+                                <strong class="detail-val" id="mPhone">No Phone Number</strong>
+                            </div>
+                            <div class="detail-box">
+                                <span class="detail-label">Email Address</span>
+                                <strong class="detail-val" id="mEmail">email@example.com</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-section">
+                        <div class="modal-label">Lifetime Order History</div>
+                        <div class="modal-details-grid">
+                            <div class="detail-box highlight-box">
+                                <span class="detail-label">Lifetime Spend</span>
+                                <strong class="detail-val" id="mTotalSpend">₱0.00</strong>
+                            </div>
+                            <div class="detail-box">
+                                <span class="detail-label">Total Completed Orders</span>
+                                <strong class="detail-val" id="mPastOrders">0 orders</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn-primary" onclick="closeModal()">Close Record</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="js/customerRecord.js"></script>
+    <script src="/shared/js/avatarUpload.js"></script>
+    <script src="/shared/js/staffLogout.js"></script>
+</body>
+</html>

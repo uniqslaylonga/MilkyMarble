@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milky Marble — Finance Officer Dashboard</title>
+    <link rel="icon" type="image/png" href="/customer/images/logo.png">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- STICKY SIDEBAR (4-LINK ARCHITECTURE) -->
+        <aside class="sidebar">
+            <div class="brand-section">
+                <div class="brand-logo-wrap">
+                    <img src="/customer/images/logo.png" alt="Milky Marble Logo" class="brand-logo-img">
+                </div>
+                <div class="brand-title">Milky Marble</div>
+            </div>
+
+            <nav class="nav-menu">
+                <!-- 1. Dashboard (Active) -->
+                <a href="dashboard.html" class="nav-link active">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+
+                <!-- 2. Revenue & Payments -->
+                <a href="revenue.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                        <polyline points="17 6 23 6 23 12"></polyline>
+                    </svg>
+                    <span>Revenue &amp; Payments</span>
+                </a>
+
+                <!-- 3. Budget & Expenses -->
+                <a href="budget.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                        <path d="M7 15h0M2 9.5h20"></path>
+                    </svg>
+                    <span>Budget &amp; Expenses</span>
+                </a>
+
+                <!-- 4. Reports & Audit -->
+                <a href="reports.html" class="nav-link">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <span>Financial Reports</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <a href="../login.html" class="nav-link logout-btn">
+                    <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span>Log out</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- MAIN SCROLLABLE CONTENT -->
+        <main class="main-content">
+            <!-- TOPBAR -->
+            <header class="topbar">
+                <div class="topbar-status-strip open" id="registerStatusBanner">
+                    <span class="status-pulse-dot"></span>
+                    <span id="registerStatusText">Finance Command Center &bull; Cash &amp; Approval Oversight</span>
+                </div>
+                <div class="topbar-right">
+                    <div class="user-profile">
+                        <div class="user-avatar">
+                            <img id="userAvatar" src="/customer/images/account.png" alt="Avatar" class="user-avatar-img" onerror="this.onerror=null; this.src='/customer/images/account.png';">
+                        </div>
+                        <span id="userName" class="user-name">Financial Officer</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- WELCOME BANNER -->
+            <section class="welcome-banner">
+                <div class="welcome-banner-content">
+                    <div class="welcome-text-col">
+                        <div class="banner-badge-row">
+                            <span class="release-window-pill">Finance Command Center</span>
+                            <span class="shift-subtag">Tuesday &amp; Thursday Release Cycle Oversight</span>
+                        </div>
+                        <h1 class="welcome-title">Welcome back, <span id="userFirstName">Finance Officer</span></h1>
+                        <p class="welcome-sub">Track cash position, clear the DOA disbursement queue, and monitor cost of goods sold at a glance.</p>
+                    </div>
+                    <div class="banner-action-col">
+                        <button type="button" class="btn-primary" onclick="openDisbursementModal()">
+                            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            <span>Post Disbursement Voucher</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4 EXECUTIVE OVERVIEW KPIS -->
+            <section class="section">
+                <div class="overview-grid four-col-grid">
+                    <!-- 1. Total Revenue -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Revenue</span>
+                            <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#F69299" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path>
+                                <path d="M12 18V6"></path>
+                            </svg>
+                        </div>
+                        <div class="stat-body"><span id="totalRevenue" class="stat-value">0.00</span></div>
+                        <div class="stat-footer">Reconciled release collections</div>
+                    </div>
+
+                    <!-- 2. Net Margin -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Net Margin</span>
+                            <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2">
+                                <line x1="12" y1="1" x2="12" y2="23"></line>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                            </svg>
+                        </div>
+                        <div class="stat-body"><span id="netMarginVal" class="stat-value" style="color: #2E7D32;">—</span></div>
+                        <div class="stat-footer">Revenue less operating expenses</div>
+                    </div>
+
+                    <!-- 3. Pending Pre-Approvals -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Pending Pre-Approvals</span>
+                            <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#B26A00" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                        </div>
+                        <div class="stat-body"><span id="pendingApprovalCount" class="stat-value">00</span></div>
+                        <div class="stat-footer">₱301–₱500 Middle-Tier Clearance</div>
+                    </div>
+
+                    <!-- 4. Pending Liquidations -->
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Pending Liquidations</span>
+                            <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#EAA342" stroke-width="2">
+                                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                <path d="M7 15h0M2 9.5h20"></path>
+                            </svg>
+                        </div>
+                        <div class="stat-body"><span id="pendingLiquidationCount" class="stat-value">00</span></div>
+                        <div class="stat-footer">≤ ₱300 Direct Buy Audit</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SPLIT LAYOUT: DISBURSEMENT DESK (LEFT) + CHARTS (RIGHT) -->
+            <div class="split-dashboard-layout">
+                <!-- LEFT: PRE-APPROVAL / LIQUIDATION DESK -->
+                <div class="table-column">
+                    <section class="directory-card">
+                        <div class="panel-header-bar">
+                            <div>
+                                <h2 class="section-title">Disbursement Clearance Desk</h2>
+                                <p class="section-sub-text">DOA-routed requisitions awaiting finance action</p>
+                            </div>
+                            <div class="order-filter-tabs">
+                                <button type="button" class="tab-btn active" id="tabPreApproval" onclick="switchFinanceTab('preapproval')">
+                                    <span>₱301–₱500 Pre-Approval</span>
+                                    <span class="counter-badge" id="badgePreApp">0</span>
+                                </button>
+                                <button type="button" class="tab-btn" id="tabLiquidation" onclick="switchFinanceTab('liquidation')">
+                                    <span>≤ ₱300 Liquidation</span>
+                                    <span class="counter-badge" id="badgeLiq">0</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="threshold-legend-row">
+                            <span class="badge-route route-finance"><span class="badge-dot dot-finance"></span> Endorsed to Finance</span>
+                            <span class="badge-route route-procure"><span class="badge-dot dot-procure"></span> Direct Buy Liquidation</span>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="cust-table">
+                                <thead>
+                                    <tr id="tableHeaderRow">
+                                        <th>PR Code &amp; Item</th>
+                                        <th>Requesting Dept</th>
+                                        <th>Estimated Cost</th>
+                                        <th>DOA Status</th>
+                                        <th style="text-align: right;">Authorization</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="financeTableBody">
+                                    <tr><td colspan="5" class="loading-state-text">Loading disbursement queue...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="tx-pagination-bar">
+                            <span class="tx-page-info" id="financePageInfo">Showing 0 of 0 records</span>
+                            <div class="tx-pager-buttons">
+                                <button type="button" class="pager-btn" id="prevFinBtn" title="Previous Page" disabled>
+                                    <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="15 18 9 12 15 6"/></svg>
+                                </button>
+                                <div class="pager-numbers" id="finPagerNumbers">
+                                    <button type="button" class="pager-num-btn active" disabled>1</button>
+                                </div>
+                                <button type="button" class="pager-btn" id="nextFinBtn" title="Next Page" disabled>
+                                    <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- RIGHT: CASH FLOW + COGS CHARTS -->
+                <div class="charts-column">
+                    <section class="chart-card">
+                        <div class="card-head-row">
+                            <div>
+                                <h2 class="section-title">Release Day Cash Flow</h2>
+                                <p class="section-sub-text">Gross sales vs. procurement COGS</p>
+                            </div>
+                        </div>
+                        <div style="position: relative; height: 220px;">
+                            <canvas id="releaseDayBarChart"></canvas>
+                        </div>
+                    </section>
+
+                    <section class="chart-card">
+                        <div class="card-head-row">
+                            <div>
+                                <h2 class="section-title">COGS Breakdown</h2>
+                                <p class="section-sub-text">Cost of goods sold by ingredient group</p>
+                            </div>
+                        </div>
+                        <div class="donut-flex-container">
+                            <div style="position: relative; height: 140px; width: 140px; flex-shrink: 0;">
+                                <canvas id="cogsDonutChart"></canvas>
+                            </div>
+                            <div class="donut-legend-col">
+                                <div class="legend-row"><span class="legend-box" style="background-color:#f28b95;"></span> Tea &amp; Boba</div>
+                                <div class="legend-row"><span class="legend-box" style="background-color:#68B0AB;"></span> Milk Blend</div>
+                                <div class="legend-row"><span class="legend-box" style="background-color:#EAA342;"></span> Cups &amp; Film</div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: POST DISBURSEMENT VOUCHER -->
+    <div class="modal-overlay" id="disbursementModal">
+        <div class="profile-modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <h3 class="modal-title">Post Disbursement Voucher</h3>
+                    <p class="modal-subtitle">Record an approved outflow against the active operating budget.</p>
+                </div>
+                <button type="button" class="modal-close" onclick="closeDisbursementModal()">✕</button>
+            </div>
+
+            <form id="disbursementForm" class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label for="disburseDesc">Description *</label>
+                        <input type="text" id="disburseDesc" placeholder="e.g. 2x 1kg Tapioca Pearls Replenishment" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="disburseCategory">Classification *</label>
+                        <select id="disburseCategory" required>
+                            <option value="cogs" selected>COGS - Raw Ingredients &amp; Cups</option>
+                            <option value="direct">Petty Cash Direct Buy (&le; ₱300)</option>
+                            <option value="marketing">Marketing &amp; Promotional</option>
+                            <option value="admin">Admin, Ice &amp; Utilities</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="disburseAmount">Amount (₱) *</label>
+                        <input type="number" step="0.5" id="disburseAmount" placeholder="e.g. 260.00" min="1" required>
+                    </div>
+
+                    <div class="form-group full">
+                        <label for="disburseOrNum">OR / Sales Invoice # *</label>
+                        <input type="text" id="disburseOrNum" placeholder="e.g. OR-88219" required>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeDisbursementModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">
+                        <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>Post Voucher</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../js/employeeAuth.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="/shared/js/avatarUpload.js"></script>
+    <script src="/shared/js/staffLogout.js"></script>
+</body>
+</html>

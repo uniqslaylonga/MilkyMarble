@@ -1,0 +1,52 @@
+<link rel="stylesheet" href="css/recipientdetails.css">
+
+<div class="product-modal-backdrop" id="recipientEditModal" onclick="closeRecipientModal(event)">
+    <div class="product-modal-container recipient-modal-card" onclick="event.stopPropagation()">
+        <button type="button" class="modal-close-btn" onclick="closeRecipientModal()" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <div class="recipient-modal-header">
+            <h2 class="recipient-modal-title">Recipient Details</h2>
+            <p class="recipient-modal-sub">Tell us who's picking up these sweet sips!</p>
+        </div>
+
+        <form id="recipientDetailsForm" class="recipient-form" onsubmit="saveRecipientDetails(event)">
+            <div class="recipient-form-group">
+                <label for="inputRecipientName" class="recipient-form-label">Full Name</label>
+                <div class="recipient-input-wrapper">
+                    <i class="fa-regular fa-user input-icon"></i>
+                    <input 
+                        type="text" 
+                        id="inputRecipientName" 
+                        class="recipient-input-field" 
+                        placeholder="e.g. Juan Dela Cruz" 
+                        required 
+                        maxlength="60"
+                        autocomplete="name"
+                    >
+                </div>
+            </div>
+
+            <div class="recipient-form-group">
+                <label for="inputRecipientEmail" class="recipient-form-label">Email Address</label>
+                <div class="recipient-input-wrapper">
+                    <i class="fa-regular fa-envelope input-icon"></i>
+                    <input 
+                        type="email" 
+                        id="inputRecipientEmail" 
+                        class="recipient-input-field" 
+                        placeholder="e.g. juandelacruz@gmail.com" 
+                        required 
+                        autocomplete="email"
+                    >
+                </div>
+            </div>
+
+            <div class="recipient-modal-actions">
+                <button type="button" class="btn-recipient-cancel" onclick="closeRecipientModal()">Cancel</button>
+                <button type="submit" class="btn-recipient-save">Save Details</button>
+            </div>
+        </form>
+    </div>
+</div>
