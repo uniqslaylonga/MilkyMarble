@@ -4,7 +4,7 @@
 // the result in an editable field, and the Sales Officer makes the final call.
 require('dotenv').config();
 
-const OCR_MODEL = process.env.GEMINI_OCR_MODEL || 'gemini-2.5-flash';
+const OCR_MODEL = process.env.GEMINI_OCR_MODEL || 'gemini-3.8-flash';
 
 function getApiKey() {
   return String(process.env.GEMINI_API_KEY || '').trim().replace(/^["']|["']$/g, '');
