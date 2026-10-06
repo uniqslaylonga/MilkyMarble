@@ -5,6 +5,7 @@
 require('dotenv').config();
 
 const OCR_MODEL = process.env.GEMINI_OCR_MODEL || 'gemini-3.8-flash';
+const FALLBACK_MODEL = process.env.GEMINI_OCR_FALLBACK_MODEL || 'gemini-3.5-flash-lite';
 
 function getApiKey() {
   return String(process.env.GEMINI_API_KEY || '').trim().replace(/^["']|["']$/g, '');
@@ -33,6 +34,8 @@ function parseAmount(value) {
   return Number.isFinite(n) && n > 0 ? Number(n.toFixed(2)) : null;
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function extractReceiptDetails(buffer, mimeType) {
   if (!isConfigured()) {
     const err = new Error('Automatic reading is not configured.');
@@ -49,22 +52,39 @@ async function extractReceiptDetails(buffer, mimeType) {
     'Respond ONLY with JSON: {"reference": string|null, "amount": number|null}'
   ].join('\n');
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${OCR_MODEL}:generateContent`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getApiKey() },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { inline_data: { mime_type: mimeType || 'image/jpeg', data: buffer.toString('base64') } },
-          { text: prompt }
-        ]
-      }],
-        generationConfig: { responseMimeType: 'application/json' }
-    })
+  // Gemini 3.x models no longer accept temperature/top_p/top_k, so only the
+  // JSON response type is requested.
+  const body = JSON.stringify({
+    contents: [{
+      parts: [
+        { inline_data: { mime_type: mimeType || 'image/jpeg', data: buffer.toString('base64') } },
+        { text: prompt }
+      ]
+    }],
+    generationConfig: { responseMimeType: 'application/json' }
   });
 
-  const json = await res.json().catch(() => null);
+  // Try the main model twice, then the fallback model twice, but only when
+  // Google reports a temporary problem (429 / 500 / 503).
+  let res;
+  let json;
+  for (const model of [OCR_MODEL, FALLBACK_MODEL]) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getApiKey() },
+          body
+        }
+      );
+      json = await res.json().catch(() => null);
+      if (res.ok || ![429, 500, 503].includes(res.status)) break;
+      await sleep(800);
+    }
+    if (res.ok) break;
+  }
+
   if (!res.ok) {
     throw new Error((json && json.error && json.error.message) || `OCR request failed (${res.status})`);
   }
