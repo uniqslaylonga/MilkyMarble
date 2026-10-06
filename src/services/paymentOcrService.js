@@ -60,7 +60,7 @@ async function extractReceiptDetails(buffer, mimeType) {
           { text: prompt }
         ]
       }],
-      generationConfig: { temperature: 0, responseMimeType: 'application/json' }
+        generationConfig: { responseMimeType: 'application/json' }
     })
   });
 
