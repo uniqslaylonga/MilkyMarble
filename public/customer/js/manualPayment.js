@@ -68,8 +68,8 @@
         '<p class="mmpay-sub">Order <strong id="mmPayOrderNo"></strong></p>' +
         '<div class="mmpay-amount"><small>Amount to pay</small><strong id="mmPayAmount"></strong></div>' +
         '<div class="mmpay-step">1. Scan &amp; pay the exact amount</div>' +
-        '<img class="mmpay-qr" src="' + QR_SRC + '" alt="Milky Marble InstaPay QR code">' +
-        '<a class="mmpay-save" href="' + QR_SRC + '" download="milky-marble-instapay-qr.png"><i class="fa-solid fa-download"></i> Save QR (to scan from your gallery)</a>' +
+        '<img class="mmpay-qr" id="mmPayQr" src="' + QR_SRC + '" alt="Milky Marble InstaPay QR code">' +
+        '<a class="mmpay-save" id="mmPaySave" href="' + QR_SRC + '" download="milky-marble-instapay-qr.png"><i class="fa-solid fa-download"></i> Save QR (to scan from your gallery)</a>' +
         '<div class="mmpay-step">2. Upload your receipt</div>' +
         '<label class="mmpay-drop" for="mmPayFile"><i class="fa-solid fa-image"></i><span id="mmPayDropText">Choose receipt screenshot</span></label>' +
         '<input type="file" id="mmPayFile" accept="image/jpeg,image/png,image/webp" hidden>' +
@@ -91,6 +91,42 @@
   }
 
   function $(id) { return root.querySelector('#' + id); }
+
+  // ---- per-order QR (amount filled in) ------------------------------------
+
+  var qrLib = null;
+  function loadQrLib() {
+    if (window.MMQrPh) return Promise.resolve();
+    if (qrLib) return qrLib;
+    qrLib = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = '/customer/js/qrph.js';
+      s.onload = resolve;
+      s.onerror = function () { qrLib = null; reject(new Error('QR library not found')); };
+      document.head.appendChild(s);
+    });
+    return qrLib;
+  }
+
+  // Shows a QR that already contains the order total. If anything goes wrong
+  // it quietly keeps the shop's normal QR, so paying still works.
+  async function applyOrderQr(amount) {
+    var img = $('mmPayQr'), link = $('mmPaySave');
+    img.src = QR_SRC;
+    link.href = QR_SRC;
+    link.download = 'milky-marble-instapay-qr.png';
+    if (!(amount > 0)) return;
+    try {
+      await loadQrLib();
+      var url = window.MMQrPh.forAmount(amount);
+      if (!state || state.amount !== amount) return;   // modal was reopened for another order
+      img.src = url;
+      link.href = url;
+      link.download = 'milky-marble-qr-' + amount.toFixed(2) + '.png';
+    } catch (err) {
+      console.warn('[payment] Could not build amount QR, using the standard QR:', err.message);
+    }
+  }
 
   function setHint(text, kind) {
     var el = $('mmPayHint');
@@ -340,6 +376,7 @@
 
     $('mmPayOrderNo').textContent = order.order_number || ('#' + order.id);
     $('mmPayAmount').textContent = peso(state.amount);
+    applyOrderQr(state.amount);
     $('mmPayFile').value = '';
     $('mmPayRef').value = '';
     $('mmPayRef').classList.remove('bad', 'good');
