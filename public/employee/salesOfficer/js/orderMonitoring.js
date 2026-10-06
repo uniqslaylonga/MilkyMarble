@@ -196,7 +196,7 @@ function renderPaginatedMonitoringCards() {
         const badgeText = isWalkin ? 'Walk-in' : 'Member';
         const displayName = escapeHtml(ord.customer_name || 'Walk-in Counter');
 
-        const isCompleted = (ord.status === 'COMPLETED');
+        const isCompleted = ord.is_walkin_pos === true || String(ord.status || '').trim().toUpperCase() === 'COMPLETED';
         const isReady = (ord.status === 'READY_FOR_PICKUP' || ord.status === 'IN_TRANSIT');
         const statusLabel = isCompleted ? 'Completed' : (isReady ? 'Ready for Pickup' : 'In Kitchen (Prep)');
         const statusClass = isCompleted ? 'completed' : (isReady ? 'ready' : 'kitchen');
