@@ -46,7 +46,7 @@ async function checkPromoEligibility(supabase, code, { itemCount, customerId, em
   if (!rule) return null;
 
   if (rule.minItems && itemCount < rule.minItems) {
-    return `${String(code).toUpperCase()} is valid only when you order at least ${rule.minItems} items.`;
+    return `${String(code).toUpperCase()} is valid only when you order at least ${rule.minItems} items (this order has ${itemCount}).`;
   }
   if (rule.oneTimeUse && (customerId || email)) {
     if (await hasUsedPromo(supabase, code, { customerId, email })) {
