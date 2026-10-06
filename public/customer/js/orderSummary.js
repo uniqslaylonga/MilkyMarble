@@ -582,8 +582,9 @@ function setNextDefaultPickupDate() {
 
   const days = allowedPickupDays.length > 0 ? allowedPickupDays : DEFAULT_PICKUP_DAYS;
 
+  // Start from TODAY: if today is one of the admin's pick-up days, customers
+  // can order for same-day pick-up. Otherwise roll forward to the next one.
   const date = new Date();
-  date.setDate(date.getDate() + 1);
 
   // Safety cap so a misconfigured/empty admin setting can't spin forever.
   let guard = 0;
@@ -1102,7 +1103,8 @@ window.confirmPlaceOrder = async function() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (selected < today || (day !== 1 && day !== 2 && day !== 4)) {
+    const allowedDays = allowedPickupDays.length > 0 ? allowedPickupDays : DEFAULT_PICKUP_DAYS;
+    if (selected < today || !allowedDays.includes(day)) {
       if (dateErr) dateErr.style.display = 'block';
       return;
     }

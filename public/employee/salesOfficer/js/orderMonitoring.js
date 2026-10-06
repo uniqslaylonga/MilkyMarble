@@ -118,6 +118,8 @@ function applyMonitoringFilters() {
             passStatus = (ord.status === 'PREPARING' || ord.status === 'CONFIRMED');
         } else if (statusVal === 'ready_pickup') {
             passStatus = (ord.status === 'READY_FOR_PICKUP' || ord.status === 'IN_TRANSIT');
+        } else if (statusVal === 'completed') {
+            passStatus = (ord.status === 'COMPLETED');
         }
 
         let passDate = true;
@@ -189,14 +191,15 @@ function renderPaginatedMonitoringCards() {
         });
 
         // Walk-in vs Member tag
-        const isWalkin = !ord.customer_id || String(ord.customer_name || '').toLowerCase().includes('walk');
+        const isWalkin = ord.is_walkin_pos || !ord.customer_id || String(ord.customer_name || '').toLowerCase().includes('walk');
         const badgeClass = isWalkin ? 'badge-walkin' : 'badge-member';
         const badgeText = isWalkin ? 'Walk-in' : 'Member';
         const displayName = escapeHtml(ord.customer_name || 'Walk-in Counter');
 
+        const isCompleted = (ord.status === 'COMPLETED');
         const isReady = (ord.status === 'READY_FOR_PICKUP' || ord.status === 'IN_TRANSIT');
-        const statusLabel = isReady ? 'Ready for Pickup' : 'In Kitchen (Prep)';
-        const statusClass = isReady ? 'ready' : 'kitchen';
+        const statusLabel = isCompleted ? 'Completed' : (isReady ? 'Ready for Pickup' : 'In Kitchen (Prep)');
+        const statusClass = isCompleted ? 'completed' : (isReady ? 'ready' : 'kitchen');
 
         return `
             <div class="order-card" id="monitoring-card-${ord.id}">
@@ -220,7 +223,9 @@ function renderPaginatedMonitoringCards() {
                         <span class="status-dot"></span>
                         ${statusLabel}
                     </span>
-                    ${isReady ? `
+                    ${isCompleted ? `
+                        <span class="in-kitchen-note">Paid in cash at counter</span>
+                    ` : isReady ? `
                         <button type="button" class="btn-handover" onclick="markOrderAsPickedUp(${ord.id})" title="Customer received order">
                             Hand Over / Claimed
                         </button>
@@ -335,6 +340,7 @@ async function punchWalkinPreset(presetName, size, price) {
                 customer_name: 'Walk-in Counter'
             })
         });
+        if (!response.ok) throw new Error(await SalesCommon.errorMessage(response));
 
         await fetchOrderMonitoringData();
         SalesCommon.alert('Walk-in Sale Recorded', `Successfully collected ₱${price}.00 cash in drawer.`, 'success');

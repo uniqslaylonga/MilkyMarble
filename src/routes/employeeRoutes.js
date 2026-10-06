@@ -1005,7 +1005,24 @@ router.get('/sales-officer/order-monitoring', async (req, res) => {
       .order('placed_at', { ascending: false });
     if (error) throw error;
 
-    const formattedActive = (activeOrders || []).map(o => {
+    // Today's counter (walk-in preset) sales are rung up as COMPLETED right
+    // away, so they never match the PREPARING / READY filter above. Pull
+    // them in separately so they still show up in the queue, tagged as
+    // completed walk-ins.
+    const { data: walkinOrders, error: walkinErr } = await supabase
+      .from('orders')
+      .select('id, order_number, status, total_amount, placed_at, guest_name, customer_id, customers(users(full_name)), order_items(item_label, quantity)')
+      .eq('status', 'COMPLETED')
+      .is('customer_id', null)
+      .like('order_number', 'MM-POS-%')
+      .gte('placed_at', todayStart)
+      .order('placed_at', { ascending: false });
+    if (walkinErr) throw walkinErr;
+
+    const queueOrders = [...(activeOrders || []), ...(walkinOrders || [])]
+      .sort((a, b) => new Date(b.placed_at) - new Date(a.placed_at));
+
+    const formattedActive = queueOrders.map(o => {
       const lines = (o.order_items || []).map(it => `${it.quantity || 1}x ${cleanItemLabel(it.item_label, 'Item')}`);
       return {
         id: o.id,
@@ -1017,7 +1034,8 @@ router.get('/sales-officer/order-monitoring', async (req, res) => {
         guest_name: o.guest_name,
         customer_name: (o.customers && o.customers.users && o.customers.users.full_name) || o.guest_name || 'Walk-in Counter',
         item_count: (o.order_items || []).length || 1,
-        items_summary: lines.length ? lines.join(', ') : 'Custom drink order'
+        items_summary: lines.length ? lines.join(', ') : 'Custom drink order',
+        is_walkin_pos: String(o.order_number || '').startsWith('MM-POS-')
       };
     });
 

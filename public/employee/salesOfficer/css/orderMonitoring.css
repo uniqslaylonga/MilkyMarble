@@ -625,6 +625,11 @@ body {
   color: #2E7D32;
 }
 
+.status-badge-pill.completed {
+  background-color: rgba(90, 120, 200, 0.18);
+  color: #3F5BA9;
+}
+
 .status-dot {
   width: 6px;
   height: 6px;
