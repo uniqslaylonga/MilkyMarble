@@ -9,6 +9,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABAS
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 const { dispatchOrderStatusEmail } = require('../services/mailServices');
 const { generateCashTransactionId } = require('../utils/transactionId');
+const { getPromoRule, countItems, checkPromoEligibility } = require('../utils/promoRules');
 
 // Resolves the name/email to send order emails to, for either a
 // logged-in customer (via users table) or a guest checkout.
@@ -173,6 +174,7 @@ router.post('/', async (req, res) => {
       items,
       subtotal,
       discount_amount,
+      promo_code,
       points_used,
       payment_method,
       pickup_date,
@@ -189,7 +191,23 @@ router.post('/', async (req, res) => {
     const isGuestOrder = !targetCustomerId;
 
     const orderSubtotal = parseFloat(subtotal || 0);
-    const promoDiscount = parseFloat(discount_amount || 0);
+    let promoDiscount = parseFloat(discount_amount || 0);
+
+    // Server-side enforcement of special promo rules (SWEETSIP10: 2+ items, one-time use)
+    const cleanPromoCode = promo_code ? String(promo_code).trim().toUpperCase() : null;
+    let savedPromoCode = null;
+    if (cleanPromoCode && getPromoRule(cleanPromoCode)) {
+      const promoError = await checkPromoEligibility(supabase, cleanPromoCode, {
+        itemCount: countItems(items),
+        customerId: targetCustomerId,
+        email: guest_email || recipient_email || null
+      });
+      if (promoError) {
+        return res.status(400).json({ status: 'error', message: promoError });
+      }
+      promoDiscount = Number((orderSubtotal * 0.10).toFixed(2));
+      savedPromoCode = cleanPromoCode;
+    }
     const requestedPointsUsed = parseFloat(points_used || 0);
 
     const VALID_PAYMENT_METHODS = ['Cash on Pick-Up', 'E-Wallet'];
@@ -258,6 +276,7 @@ router.post('/', async (req, res) => {
       pickup_instructions: `${scheduleText} | Payment: ${cleanPaymentMethod}`,
       guest_name: cleanGuestName,
       guest_email: cleanGuestEmail,
+      promo_code: savedPromoCode,
       placed_at: new Date().toISOString()
     };
 

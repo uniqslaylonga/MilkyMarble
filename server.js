@@ -1,6 +1,7 @@
 // server.js - Milky Marble Express Backend
 require('dotenv').config();
 const express = require('express');
+const { checkPromoEligibility } = require('./src/utils/promoRules');
 const path = require('path');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
@@ -1812,6 +1813,23 @@ app.get('/api/promotions/validate', async (req, res) => {
     const statusUpper = (promo.status || '').toUpperCase();
     if (statusUpper !== 'APPROVED' && statusUpper !== 'PROPOSED' && statusUpper !== 'ACTIVE') {
       return res.status(400).json({ status: 'error', message: 'This promo code is no longer active.' });
+    }
+
+    // Special rules (e.g. SWEETSIP10: min 2 items + one-time use)
+    const itemCount = parseInt(req.query.item_count || 0, 10) || 0;
+    let promoCustomerId = null;
+    const cookieUserId = parseInt(req.cookies?.user_id, 10);
+    if (!isNaN(cookieUserId)) {
+      const { data: cust } = await supabase.from('customers').select('id').eq('user_id', cookieUserId).maybeSingle();
+      if (cust) promoCustomerId = cust.id;
+    }
+    const promoError = await checkPromoEligibility(supabase, promo.code, {
+      itemCount,
+      customerId: promoCustomerId,
+      email: req.query.email || null
+    });
+    if (promoError) {
+      return res.status(400).json({ status: 'error', message: promoError });
     }
 
     return res.json({

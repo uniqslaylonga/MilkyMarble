@@ -2,6 +2,7 @@
 let currentOrderSummaryItems = [];
 let currentSubtotal = 0.0;
 let appliedPromoDiscount = 0.0;
+let appliedPromoCode = null;
 let appliedLoyaltyDiscount = 0.0;
 let selectedPaymentMethod = '';
 let selectedSpoon = 'yes'; // 'yes' | 'no'
@@ -289,6 +290,7 @@ function renderRecipientDetails() {
 window.renderOrderSummaryModal = async function(items = []) {
   currentOrderSummaryItems = Array.isArray(items) ? items : [];
   appliedPromoDiscount = 0.0;
+  appliedPromoCode = null;
   appliedLoyaltyDiscount = 0.0;
   selectedPaymentMethod = '';
   selectedSpoon = 'yes';
@@ -671,11 +673,14 @@ window.applyPromo = async function() {
   if (applyBtn) applyBtn.disabled = true;
 
   try {
-    const res = await fetch(`/api/promotions/validate?code=${encodeURIComponent(code)}`);
+    const itemCount = (currentOrderSummaryItems || []).reduce((n, it) => n + Math.max(1, parseInt(it.quantity || 1, 10) || 1), 0);
+    const emailVal = (document.getElementById('inputRecipientEmail')?.value || '').trim();
+    const res = await fetch(`/api/promotions/validate?code=${encodeURIComponent(code)}&item_count=${itemCount}` + (emailVal ? `&email=${encodeURIComponent(emailVal)}` : ''), { credentials: 'include' });
     const data = await res.json();
 
     if (res.ok && data.status === 'success' && data.promo) {
       const promo = data.promo;
+      appliedPromoCode = promo.code;
       const type = String(promo.discount_type || '').toLowerCase();
       const val = parseFloat(promo.discount_value || 0);
 
@@ -692,6 +697,7 @@ window.applyPromo = async function() {
       }
     } else {
       appliedPromoDiscount = 0.0;
+      appliedPromoCode = null;
       if (msg) {
         msg.innerText = data.message || 'Invalid promo code.';
         msg.style.display = 'block';
@@ -701,6 +707,7 @@ window.applyPromo = async function() {
   } catch (err) {
     console.error('Promo error:', err);
     appliedPromoDiscount = 0.0;
+    appliedPromoCode = null;
     if (msg) {
       msg.innerText = 'Could not verify promo code.';
       msg.style.display = 'block';
@@ -1151,6 +1158,7 @@ window.confirmPlaceOrder = async function() {
     items: currentOrderSummaryItems,
     subtotal: currentSubtotal,
     discount_amount: appliedPromoDiscount,
+    promo_code: appliedPromoCode,
     points_used: pointsToUse,
     points_earned: calculatedPointsEarned,
     order_type: orderTypeVal,
