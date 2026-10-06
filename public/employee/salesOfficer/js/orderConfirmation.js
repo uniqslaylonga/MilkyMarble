@@ -206,19 +206,122 @@ function renderPaginatedOrders() {
                 </td>
                 <td>
                     <span class="payment-method-pill">${escapeHtml(ord.payment_method || 'Cash on Pick-Up')}</span>
+                    ${paymentReviewBlock(ord, amount)}
                 </td>
                 <td>
                     <span class="order-total-val">₱${amount}</span>
                 </td>
                 <td style="text-align: center;">
                     <div class="action-btn-group">
-                        <button type="button" class="btn-confirm" onclick="confirmOrder(${ord.id})" title="Approve &amp; Send to Kitchen">Confirm</button>
-                        <button type="button" class="btn-reject" onclick="rejectOrder(${ord.id})" title="Cancel Order">Reject</button>
+                        ${ord.needs_payment_review
+                            ? `<button type="button" class="btn-confirm" onclick="verifyPayment(${ord.id})" title="Payment received - send to kitchen">Verify</button>
+                               <button type="button" class="btn-reject" onclick="rejectPayment(${ord.id})" title="Payment not received - cancel order">Reject</button>`
+                            : `<button type="button" class="btn-confirm" onclick="confirmOrder(${ord.id})" title="Approve &amp; Send to Kitchen">Confirm</button>
+                               <button type="button" class="btn-reject" onclick="rejectOrder(${ord.id})" title="Cancel Order">Reject</button>`}
                     </div>
                 </td>
             </tr>
         `;
     }).join('');
+}
+
+// Reference no. + amount + receipt link shown next to a manual InstaPay order,
+// so the officer can match it against their InstaPay history.
+function paymentReviewBlock(ord, totalFormatted) {
+    if (!ord.needs_payment_review) return '';
+
+    const total = Number(ord.total_amount || 0);
+    const paid = ord.payment_amount;
+    const fmt = n => Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const mismatch = paid != null && Math.abs(paid - total) > 0.009;
+
+    const amountLine = paid != null
+        ? `<div class="pay-review-line">Receipt amount: <strong>₱${fmt(paid)}</strong>
+             ${mismatch ? `<span class="pay-review-warn">≠ order total ₱${totalFormatted}</span>` : '<span class="pay-review-ok">matches</span>'}</div>`
+        : `<div class="pay-review-line">Expected amount: <strong>₱${totalFormatted}</strong> <span class="pay-review-muted">(not read from receipt)</span></div>`;
+
+    const proofLink = ord.payment_proof_url
+        ? `<a class="pay-review-link" href="${escapeHtml(ord.payment_proof_url)}" target="_blank" rel="noopener noreferrer">View receipt</a>`
+        : '';
+
+    return `
+        <div class="pay-review-box">
+            <div class="pay-review-line">Ref: <span class="pay-review-ref">${escapeHtml(ord.payment_reference)}</span></div>
+            ${amountLine}
+            ${proofLink}
+        </div>`;
+}
+
+// Verify a manual InstaPay payment -> order goes to the kitchen queue.
+async function verifyPayment(orderId) {
+    if (isRegisterLocked) {
+        SalesCommon.alert('Register Locked', 'The sales counter register is currently locked. Payments cannot be verified.', 'warning');
+        return;
+    }
+
+    const ord = allPendingOrders.find(o => o.id === orderId);
+    const amt = ord ? Number(ord.total_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '';
+    const ok = await SalesCommon.confirm(
+        'Verify Payment?',
+        ord
+            ? `Confirm that ₱${amt} with reference ${ord.payment_reference} has arrived in the InstaPay account. The order will be sent to the kitchen.`
+            : 'Confirm that this payment has arrived. The order will be sent to the kitchen.',
+        'Yes, Verify',
+        'Cancel'
+    );
+    if (!ok) return;
+
+    try {
+        const response = await fetch(`/api/sales-officer/orders/${orderId}/verify-payment`, { method: 'POST' });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || 'Failed to verify payment.');
+
+        allPendingOrders = allPendingOrders.filter(o => o.id !== orderId);
+        const pendingEl = document.getElementById('pendingCount');
+        const confirmedEl = document.getElementById('confirmedCount');
+        if (pendingEl) pendingEl.textContent = allPendingOrders.length;
+        if (confirmedEl) confirmedEl.textContent = (parseInt(confirmedEl.textContent || '0', 10) + 1).toString();
+
+        applyOrderFilters();
+        SalesCommon.alert('Payment Verified', result.message || 'Order sent to the production queue.', 'success');
+    } catch (err) {
+        console.error('Error verifying payment:', err);
+        SalesCommon.alert('Verification Failed', err.message || 'Could not verify payment.', 'warning');
+        loadOrderConfirmationData();
+    }
+}
+
+// Reject a manual InstaPay payment -> order is cancelled and the customer emailed.
+async function rejectPayment(orderId) {
+    const reason = await SalesCommon.prompt(
+        'Reject Payment',
+        'Why can\'t this payment be verified? (the customer will see this)',
+        'e.g. Amount does not match, payment not received'
+    );
+    if (reason === null) return;
+
+    try {
+        const response = await fetch(`/api/sales-officer/orders/${orderId}/reject-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: reason || 'Payment could not be verified' })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || 'Failed to reject payment.');
+
+        allPendingOrders = allPendingOrders.filter(o => o.id !== orderId);
+        const pendingEl = document.getElementById('pendingCount');
+        const rejectedEl = document.getElementById('rejectedCount');
+        if (pendingEl) pendingEl.textContent = allPendingOrders.length;
+        if (rejectedEl) rejectedEl.textContent = (parseInt(rejectedEl.textContent || '0', 10) + 1).toString();
+
+        applyOrderFilters();
+        SalesCommon.alert('Payment Rejected', result.message || 'The order has been cancelled.', 'info');
+    } catch (err) {
+        console.error('Error rejecting payment:', err);
+        SalesCommon.alert('Rejection Failed', err.message || 'Could not reject payment.', 'warning');
+        loadOrderConfirmationData();
+    }
 }
 
 // Smart sliding pagination controls

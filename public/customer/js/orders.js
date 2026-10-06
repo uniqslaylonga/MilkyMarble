@@ -374,7 +374,7 @@ function renderOrders(orders) {
   const filtered = orders.filter(order => {
     let rawStatus = (order.status || 'CONFIRMED').toUpperCase().replace(/_/g, ' ');
     let uiStatus = 'Confirmed';
-    if (rawStatus.includes('PENDING PAYMENT')) uiStatus = 'Awaiting Payment';
+    if (rawStatus.includes('PENDING PAYMENT')) uiStatus = order.payment_reference ? 'Verifying Payment' : 'Awaiting Payment';
     else if (rawStatus.includes('PREP')) uiStatus = 'Preparing';
     else if (rawStatus.includes('READY')) uiStatus = 'Ready for Pickup';
     else if (rawStatus.includes('COMPLET')) uiStatus = 'Completed';
@@ -439,7 +439,7 @@ function renderOrders(orders) {
 
     let rawStatus = (order.status || 'CONFIRMED').toUpperCase().replace(/_/g, ' ');
     let uiStatus = 'Confirmed';
-    if (rawStatus.includes('PENDING PAYMENT')) uiStatus = 'Awaiting Payment';
+    if (rawStatus.includes('PENDING PAYMENT')) uiStatus = order.payment_reference ? 'Verifying Payment' : 'Awaiting Payment';
     else if (rawStatus.includes('PREP')) uiStatus = 'Preparing';
     else if (rawStatus.includes('READY')) uiStatus = 'Ready for Pickup';
     else if (rawStatus.includes('COMPLET')) uiStatus = 'Completed';
@@ -518,7 +518,13 @@ function renderOrders(orders) {
 }
 
 function renderOrderButtons(orderId, statusKey, orderDataEncoded, isCustom = false) {
-  if (statusKey === 'confirmed' || statusKey === 'awaiting payment') {
+  if (statusKey === 'awaiting payment') {
+    // Manual InstaPay: let the customer (re)open the QR + receipt upload.
+    return `
+      <button type="button" class="btn-action-primary" onclick="event.stopPropagation(); payForOrder('${orderId}')">Pay Now</button>
+      <button type="button" class="btn-action-secondary" onclick="cancelOrder('${orderId}')">Cancel Order</button>
+    `;
+  } else if (statusKey === 'confirmed' || statusKey === 'verifying payment') {
     return `<button type="button" class="btn-action-primary" onclick="cancelOrder('${orderId}')">Cancel Order</button>`;
   } else if (statusKey === 'ready for pickup') {
     return `
@@ -545,6 +551,17 @@ function renderOrderButtons(orderId, statusKey, orderDataEncoded, isCustom = fal
   return '';
 }
 
+// Re-opens the InstaPay QR + receipt upload for an unpaid E-Wallet order.
+window.payForOrder = function(orderId) {
+  const order = allOrdersList.find(o => String(o.id) === String(orderId));
+  if (!order || typeof window.openManualPayment !== 'function') return;
+  window.openManualPayment({
+    order: order,
+    amount: order.total_amount,
+    onClose: function() { loadOrders(); }
+  });
+};
+
 // 1. ORDER STATUS DETAILS MODAL LOGIC
 window.openOrderDetailsModal = function(orderOrId) {
   let order = null;
@@ -564,8 +581,8 @@ window.openOrderDetailsModal = function(orderOrId) {
   let progressPercent = 25;
 
   if (rawStatus.includes('PENDING PAYMENT')) {
-    uiStatus = 'Awaiting Payment';
-    progressPercent = 10;
+    uiStatus = order.payment_reference ? 'Verifying Payment' : 'Awaiting Payment';
+    progressPercent = order.payment_reference ? 20 : 10;
   } else if (rawStatus.includes('PREP')) {
     uiStatus = 'Preparing';
     progressPercent = 50;

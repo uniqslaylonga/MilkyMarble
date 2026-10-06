@@ -28,7 +28,7 @@ function normalizePaymentMethod(raw) {
   const v = String(raw || '').trim();
   if (!v) return '';
   if (/cash/i.test(v)) return 'Cash on Pick-Up';
-  if (/wallet|gcash|maya|paymongo|qr\s*ph|online/i.test(v)) return 'E-Wallet';
+  if (/wallet|gcash|maya|instapay|qr\s*ph|online/i.test(v)) return 'E-Wallet';
   return v;
 }
 
@@ -571,7 +571,7 @@ window.selectPaymentMethod = function(btnElement) {
   const paymentReq = document.getElementById('paymentRequiredMsg');
   if (paymentReq) paymentReq.style.display = 'none';
 
-  const isEwallet = /wallet|gcash|maya|online|paymongo/i.test(selectedPaymentMethod) && !selectedPaymentMethod.toLowerCase().includes('cash');
+  const isEwallet = /wallet|gcash|maya|online|instapay/i.test(selectedPaymentMethod) && !selectedPaymentMethod.toLowerCase().includes('cash');
   const ewalletHint = document.getElementById('ewalletHint');
   if (ewalletHint) ewalletHint.style.display = isEwallet ? 'block' : 'none';
 };
@@ -1188,7 +1188,7 @@ window.confirmPlaceOrder = async function() {
       if (!isGuest && customerId) {
         try { localStorage.setItem(lastPaymentStorageKey(customerId), paymentMethodForOrder); } catch (e) {}
       }
-      const isEwallet = /wallet|gcash|maya|online|paymongo/i.test(paymentMethodForOrder) && !paymentMethodForOrder.toLowerCase().includes('cash');
+      const isEwallet = /wallet|gcash|maya|online|instapay/i.test(paymentMethodForOrder) && !paymentMethodForOrder.toLowerCase().includes('cash');
       const needsEwalletPayment = isEwallet && orderObj.status !== 'PAID_VERIFIED';
 
       const guestSessionId = sessionStorage.getItem('mm_guest_session_id');
@@ -1223,43 +1223,42 @@ window.confirmPlaceOrder = async function() {
       };
 
       if (needsEwalletPayment) {
-        try {
-          const payRes = await fetch('/api/payments/create-checkout', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              order_id: orderObj.id || orderObj.order_id,
-              billing_name: cleanName,
-              billing_email: cleanEmail,
-              customer_id: customerId,
-              user_id: userId
-            })
-          });
-          const payData = await payRes.json();
-
-          if (payRes.ok && payData.status === 'success' && payData.checkout_url) {
-            await clearCartRequest();
-            window.location.href = payData.checkout_url;
-            return;
-          }
-
-          throw new Error(payData.message || 'Could not start PayMongo checkout.');
-        } catch (payErr) {
-          console.error('PayMongo checkout error:', payErr);
+        // Manual InstaPay QR payment: the order is already saved as
+        // PENDING_PAYMENT. Show the shop QR + receipt upload; a Sales Officer
+        // verifies it afterwards.
+        await clearCartRequest();
+        closeOrderSummaryModal();
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'Place Order';
+        }
+        if (typeof window.openManualPayment !== 'function') {
           showSweetAlert({
             icon: 'error',
             title: 'Payment Could Not Start',
-            text: payErr.message || 'We placed your order, but could not open the PayMongo payment page. Please try paying again from your Orders page.',
+            text: 'Your order was placed. Please open the Orders page to submit your payment.',
             confirmButtonText: 'OK',
             showCancelButton: false
           });
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerText = 'Place Order';
-          }
           return;
         }
+        window.openManualPayment({
+          order: orderObj,
+          email: cleanEmail,
+          amount: finalPayableTotal,
+          onClose: function (submitted) {
+            // Take the customer to their orders either way; the order shows
+            // "Verifying Payment" (submitted) or "Awaiting Payment" (not yet).
+            if (!isGuest && !/orders\.html/i.test(window.location.pathname)) {
+              window.location.href = '/customer/orders.html';
+            } else if (typeof window.loadOrders === 'function') {
+              window.loadOrders();
+            } else if (/orders\.html/i.test(window.location.pathname)) {
+              window.location.reload();
+            }
+          }
+        });
+        return;
       }
 
       closeOrderSummaryModal();

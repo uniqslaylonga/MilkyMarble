@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../config/supabase');
+const { readToken, COOKIE_NAME: STAFF_COOKIE } = require('../middleware/staffAuth');
+const paymentRoutes = require('./paymentRoutes');
+const { dispatchOrderStatusEmail } = require('../services/mailServices');
 const { generateCashTransactionId } = require('../utils/transactionId');
 
 // Optional SDK load for Google Gemini AI
@@ -310,6 +313,16 @@ function cleanItemLabel(rawLabel, fallback) {
 // Sales Officer Helpers & Timezone formatting
 const ORDER_REVIEW_STATUSES = ['PENDING', 'PAID_VERIFIED', 'CONFIRMED'];
 
+// The Sales Officer's review queue: the statuses above, PLUS E-Wallet orders
+// that are still PENDING_PAYMENT but whose customer has already submitted an
+// InstaPay reference + receipt (those need a Verify / Reject decision).
+// Unpaid E-Wallet orders with no reference yet stay out of the queue.
+function reviewQueueFilter(query) {
+  return query.or(
+    `status.in.(${ORDER_REVIEW_STATUSES.join(',')}),and(status.eq.PENDING_PAYMENT,payment_reference.not.is.null)`
+  );
+}
+
 function startOfDaysAgo(days) {
   const d = new Date();
   d.setDate(d.getDate() - days);
@@ -557,7 +570,7 @@ router.get('/sales-officer/dashboard', async (req, res) => {
     const { count: pendingOrders } = await supabase
       .from('orders')
       .select('id', { count: 'exact', head: true })
-      .in('status', ORDER_REVIEW_STATUSES);
+      .or(`status.in.(${ORDER_REVIEW_STATUSES.join(',')}),and(status.eq.PENDING_PAYMENT,payment_reference.not.is.null)`);
 
     const { data: acqData } = await supabase.from('customers').select('created_at');
     const allCust = acqData || [];
@@ -902,24 +915,42 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
     const userProfile = await getEmployeeProfile(req);
     const todayStart = phDayStartISO(phDate(new Date()));
 
-    const { data: pendingRows, error: pendingErr } = await supabase
-      .from('orders')
-      .select(`
-        id, order_number, status, total_amount, payment_method, placed_at,
-        guest_name, customer_id,
-        customers(users(full_name)),
-        order_items(item_label, quantity)
-      `)
-      .in('status', ORDER_REVIEW_STATUSES)
-      .order('placed_at', { ascending: false });
+    const { data: pendingRows, error: pendingErr } = await reviewQueueFilter(
+      supabase
+        .from('orders')
+        .select(`
+          id, order_number, status, total_amount, payment_method, placed_at,
+          guest_name, customer_id,
+          payment_reference, payment_amount, payment_proof_path, payment_submitted_at,
+          customers(users(full_name)),
+          order_items(item_label, quantity)
+        `)
+    ).order('placed_at', { ascending: false });
 
     if (pendingErr) throw pendingErr;
 
-    const pendingOrders = (pendingRows || []).map(o => {
+    const pendingOrders = await Promise.all((pendingRows || []).map(async o => {
       const itemLines = (o.order_items || []).map(
         it => `${it.quantity || 1}x ${cleanItemLabel(it.item_label, 'Item')}`
       );
+
+      // Receipt screenshots live in a private bucket - hand the officer a
+      // short-lived signed link rather than a permanent public URL.
+      let proofUrl = null;
+      if (o.payment_proof_path) {
+        const { data: signed } = await supabase.storage
+          .from(paymentRoutes.PROOF_BUCKET)
+          .createSignedUrl(o.payment_proof_path, 60 * 30);
+        proofUrl = (signed && signed.signedUrl) || null;
+      }
+
       return {
+        status: o.status,
+        needs_payment_review: o.status === 'PENDING_PAYMENT' && Boolean(o.payment_reference),
+        payment_reference: o.payment_reference || null,
+        payment_amount: o.payment_amount != null ? parseFloat(o.payment_amount) : null,
+        payment_proof_url: proofUrl,
+        payment_submitted_at: o.payment_submitted_at || null,
         id: o.id,
         order_number: o.order_number,
         customer_id: o.customer_id,
@@ -930,7 +961,7 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
         total_amount: parseFloat(o.total_amount || 0),
         placed_at: o.placed_at
       };
-    });
+    }));
 
     const { count: confirmedToday } = await supabase
       .from('orders')
@@ -957,6 +988,128 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
   } catch (error) {
     console.error('[sales-officer/order-confirmation] error:', error.message);
     return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Manual InstaPay payments: Sales Officer Verify / Reject
+// Mounted under /api/sales-officer, so requireStaff() (server.js) already
+// guards both routes.
+// ---------------------------------------------------------------------------
+const PAYMENT_REVIEW_ORDER_SELECT = 'id, order_number, status, payment_method, total_amount, payment_reference';
+
+function staffUserId(req) {
+  const session = readToken(req.cookies && req.cookies[STAFF_COOKIE]);
+  return session && Number.isFinite(Number(session.id)) ? Number(session.id) : null;
+}
+
+// Verify = "I checked my InstaPay and the money is in". Marks the order paid
+// and sends it straight to the kitchen queue (the same step Confirm does for
+// cash orders), so there is no second click.
+router.post('/sales-officer/orders/:id/verify-payment', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+    const orderId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(orderId)) return res.status(400).json({ status: 'error', message: 'Invalid order id.' });
+
+    const now = new Date().toISOString();
+    // Conditional update: only an order that is still waiting on review can be
+    // verified, so a double-click or a customer cancel can't be overwritten.
+    const { data: order, error } = await supabase
+      .from('orders')
+      .update({
+        status: 'PREPARING',
+        payment_verified_by: staffUserId(req),
+        payment_verified_at: now,
+        payment_reject_reason: null,
+        updated_at: now
+      })
+      .eq('id', orderId)
+      .eq('status', 'PENDING_PAYMENT')
+      .not('payment_reference', 'is', null)
+      .select(PAYMENT_REVIEW_ORDER_SELECT)
+      .maybeSingle();
+    if (error) throw error;
+
+    if (!order) {
+      return res.status(409).json({
+        status: 'error',
+        message: 'This order is not waiting on payment verification (it may already be verified or cancelled).'
+      });
+    }
+
+    // Keep the existing transaction_id column meaningful for receipts/reports.
+    await supabase.from('orders').update({ transaction_id: order.payment_reference }).eq('id', order.id);
+
+    paymentRoutes.sendPaidConfirmationEmail(order.id);
+    return res.json({ status: 'success', message: `Payment verified for ${order.order_number}.`, order });
+  } catch (err) {
+    console.error('[sales-officer/verify-payment] error:', err.message);
+    return res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// Reject = the payment can't be confirmed. The order is cancelled and the
+// customer is emailed. The reference stays on the cancelled order on purpose,
+// so the same (possibly fake) receipt can't be reused on a new order.
+router.post('/sales-officer/orders/:id/reject-payment', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+    const orderId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(orderId)) return res.status(400).json({ status: 'error', message: 'Invalid order id.' });
+
+    const reason = String((req.body && req.body.reason) || '').trim().slice(0, 300) || 'Payment could not be verified';
+    const now = new Date().toISOString();
+
+    const { data: order, error } = await supabase
+      .from('orders')
+      .update({
+        status: 'CANCELLED',
+        cancel_reason: reason,
+        payment_reject_reason: reason,
+        payment_verified_by: staffUserId(req),
+        payment_verified_at: now,
+        updated_at: now
+      })
+      .eq('id', orderId)
+      .eq('status', 'PENDING_PAYMENT')
+      .not('payment_reference', 'is', null)
+      .select(`
+        id, order_number, status, total_amount, subtotal, discount_amount, payment_method, pickup_date, pickup_instructions,
+        guest_name, guest_email, customer_id,
+        order_items (item_label, quantity, unit_price),
+        customers ( user_id, users ( email, full_name, username ) )
+      `)
+      .maybeSingle();
+    if (error) throw error;
+
+    if (!order) {
+      return res.status(409).json({
+        status: 'error',
+        message: 'This order is not waiting on payment verification (it may already be verified or cancelled).'
+      });
+    }
+
+    const email = order.guest_email || (order.customers && order.customers.users && order.customers.users.email);
+    if (email) {
+      const name = order.guest_name
+        || (order.customers && order.customers.users && (order.customers.users.full_name || order.customers.users.username))
+        || 'Valued Customer';
+      dispatchOrderStatusEmail(email, name, order.order_number, 'CANCELLED', order.pickup_date || 'N/A', {
+        order_ref: order.order_number,
+        pickup_date: order.pickup_date || 'N/A',
+        payment_method: order.payment_method,
+        total_price: order.total_amount,
+        subtotal: order.subtotal,
+        discount: order.discount_amount,
+        items: (order.order_items || []).map(it => ({ title: it.item_label, quantity: it.quantity, unit_price: it.unit_price }))
+      }).catch(e => console.error('[sales-officer/reject-payment] email failed:', e.message));
+    }
+
+    return res.json({ status: 'success', message: `Payment rejected for ${order.order_number}.` });
+  } catch (err) {
+    console.error('[sales-officer/reject-payment] error:', err.message);
+    return res.status(500).json({ status: 'error', message: err.message });
   }
 });
 
