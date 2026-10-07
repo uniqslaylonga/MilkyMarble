@@ -844,3 +844,159 @@ body {
     align-items: flex-start;
   }
 }
+
+
+/* ===== Walk-in Toppings Popup (paste at the END of css/orderMonitoring.css) ===== */
+.mm-topping-wrap {
+  text-align: left;
+  font-family: var(--font-family-body);
+}
+
+.mm-topping-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--card-bg);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.mm-topping-item strong {
+  font-family: var(--font-family-heading);
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--brown-soft);
+}
+
+.mm-topping-item > span {
+  font-family: var(--font-family-heading);
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: var(--brown-soft);
+}
+
+.mm-topping-size {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--accent-pink);
+  color: #fff;
+  font-family: var(--font-family-body);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  vertical-align: middle;
+}
+
+.mm-topping-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--brown-soft);
+  margin-bottom: 8px;
+}
+
+.mm-topping-label em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.mm-topping-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.mm-topping-chip {
+  position: relative;
+  cursor: pointer;
+}
+
+.mm-topping-chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mm-chip-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--accent-pink);
+  border-radius: 12px;
+  background: var(--card-white);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brown-soft);
+  transition: all 0.15s ease;
+}
+
+.mm-chip-price {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent-pink);
+}
+
+.mm-topping-chip:hover .mm-chip-body {
+  background: rgba(246, 146, 153, 0.15);
+}
+
+.mm-topping-chip input:checked + .mm-chip-body {
+  background: var(--accent-pink);
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(246, 146, 153, 0.3);
+}
+
+.mm-topping-chip input:checked + .mm-chip-body .mm-chip-price {
+  color: #fff;
+}
+
+.mm-topping-chip input:focus-visible + .mm-chip-body {
+  outline: 3px solid rgba(246, 146, 153, 0.35);
+}
+
+.mm-total-box {
+  background: var(--bg-main);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 10px 16px;
+}
+
+.mm-total-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.mm-total-grand {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1.5px dashed var(--border-soft);
+  font-family: var(--font-family-heading);
+  font-size: 17px;
+  letter-spacing: 1px;
+  color: var(--brown-soft);
+}
+
+.mm-topping-note {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+@media (max-width: 480px) {
+  .mm-topping-grid {
+    grid-template-columns: 1fr;
+  }
+}
