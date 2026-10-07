@@ -320,46 +320,69 @@ async function markOrderAsPickedUp(orderId) {
     }
 }
 
-// Quick POS Walk-in Preset Puncher with toppings picker
+// Quick POS Walk-in Preset Puncher with themed toppings picker
 async function punchWalkinPreset(presetName, size, basePrice) {
     if (localStorage.getItem('isRegisterLocked') === 'true') {
         SalesCommon.alert('Register Locked', 'The counter register is currently locked. Please open shift before punching walk-in sales.', 'warning');
         return;
     }
 
-    const toppingsHtml = WALKIN_TOPPINGS.map((t, i) => `
-        <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;cursor:pointer;">
-            <span style="display:flex;align-items:center;gap:8px;">
-                <input type="checkbox" class="walkin-topping" value="${i}">
-                ${escapeHtml(t.name)}
+    const fmt = (n) => '₱' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const chipsHtml = WALKIN_TOPPINGS.map((t, i) => `
+        <label class="mm-topping-chip">
+            <input type="checkbox" class="walkin-topping" value="${i}">
+            <span class="mm-chip-body">
+                <span class="mm-chip-name">${escapeHtml(t.name)}</span>
+                <span class="mm-chip-price">+₱${t.price}</span>
             </span>
-            <span>+₱${t.price}</span>
         </label>
     `).join('');
 
     const result = await Swal.fire({
         title: 'Record Walk-in Sale',
+        width: 460,
         html: `
-            <div style="text-align:left;">
-                <strong>${escapeHtml(presetName)} (${size})</strong>
-                <div style="margin-bottom:8px;">Base price: ₱${basePrice}.00</div>
-                <div style="font-weight:600;margin-top:10px;">Add toppings (optional)</div>
-                <div style="max-height:200px;overflow-y:auto;">${toppingsHtml}</div>
-                <div id="walkinTotal" style="margin-top:12px;font-weight:700;font-size:1.1rem;">Total: ₱${basePrice}.00</div>
-                <div style="margin-top:6px;font-size:0.85rem;">Collect physical cash payment at counter.</div>
+            <div class="mm-topping-wrap">
+                <div class="mm-topping-item">
+                    <strong>${escapeHtml(presetName)} <span class="mm-topping-size">${escapeHtml(size)}</span></strong>
+                    <span>${fmt(basePrice)}</span>
+                </div>
+
+                <div class="mm-topping-label">Add toppings <em>(optional)</em></div>
+                <div class="mm-topping-grid">${chipsHtml}</div>
+
+                <div class="mm-total-box">
+                    <div class="mm-total-line"><span>Base</span><span>${fmt(basePrice)}</span></div>
+                    <div class="mm-total-line"><span>Toppings</span><span id="mmToppingsTotal">${fmt(0)}</span></div>
+                    <div class="mm-total-line mm-total-grand"><span>Total</span><span id="mmGrandTotal">${fmt(basePrice)}</span></div>
+                </div>
+
+                <p class="mm-topping-note">Collect physical cash payment at counter.</p>
             </div>
         `,
         showCancelButton: true,
         confirmButtonText: 'Confirm Sale',
         cancelButtonText: 'Cancel',
+        customClass: {
+            popup: 'mm-swal-popup',
+            title: 'mm-swal-title',
+            confirmButton: 'mm-swal-confirm',
+            cancelButton: 'mm-swal-cancel'
+        },
+        buttonsStyling: false,
         didOpen: () => {
-            const boxes = Swal.getPopup().querySelectorAll('.walkin-topping');
-            const totalEl = Swal.getPopup().querySelector('#walkinTotal');
-            boxes.forEach(box => box.addEventListener('change', () => {
-                let total = basePrice;
-                boxes.forEach(b => { if (b.checked) total += WALKIN_TOPPINGS[b.value].price; });
-                totalEl.textContent = `Total: ₱${total}.00`;
-            }));
+            const popup = Swal.getPopup();
+            const boxes = popup.querySelectorAll('.walkin-topping');
+            const toppingsEl = popup.querySelector('#mmToppingsTotal');
+            const grandEl = popup.querySelector('#mmGrandTotal');
+            const update = () => {
+                let extra = 0;
+                boxes.forEach(b => { if (b.checked) extra += WALKIN_TOPPINGS[b.value].price; });
+                toppingsEl.textContent = fmt(extra);
+                grandEl.textContent = fmt(basePrice + extra);
+            };
+            boxes.forEach(b => b.addEventListener('change', update));
         },
         preConfirm: () => {
             const picked = [...Swal.getPopup().querySelectorAll('.walkin-topping:checked')]
@@ -395,7 +418,7 @@ async function punchWalkinPreset(presetName, size, basePrice) {
         if (!response.ok) throw new Error(await SalesCommon.errorMessage(response));
 
         await fetchOrderMonitoringData();
-        SalesCommon.alert('Walk-in Sale Recorded', `Successfully collected ₱${total}.00 cash in drawer.`, 'success');
+        SalesCommon.alert('Walk-in Sale Recorded', `Successfully collected ${fmt(total)} cash in drawer.`, 'success');
     } catch (err) {
         console.error('Walk-in sale error:', err);
         SalesCommon.alert('Transaction Recorded Locally', 'Please verify your physical drawer count against expected totals during Z-Reading.', 'info');
