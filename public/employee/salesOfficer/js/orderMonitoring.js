@@ -4,6 +4,16 @@ let currentMonitoringPage = 1;
 const MONITORING_PAGE_SIZE = 6;
 let isRegisterLocked = localStorage.getItem('isRegisterLocked') === 'true';
 
+// Walk-in toppings (edit names/prices here)
+const WALKIN_TOPPINGS = [
+    { name: 'Extra Pearls', price: 5 },
+    { name: 'Marshmallows', price: 5 },
+    { name: 'Cheese',       price: 5 },
+    { name: 'Nuts',         price: 5 },
+    { name: 'Choco Chips',  price: 5 },
+    { name: 'Sprinkles',    price: 5 }
+];
+
 document.addEventListener('DOMContentLoaded', async () => {
     const statusFilter = document.getElementById('statusFilter');
     const dateFilter = document.getElementById('dateFilter');
@@ -310,20 +320,61 @@ async function markOrderAsPickedUp(orderId) {
     }
 }
 
-// Quick POS Walk-in Preset Puncher with themed alert & confirm
-async function punchWalkinPreset(presetName, size, price) {
+// Quick POS Walk-in Preset Puncher with toppings picker
+async function punchWalkinPreset(presetName, size, basePrice) {
     if (localStorage.getItem('isRegisterLocked') === 'true') {
         SalesCommon.alert('Register Locked', 'The counter register is currently locked. Please open shift before punching walk-in sales.', 'warning');
         return;
     }
 
-    const confirmed = await SalesCommon.confirm(
-        'Record Walk-in Sale',
-        `Punching:\n${presetName} (${size})\nPrice: ₱${price}.00\n\nCollect physical cash payment at counter?`,
-        'Confirm Sale',
-        'Cancel'
-    );
-    if (!confirmed) return;
+    const toppingsHtml = WALKIN_TOPPINGS.map((t, i) => `
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;cursor:pointer;">
+            <span style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" class="walkin-topping" value="${i}">
+                ${escapeHtml(t.name)}
+            </span>
+            <span>+₱${t.price}</span>
+        </label>
+    `).join('');
+
+    const result = await Swal.fire({
+        title: 'Record Walk-in Sale',
+        html: `
+            <div style="text-align:left;">
+                <strong>${escapeHtml(presetName)} (${size})</strong>
+                <div style="margin-bottom:8px;">Base price: ₱${basePrice}.00</div>
+                <div style="font-weight:600;margin-top:10px;">Add toppings (optional)</div>
+                <div style="max-height:200px;overflow-y:auto;">${toppingsHtml}</div>
+                <div id="walkinTotal" style="margin-top:12px;font-weight:700;font-size:1.1rem;">Total: ₱${basePrice}.00</div>
+                <div style="margin-top:6px;font-size:0.85rem;">Collect physical cash payment at counter.</div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Confirm Sale',
+        cancelButtonText: 'Cancel',
+        didOpen: () => {
+            const boxes = Swal.getPopup().querySelectorAll('.walkin-topping');
+            const totalEl = Swal.getPopup().querySelector('#walkinTotal');
+            boxes.forEach(box => box.addEventListener('change', () => {
+                let total = basePrice;
+                boxes.forEach(b => { if (b.checked) total += WALKIN_TOPPINGS[b.value].price; });
+                totalEl.textContent = `Total: ₱${total}.00`;
+            }));
+        },
+        preConfirm: () => {
+            const picked = [...Swal.getPopup().querySelectorAll('.walkin-topping:checked')]
+                .map(b => WALKIN_TOPPINGS[b.value]);
+            return {
+                toppings: picked.map(t => t.name),
+                total: basePrice + picked.reduce((sum, t) => sum + t.price, 0)
+            };
+        }
+    });
+
+    if (!result.isConfirmed) return;
+
+    const { toppings, total } = result.value;
+    const itemLabel = `${presetName} (${size})` + (toppings.length ? ` + ${toppings.join(', ')}` : '');
 
     try {
         const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
@@ -334,16 +385,17 @@ async function punchWalkinPreset(presetName, size, price) {
             headers,
             body: JSON.stringify({
                 action: 'walkin_sale',
-                item_label: `${presetName} (${size})`,
+                item_label: itemLabel,
                 size: size,
-                total_amount: price,
+                total_amount: total,
+                toppings: toppings,
                 customer_name: 'Walk-in Counter'
             })
         });
         if (!response.ok) throw new Error(await SalesCommon.errorMessage(response));
 
         await fetchOrderMonitoringData();
-        SalesCommon.alert('Walk-in Sale Recorded', `Successfully collected ₱${price}.00 cash in drawer.`, 'success');
+        SalesCommon.alert('Walk-in Sale Recorded', `Successfully collected ₱${total}.00 cash in drawer.`, 'success');
     } catch (err) {
         console.error('Walk-in sale error:', err);
         SalesCommon.alert('Transaction Recorded Locally', 'Please verify your physical drawer count against expected totals during Z-Reading.', 'info');
