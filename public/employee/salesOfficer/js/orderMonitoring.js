@@ -5,6 +5,7 @@ const MONITORING_PAGE_SIZE = 6;
 let isRegisterLocked = localStorage.getItem('isRegisterLocked') === 'true';
 
 // Walk-in toppings (edit names/prices here)
+const MAX_TOPPING_QTY = 5; // max of the same topping per drink
 const WALKIN_TOPPINGS = [
     { name: 'Extra Pearls', price: 5 },
     { name: 'Marshmallows', price: 5 },
@@ -320,7 +321,7 @@ async function markOrderAsPickedUp(orderId) {
     }
 }
 
-// Quick POS Walk-in Preset Puncher with themed toppings picker
+// Quick POS Walk-in Preset Puncher with themed toppings picker (multiple of each topping)
 async function punchWalkinPreset(presetName, size, basePrice) {
     if (localStorage.getItem('isRegisterLocked') === 'true') {
         SalesCommon.alert('Register Locked', 'The counter register is currently locked. Please open shift before punching walk-in sales.', 'warning');
@@ -328,15 +329,20 @@ async function punchWalkinPreset(presetName, size, basePrice) {
     }
 
     const fmt = (n) => '₱' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const qtys = WALKIN_TOPPINGS.map(() => 0);
 
-    const chipsHtml = WALKIN_TOPPINGS.map((t, i) => `
-        <label class="mm-topping-chip">
-            <input type="checkbox" class="walkin-topping" value="${i}">
-            <span class="mm-chip-body">
+    const rowsHtml = WALKIN_TOPPINGS.map((t, i) => `
+        <div class="mm-topping-chip" data-idx="${i}">
+            <div class="mm-chip-info">
                 <span class="mm-chip-name">${escapeHtml(t.name)}</span>
-                <span class="mm-chip-price">+₱${t.price}</span>
-            </span>
-        </label>
+                <span class="mm-chip-price">+₱${t.price} each</span>
+            </div>
+            <div class="mm-stepper">
+                <button type="button" class="mm-step-btn" data-act="minus" aria-label="Remove one ${escapeHtml(t.name)}">−</button>
+                <span class="mm-step-qty">0</span>
+                <button type="button" class="mm-step-btn" data-act="plus" aria-label="Add one ${escapeHtml(t.name)}">+</button>
+            </div>
+        </div>
     `).join('');
 
     const result = await Swal.fire({
@@ -349,8 +355,8 @@ async function punchWalkinPreset(presetName, size, basePrice) {
                     <span>${fmt(basePrice)}</span>
                 </div>
 
-                <div class="mm-topping-label">Add toppings <em>(optional)</em></div>
-                <div class="mm-topping-grid">${chipsHtml}</div>
+                <div class="mm-topping-label">Add toppings <em>(tap + for extra of the same topping)</em></div>
+                <div class="mm-topping-grid">${rowsHtml}</div>
 
                 <div class="mm-total-box">
                     <div class="mm-total-line"><span>Base</span><span>${fmt(basePrice)}</span></div>
@@ -373,24 +379,41 @@ async function punchWalkinPreset(presetName, size, basePrice) {
         buttonsStyling: false,
         didOpen: () => {
             const popup = Swal.getPopup();
-            const boxes = popup.querySelectorAll('.walkin-topping');
+            const grid = popup.querySelector('.mm-topping-grid');
             const toppingsEl = popup.querySelector('#mmToppingsTotal');
             const grandEl = popup.querySelector('#mmGrandTotal');
+
             const update = () => {
                 let extra = 0;
-                boxes.forEach(b => { if (b.checked) extra += WALKIN_TOPPINGS[b.value].price; });
+                grid.querySelectorAll('.mm-topping-chip').forEach(row => {
+                    const i = Number(row.dataset.idx);
+                    row.querySelector('.mm-step-qty').textContent = qtys[i];
+                    row.classList.toggle('selected', qtys[i] > 0);
+                    extra += WALKIN_TOPPINGS[i].price * qtys[i];
+                });
                 toppingsEl.textContent = fmt(extra);
                 grandEl.textContent = fmt(basePrice + extra);
             };
-            boxes.forEach(b => b.addEventListener('change', update));
+
+            grid.addEventListener('click', (e) => {
+                const btn = e.target.closest('.mm-step-btn');
+                if (!btn) return;
+                const i = Number(btn.closest('.mm-topping-chip').dataset.idx);
+                if (btn.dataset.act === 'plus') qtys[i] = Math.min(qtys[i] + 1, MAX_TOPPING_QTY);
+                else qtys[i] = Math.max(qtys[i] - 1, 0);
+                update();
+            });
         },
         preConfirm: () => {
-            const picked = [...Swal.getPopup().querySelectorAll('.walkin-topping:checked')]
-                .map(b => WALKIN_TOPPINGS[b.value]);
-            return {
-                toppings: picked.map(t => t.name),
-                total: basePrice + picked.reduce((sum, t) => sum + t.price, 0)
-            };
+            const picked = [];
+            let extra = 0;
+            WALKIN_TOPPINGS.forEach((t, i) => {
+                if (qtys[i] > 0) {
+                    picked.push(qtys[i] > 1 ? `${t.name} x${qtys[i]}` : t.name);
+                    extra += t.price * qtys[i];
+                }
+            });
+            return { toppings: picked, total: basePrice + extra };
         }
     });
 

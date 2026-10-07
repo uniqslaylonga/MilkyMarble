@@ -845,7 +845,6 @@ body {
   }
 }
 
-
 /* ===== Walk-in Toppings Popup (paste at the END of css/orderMonitoring.css) ===== */
 .mm-topping-wrap {
   text-align: left;
@@ -905,60 +904,94 @@ body {
 }
 
 .mm-topping-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+  max-height: 230px;
+  overflow-y: auto;
+  padding-right: 4px;
   margin-bottom: 14px;
 }
 
+.mm-topping-grid::-webkit-scrollbar {
+  width: 4px;
+}
+.mm-topping-grid::-webkit-scrollbar-thumb {
+  background: rgba(246, 146, 153, 0.4);
+  border-radius: 4px;
+}
+
 .mm-topping-chip {
-  position: relative;
-  cursor: pointer;
-}
-
-.mm-topping-chip input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.mm-chip-body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   padding: 8px 12px;
   border: 1.5px solid var(--accent-pink);
   border-radius: 12px;
   background: var(--card-white);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--brown-soft);
   transition: all 0.15s ease;
+}
+
+.mm-topping-chip.selected {
+  background: var(--card-bg);
+  box-shadow: 0 2px 6px rgba(246, 146, 153, 0.2);
+}
+
+.mm-chip-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mm-chip-name {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--brown-soft);
 }
 
 .mm-chip-price {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--accent-pink);
 }
 
-.mm-topping-chip:hover .mm-chip-body {
-  background: rgba(246, 146, 153, 0.15);
+.mm-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.mm-topping-chip input:checked + .mm-chip-body {
+.mm-step-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent-pink);
+  background: var(--card-white);
+  color: var(--accent-pink);
+  font-family: var(--font-family-body);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.mm-step-btn:hover {
   background: var(--accent-pink);
   color: #fff;
-  box-shadow: 0 3px 8px rgba(246, 146, 153, 0.3);
 }
 
-.mm-topping-chip input:checked + .mm-chip-body .mm-chip-price {
-  color: #fff;
-}
-
-.mm-topping-chip input:focus-visible + .mm-chip-body {
-  outline: 3px solid rgba(246, 146, 153, 0.35);
+.mm-step-qty {
+  min-width: 18px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--brown-soft);
 }
 
 .mm-total-box {
@@ -993,10 +1026,4 @@ body {
   font-size: 11.5px;
   font-weight: 600;
   color: var(--text-muted);
-}
-
-@media (max-width: 480px) {
-  .mm-topping-grid {
-    grid-template-columns: 1fr;
-  }
 }
