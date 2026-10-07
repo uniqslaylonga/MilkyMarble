@@ -322,6 +322,28 @@ function cleanItemLabel(rawLabel, fallback) {
   return cleanTitle || fallback;
 }
 
+// Built-in toppings of each walk-in preset (same as the preset cards on the Order Monitoring page)
+const PRESET_DEFAULT_TOPPINGS = [
+  { match: 'chocolatey coffee', toppings: ['Nuts', 'Choco Chips'] },
+  { match: 'cheesy pandan',     toppings: ['Cheese', 'Pearls'] },
+  { match: 'bubbly coffee',     toppings: ['Marshmallows', 'Pearls'] },
+  { match: 'strawberry string', toppings: ['Marshmallows', 'Sprinkles'] }
+];
+
+// "Toppings: Nuts, Choco Chips • Add-ons: Extra Pearls x2"
+function buildOrderSpecs(item, cleanTitle) {
+  const extras = String(item.toppings || '').trim();
+  let defaults = [];
+  if (!item.is_custom) {
+    const hit = PRESET_DEFAULT_TOPPINGS.find(p => String(cleanTitle || '').toLowerCase().includes(p.match));
+    if (hit) defaults = hit.toppings;
+  }
+  if (defaults.length && extras) return `Toppings: ${defaults.join(', ')} • Add-ons: ${extras}`;
+  if (defaults.length) return `Toppings: ${defaults.join(', ')}`;
+  if (extras) return `Toppings: ${extras}`;
+  return '';
+}
+
 // Sales Officer Helpers & Timezone formatting
 const ORDER_REVIEW_STATUSES = ['PENDING', 'PAID_VERIFIED', 'CONFIRMED'];
 
@@ -2912,7 +2934,8 @@ router.get('/production-supervisor/order-list', async (req, res) => {
       const firstItem = (ord.order_items && ord.order_items[0]) || {};
       const cleanTitle = cleanItemLabel(firstItem.item_label, 'Milky Marble Cup');
       const size = firstItem.size || (String(firstItem.item_label || '').toLowerCase().includes('8oz') ? '8oz' : '12oz');
-      const specs = firstItem.toppings ? `Toppings: ${firstItem.toppings}` : '';
+      // Preset built-in toppings + any add-ons the cashier tapped
+      const specs = buildOrderSpecs(firstItem, cleanTitle);
       const type = firstItem.is_custom ? 'preorder' : 'preset';
 
       const rawStatus = String(ord.status || '').toUpperCase();
