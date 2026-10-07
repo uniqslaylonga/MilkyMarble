@@ -7,12 +7,13 @@ let isRegisterLocked = localStorage.getItem('isRegisterLocked') === 'true';
 // Walk-in toppings (edit names/prices here)
 const MAX_TOPPING_QTY = 5; // max of the same topping per drink
 const WALKIN_TOPPINGS = [
-    { name: 'Extra Pearls', price: 5 },
-    { name: 'Marshmallows', price: 5 },
-    { name: 'Cheese',       price: 5 },
-    { name: 'Nuts',         price: 5 },
-    { name: 'Choco Chips',  price: 5 },
-    { name: 'Sprinkles',    price: 5 }
+    { name: 'Extra Pearls',   price: 2 },
+    { name: 'Marshmallows',   price: 2 },
+    { name: 'Cheese',         price: 2 },
+    { name: 'Nuts',           price: 2 },
+    { name: 'Sprinkles',      price: 2 },
+    { name: 'Choco Chips',    price: 5 },
+    { name: 'Condensed Milk', price: 5 }
 ];
 
 document.addEventListener('DOMContentLoaded', async () => {
