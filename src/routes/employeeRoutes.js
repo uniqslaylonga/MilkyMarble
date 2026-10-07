@@ -186,13 +186,6 @@ async function deductInventoryForOrder(orderId, employeeName = 'Production Kitch
       const hasExtraCondensed = toppingsStr.includes('extra condensed') || toppingsStr.includes('more condensed');
       const totalCondensedOz = (spec.condensedMilkOz + (hasExtraCondensed ? spec.extraCondensedMilkOz : 0)) * qty;
 
-      // How many of a topping? "Cheese x2" -> 2, plain "Cheese" -> 1
-      const toppingMult = (keyword) => {
-        const seg = toppingsStr.split(',').find(s => s.includes(keyword));
-        const m = seg && seg.match(/\bx\s*(\d+)\b/);
-        return m ? Math.max(1, parseInt(m[1], 10)) : 1;
-      };
-
       // Dynamic Detection para sa Flavored Gulaman Base
       const itemFlavorStr = (rawLabel + ' ' + (item.flavor || '') + ' ' + (item.custom_details || '')).toLowerCase();
       let cookedGulamanName = 'Cooked Strawberry Gulaman';
@@ -217,29 +210,24 @@ async function deductInventoryForOrder(orderId, employeeName = 'Production Kitch
       if (isPreset || toppingsStr.includes('pearl') || toppingsStr.includes('tapioca')) {
         deductions.push({ name: 'Tapioca Pearls', qty: spec.toppingsGrams['tapioca pearls'] * qty });
       }
-      // Extra pearls added at the counter (on top of the preset's base pearls)
-      if (toppingsStr.includes('extra pearl')) {
-        deductions.push({ name: 'Tapioca Pearls', qty: spec.toppingsGrams['tapioca pearls'] * qty * toppingMult('extra pearl') });
-      }
       if (toppingsStr.includes('cheese')) {
-        deductions.push({ name: 'Cheese', qty: spec.toppingsGrams['cheese'] * qty * toppingMult('cheese') });
+        deductions.push({ name: 'Cheese', qty: spec.toppingsGrams['cheese'] * qty });
       }
       if (toppingsStr.includes('chocolate chip') || toppingsStr.includes('choco chip')) {
-        const kw = toppingsStr.includes('chocolate chip') ? 'chocolate chip' : 'choco chip';
-        deductions.push({ name: 'Chocolate Chip', qty: spec.toppingsGrams['chocolate chip'] * qty * toppingMult(kw) });
+        deductions.push({ name: 'Chocolate Chip', qty: spec.toppingsGrams['chocolate chip'] * qty });
       }
       if (toppingsStr.includes('marshmallow')) {
-        deductions.push({ name: 'Marshmallow', qty: spec.toppingsGrams['marshmallow'] * qty * toppingMult('marshmallow') });
+        deductions.push({ name: 'Marshmallow', qty: spec.toppingsGrams['marshmallow'] * qty });
       }
       if (toppingsStr.includes('nuts') || toppingsStr.includes('nut')) {
-        deductions.push({ name: 'Nuts', qty: spec.toppingsGrams['nuts'] * qty * toppingMult('nut') });
+        deductions.push({ name: 'Nuts', qty: spec.toppingsGrams['nuts'] * qty });
       }
       if (toppingsStr.includes('sprinkles (chocolate)') || toppingsStr.includes('chocolate sprinkle')) {
         deductions.push({ name: 'Sprinkles (Chocolate)', qty: spec.toppingsGrams['sprinkles (chocolate)'] * qty });
       } else if (toppingsStr.includes('sprinkles (assorted)') || toppingsStr.includes('assorted sprinkle')) {
         deductions.push({ name: 'Sprinkles (Assorted)', qty: spec.toppingsGrams['sprinkles (assorted)'] * qty });
       } else if (toppingsStr.includes('sprinkles')) {
-        deductions.push({ name: 'Sprinkles', qty: spec.toppingsGrams['sprinkles'] * qty * toppingMult('sprinkles') });
+        deductions.push({ name: 'Sprinkles', qty: spec.toppingsGrams['sprinkles'] * qty });
       }
 
       for (const d of deductions) {
@@ -1148,19 +1136,6 @@ router.patch('/orders/:id/status', async (req, res) => {
   }
 });
 
-// One line of an order for the monitoring card:
-// "1x Bubbly Coffee Jelly (12oz) + Extra Pearls x3, Cheese"
-function monitoringItemLine(it) {
-  const qty = it.quantity || 1;
-  const name = cleanItemLabel(it.item_label, 'Item');
-  const size = it.size ? ` (${it.size})` : '';
-  const tops = String(it.toppings || '').trim();
-  return `${qty}x ${name}${size}${tops ? ' + ' + tops : ''}`;
-}
-
-const MONITORING_ORDER_SELECT =
-  'id, order_number, status, total_amount, placed_at, guest_name, customer_id, customers(users(full_name)), order_items(item_label, quantity, size, toppings)';
-
 router.get('/sales-officer/order-monitoring', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1178,7 +1153,7 @@ router.get('/sales-officer/order-monitoring', async (req, res) => {
 
     const { data: activeOrders, error } = await supabase
       .from('orders')
-      .select(MONITORING_ORDER_SELECT)
+      .select('id, order_number, status, total_amount, placed_at, guest_name, customer_id, customers(users(full_name)), order_items(item_label, quantity)')
       .in('status', ['PREPARING', 'READY_FOR_PICKUP'])
       .order('placed_at', { ascending: false });
     if (error) throw error;
@@ -1189,7 +1164,7 @@ router.get('/sales-officer/order-monitoring', async (req, res) => {
     // completed walk-ins.
     const { data: walkinOrders, error: walkinErr } = await supabase
       .from('orders')
-      .select(MONITORING_ORDER_SELECT)
+      .select('id, order_number, status, total_amount, placed_at, guest_name, customer_id, customers(users(full_name)), order_items(item_label, quantity)')
       .eq('status', 'COMPLETED')
       .is('customer_id', null)
       .like('order_number', 'MM-POS-%')
@@ -1201,7 +1176,7 @@ router.get('/sales-officer/order-monitoring', async (req, res) => {
       .sort((a, b) => new Date(b.placed_at) - new Date(a.placed_at));
 
     const formattedActive = queueOrders.map(o => {
-      const lines = (o.order_items || []).map(monitoringItemLine);
+      const lines = (o.order_items || []).map(it => `${it.quantity || 1}x ${cleanItemLabel(it.item_label, 'Item')}`);
       return {
         id: o.id,
         order_number: o.order_number,
@@ -1232,7 +1207,7 @@ router.get('/sales-officer/order-monitoring', async (req, res) => {
 router.post('/sales-officer/order-monitoring/update', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
-    const { order_id, action, item_label, size, total_amount, customer_name, toppings } = req.body;
+    const { order_id, action, item_label, size, total_amount, customer_name } = req.body;
     if (!action) {
       return res.status(400).json({ status: 'error', message: 'Action identifier is required.' });
     }
@@ -1241,17 +1216,6 @@ router.post('/sales-officer/order-monitoring/update', async (req, res) => {
       const amount = parseFloat(total_amount) || 15;
       const orderNum = `MM-POS-${Date.now().toString().slice(-6)}`;
       const nowISO = new Date().toISOString();
-
-      // Toppings arrive as ["Extra Pearls x3", "Cheese"]; store them as one
-      // readable string in order_items.toppings (same column pre-orders use).
-      const toppingsText = (Array.isArray(toppings)
-        ? toppings.map(t => String(t).trim()).filter(Boolean).join(', ')
-        : String(toppings || '').trim()
-      ).slice(0, 250);
-
-      // The label sent by the page may already end with " + toppings"; keep
-      // only the drink name/size here so reports group drinks correctly.
-      const baseLabel = String(item_label || 'Preset Cup').replace(/\s*\+\s.*$/, '').trim() || 'Preset Cup';
 
       const { data: newOrder, error: orderErr } = await supabase
         .from('orders')
@@ -1278,10 +1242,9 @@ router.post('/sales-officer/order-monitoring/update', async (req, res) => {
           .from('order_items')
           .insert([{
             order_id: newOrder.id,
-            item_label: baseLabel,
+            item_label: item_label || 'Preset Cup',
             quantity: 1,
             size: size || '8oz',
-            toppings: toppingsText || null,
             line_total: amount,
             unit_price: amount,
             is_custom: false
