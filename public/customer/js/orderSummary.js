@@ -2,6 +2,7 @@
 let currentOrderSummaryItems = [];
 let currentSubtotal = 0.0;
 let appliedPromoDiscount = 0.0;
+let appliedPromoCode = null;
 let appliedLoyaltyDiscount = 0.0;
 let selectedPaymentMethod = '';
 let selectedSpoon = 'yes'; // 'yes' | 'no'
@@ -28,7 +29,7 @@ function normalizePaymentMethod(raw) {
   const v = String(raw || '').trim();
   if (!v) return '';
   if (/cash/i.test(v)) return 'Cash on Pick-Up';
-  if (/wallet|gcash|maya|paymongo|qr\s*ph|online/i.test(v)) return 'E-Wallet';
+  if (/wallet|gcash|maya|instapay|qr\s*ph|online/i.test(v)) return 'E-Wallet';
   return v;
 }
 
@@ -289,6 +290,7 @@ function renderRecipientDetails() {
 window.renderOrderSummaryModal = async function(items = []) {
   currentOrderSummaryItems = Array.isArray(items) ? items : [];
   appliedPromoDiscount = 0.0;
+  appliedPromoCode = null;
   appliedLoyaltyDiscount = 0.0;
   selectedPaymentMethod = '';
   selectedSpoon = 'yes';
@@ -571,7 +573,7 @@ window.selectPaymentMethod = function(btnElement) {
   const paymentReq = document.getElementById('paymentRequiredMsg');
   if (paymentReq) paymentReq.style.display = 'none';
 
-  const isEwallet = /wallet|gcash|maya|online|paymongo/i.test(selectedPaymentMethod) && !selectedPaymentMethod.toLowerCase().includes('cash');
+  const isEwallet = /wallet|gcash|maya|online|instapay/i.test(selectedPaymentMethod) && !selectedPaymentMethod.toLowerCase().includes('cash');
   const ewalletHint = document.getElementById('ewalletHint');
   if (ewalletHint) ewalletHint.style.display = isEwallet ? 'block' : 'none';
 };
@@ -582,8 +584,9 @@ function setNextDefaultPickupDate() {
 
   const days = allowedPickupDays.length > 0 ? allowedPickupDays : DEFAULT_PICKUP_DAYS;
 
+  // Start from TODAY: if today is one of the admin's pick-up days, customers
+  // can order for same-day pick-up. Otherwise roll forward to the next one.
   const date = new Date();
-  date.setDate(date.getDate() + 1);
 
   // Safety cap so a misconfigured/empty admin setting can't spin forever.
   let guard = 0;
@@ -670,11 +673,14 @@ window.applyPromo = async function() {
   if (applyBtn) applyBtn.disabled = true;
 
   try {
-    const res = await fetch(`/api/promotions/validate?code=${encodeURIComponent(code)}`);
+    const itemCount = (currentOrderSummaryItems || []).reduce((n, it) => n + Math.max(1, parseInt(it.quantity || 1, 10) || 1), 0);
+    const emailVal = (document.getElementById('inputRecipientEmail')?.value || '').trim();
+    const res = await fetch(`/api/promotions/validate?code=${encodeURIComponent(code)}&item_count=${itemCount}` + (emailVal ? `&email=${encodeURIComponent(emailVal)}` : ''), { credentials: 'include' });
     const data = await res.json();
 
     if (res.ok && data.status === 'success' && data.promo) {
       const promo = data.promo;
+      appliedPromoCode = promo.code;
       const type = String(promo.discount_type || '').toLowerCase();
       const val = parseFloat(promo.discount_value || 0);
 
@@ -691,6 +697,7 @@ window.applyPromo = async function() {
       }
     } else {
       appliedPromoDiscount = 0.0;
+      appliedPromoCode = null;
       if (msg) {
         msg.innerText = data.message || 'Invalid promo code.';
         msg.style.display = 'block';
@@ -700,6 +707,7 @@ window.applyPromo = async function() {
   } catch (err) {
     console.error('Promo error:', err);
     appliedPromoDiscount = 0.0;
+    appliedPromoCode = null;
     if (msg) {
       msg.innerText = 'Could not verify promo code.';
       msg.style.display = 'block';
@@ -1102,7 +1110,8 @@ window.confirmPlaceOrder = async function() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (selected < today || (day !== 1 && day !== 2 && day !== 4)) {
+    const allowedDays = allowedPickupDays.length > 0 ? allowedPickupDays : DEFAULT_PICKUP_DAYS;
+    if (selected < today || !allowedDays.includes(day)) {
       if (dateErr) dateErr.style.display = 'block';
       return;
     }
@@ -1149,6 +1158,7 @@ window.confirmPlaceOrder = async function() {
     items: currentOrderSummaryItems,
     subtotal: currentSubtotal,
     discount_amount: appliedPromoDiscount,
+    promo_code: appliedPromoCode,
     points_used: pointsToUse,
     points_earned: calculatedPointsEarned,
     order_type: orderTypeVal,
@@ -1186,7 +1196,7 @@ window.confirmPlaceOrder = async function() {
       if (!isGuest && customerId) {
         try { localStorage.setItem(lastPaymentStorageKey(customerId), paymentMethodForOrder); } catch (e) {}
       }
-      const isEwallet = /wallet|gcash|maya|online|paymongo/i.test(paymentMethodForOrder) && !paymentMethodForOrder.toLowerCase().includes('cash');
+      const isEwallet = /wallet|gcash|maya|online|instapay/i.test(paymentMethodForOrder) && !paymentMethodForOrder.toLowerCase().includes('cash');
       const needsEwalletPayment = isEwallet && orderObj.status !== 'PAID_VERIFIED';
 
       const guestSessionId = sessionStorage.getItem('mm_guest_session_id');
@@ -1221,43 +1231,42 @@ window.confirmPlaceOrder = async function() {
       };
 
       if (needsEwalletPayment) {
-        try {
-          const payRes = await fetch('/api/payments/create-checkout', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              order_id: orderObj.id || orderObj.order_id,
-              billing_name: cleanName,
-              billing_email: cleanEmail,
-              customer_id: customerId,
-              user_id: userId
-            })
-          });
-          const payData = await payRes.json();
-
-          if (payRes.ok && payData.status === 'success' && payData.checkout_url) {
-            await clearCartRequest();
-            window.location.href = payData.checkout_url;
-            return;
-          }
-
-          throw new Error(payData.message || 'Could not start PayMongo checkout.');
-        } catch (payErr) {
-          console.error('PayMongo checkout error:', payErr);
+        // Manual InstaPay QR payment: the order is already saved as
+        // PENDING_PAYMENT. Show the shop QR + receipt upload; a Sales Officer
+        // verifies it afterwards.
+        await clearCartRequest();
+        closeOrderSummaryModal();
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'Place Order';
+        }
+        if (typeof window.openManualPayment !== 'function') {
           showSweetAlert({
             icon: 'error',
             title: 'Payment Could Not Start',
-            text: payErr.message || 'We placed your order, but could not open the PayMongo payment page. Please try paying again from your Orders page.',
+            text: 'Your order was placed. Please open the Orders page to submit your payment.',
             confirmButtonText: 'OK',
             showCancelButton: false
           });
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerText = 'Place Order';
-          }
           return;
         }
+        window.openManualPayment({
+          order: orderObj,
+          email: cleanEmail,
+          amount: finalPayableTotal,
+          onClose: function (submitted) {
+            // Take the customer to their orders either way; the order shows
+            // "Verifying Payment" (submitted) or "Awaiting Payment" (not yet).
+            if (!isGuest && !/orders\.html/i.test(window.location.pathname)) {
+              window.location.href = '/customer/orders.html';
+            } else if (typeof window.loadOrders === 'function') {
+              window.loadOrders();
+            } else if (/orders\.html/i.test(window.location.pathname)) {
+              window.location.reload();
+            }
+          }
+        });
+        return;
       }
 
       closeOrderSummaryModal();

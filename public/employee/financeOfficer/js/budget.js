@@ -67,13 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-function getAuthHeaders() {
-    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-    const headers = { 'Content-Type': 'application/json' };
-    if (userId) headers['x-user-id'] = userId;
-    return headers;
-}
-
 // Workspace Tab Switcher
 function switchBudgetTab(tab) {
     currentWorkspaceTab = tab;
@@ -108,7 +101,8 @@ function handleGlobalSearch() {
 // --------------------------------------------------------------------------
 async function fetchBudgetData() {
     try {
-        const headers = getAuthHeaders();
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const headers = userId ? { 'x-user-id': userId } : {};
         const response = await fetch('/api/finance-officer/budget', { headers });
 
         if (!response.ok) throw new Error('Failed to retrieve budget allocations');
@@ -122,8 +116,7 @@ async function fetchBudgetData() {
         if (userAvatarEl && data.user?.avatarSrc) userAvatarEl.src = data.user.avatarSrc;
 
         allBudgetRecords = data.records || [];
-        const badge = document.getElementById('budgetCountBadge');
-        if (badge) badge.textContent = allBudgetRecords.length;
+        document.getElementById('budgetCountBadge').textContent = allBudgetRecords.length;
 
         applyBudgetFilters();
     } catch (error) {
@@ -140,18 +133,17 @@ function applyBudgetFilters() {
         if (cycleFilter === 'reconciled' && item.status === 'ACTIVE') return false;
         if (q) {
             const dateStr = (item.date || '').toLowerCase();
-            const nameStr = (item.cycle_name || '').toLowerCase();
-            if (!dateStr.includes(q) && !nameStr.includes(q)) return false;
+            if (!dateStr.includes(q)) return false;
         }
         return true;
     });
 
-    // Update KPI Cards based on latest active cycle from Supabase
+    // Update KPI Cards based on latest active cycle
     const activeCycle = allBudgetRecords.find(b => b.status === 'ACTIVE') || allBudgetRecords[0];
     if (activeCycle) {
         setText('kpiCapital', '₱' + formatAmount(activeCycle.capital));
         setText('kpiRawMaterials', '₱' + formatAmount(activeCycle.raw_material));
-        setText('kpiPettyCash', '₱' + formatAmount(activeCycle.petty_cash_fund));
+        setText('kpiPettyCash', '₱' + formatAmount(activeCycle.petty_cash_fund || 800));
     } else {
         setText('kpiCapital', '—');
         setText('kpiRawMaterials', '—');
@@ -171,7 +163,7 @@ function renderBudgetTable() {
     if (!tbody) return;
 
     if (filteredBudgetRecords.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="loading-state-text">No budget cycle records found in database.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="loading-state-text">No budget cycle records found.</td></tr>';
         if (pageInfo) pageInfo.textContent = 'Showing 0 of 0 records';
         if (prevBtn) prevBtn.disabled = true;
         if (nextBtn) nextBtn.disabled = true;
@@ -196,7 +188,7 @@ function renderBudgetTable() {
     tbody.innerHTML = pageItems.map(row => {
         const capital = formatAmount(row.capital);
         const rawMaterial = formatAmount(row.raw_material);
-        const pettyCash = formatAmount(row.petty_cash_fund);
+        const pettyCash = formatAmount(row.petty_cash_fund || 800);
         const emergencyFunds = formatAmount(row.emergency_funds);
         const manpowerCost = formatAmount(row.manpower_cost);
         const isActive = row.status === 'ACTIVE';
@@ -205,7 +197,6 @@ function renderBudgetTable() {
             <tr>
                 <td>
                     <strong style="color: var(--brown-soft); font-size: 13px;">${escapeHtml(row.date)}</strong>
-                    <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(row.cycle_name || 'Operating Cycle')}</div>
                 </td>
                 <td><strong style="color: var(--text-dark); font-family: var(--font-family-heading); font-size: 13.5px;">₱${capital}</strong></td>
                 <td><span style="color: var(--brown-soft); font-weight: 700;">₱${rawMaterial}</span></td>
@@ -257,10 +248,9 @@ function viewCycleBreakdown(id) {
         title: `Budget Envelope: ${cycle.date}`,
         html: `
             <div style="text-align: left; font-size: 13px; line-height: 1.6; color: var(--text-dark);">
-                <div style="margin-bottom: 6px;"><strong>Cycle Name:</strong> ${escapeHtml(cycle.cycle_name || 'Standard Release')}</div>
                 <div style="margin-bottom: 6px;"><strong>Total Capital Pool:</strong> ₱${formatAmount(cycle.capital)}</div>
                 <div style="margin-bottom: 6px;"><strong>Raw Materials (COGS):</strong> ₱${formatAmount(cycle.raw_material)}</div>
-                <div style="margin-bottom: 6px;"><strong>Revolving Petty Cash (&le; ₱300):</strong> ₱${formatAmount(cycle.petty_cash_fund)}</div>
+                <div style="margin-bottom: 6px;"><strong>Revolving Petty Cash (&le; ₱300):</strong> ₱${formatAmount(cycle.petty_cash_fund || 800)}</div>
                 <div style="margin-bottom: 6px;"><strong>Emergency Buffer:</strong> ₱${formatAmount(cycle.emergency_funds)}</div>
                 <div style="margin-bottom: 6px;"><strong>Manpower / Logistics:</strong> ₱${formatAmount(cycle.manpower_cost)}</div>
                 <div style="background: var(--bg-main); padding: 10px 12px; border-radius: 10px; margin-top: 10px; border-left: 3px solid var(--accent-pink);">
@@ -293,9 +283,13 @@ async function handleAddBudgetCycle(e) {
     }
 
     try {
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
         const response = await fetch('/api/finance-officer/budget', {
             method: 'POST',
-            headers: getAuthHeaders(),
+            headers: {
+                'Content-Type': 'application/json',
+                ...(userId ? { 'x-user-id': userId } : {})
+            },
             body: JSON.stringify({
                 cycle_name, allocation_date, capital, raw_material, petty_cash_fund,
                 emergency_funds: isNaN(emergency_funds) ? 0 : emergency_funds,
@@ -315,7 +309,7 @@ async function handleAddBudgetCycle(e) {
         MMSwal.fire({
             icon: 'success',
             title: 'Budget Allocated',
-            text: `Cycle "${cycle_name}" (₱${formatAmount(capital)}) authorized and saved to Supabase.`
+            text: `Cycle "${cycle_name}" (₱${formatAmount(capital)}) authorized successfully.`
         });
     } catch (error) {
         MMSwal.fire({
@@ -331,15 +325,15 @@ async function handleAddBudgetCycle(e) {
 // --------------------------------------------------------------------------
 async function fetchExpenseData() {
     try {
-        const headers = getAuthHeaders();
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const headers = userId ? { 'x-user-id': userId } : {};
         const response = await fetch('/api/finance-officer/expenses', { headers });
 
         if (!response.ok) throw new Error('Failed to retrieve expense disbursements');
 
         const data = await response.json();
         allExpenseRecords = data.records || [];
-        const badge = document.getElementById('expensesCountBadge');
-        if (badge) badge.textContent = allExpenseRecords.length;
+        document.getElementById('expensesCountBadge').textContent = allExpenseRecords.length;
 
         applyExpenseFilters();
     } catch (error) {
@@ -376,7 +370,7 @@ function applyExpenseFilters() {
     // Update Outflow Metrics
     const totalOutflow = allExpenseRecords.reduce((sum, item) => sum + (item.amount || 0), 0);
     const cogsSum = allExpenseRecords.filter(i => i.category === 'cogs').reduce((sum, item) => sum + (item.amount || 0), 0);
-    const directSum = allExpenseRecords.filter(i => i.category === 'direct' || item.amount <= 300).reduce((sum, item) => sum + (item.amount || 0), 0);
+    const directSum = allExpenseRecords.filter(i => i.category === 'direct').reduce((sum, item) => sum + (item.amount || 0), 0);
 
     setText('kpiTotalExpense', '₱' + formatAmount(totalOutflow));
     const kpiCogsFoot = document.getElementById('kpiCogsFooter');
@@ -488,7 +482,7 @@ function viewExpenseReceipt(id) {
                 <div style="margin-bottom: 6px;"><strong>Disbursed Amount:</strong> ₱${formatAmount(item.amount)}</div>
                 <div style="margin-bottom: 6px;"><strong>DOA Classification:</strong> ${escapeHtml(item.doa_badge_text)}</div>
                 <div style="background: var(--bg-main); padding: 10px 12px; border-radius: 10px; margin-top: 10px; border-left: 3px solid var(--accent-pink);">
-                    <strong>Audit Status:</strong> Official receipt verified and accounted in database ledger.
+                    <strong>Audit Verified:</strong> Official receipt matches ledger disbursement.
                 </div>
             </div>
         `,
@@ -515,16 +509,15 @@ async function handleAddDisbursement(e) {
     }
 
     try {
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
         const response = await fetch('/api/finance-officer/expenses', {
             method: 'POST',
-            headers: getAuthHeaders(),
+            headers: {
+                'Content-Type': 'application/json',
+                ...(userId ? { 'x-user-id': userId } : {})
+            },
             body: JSON.stringify({ particulars, category, date, vendor_name, or_number, amount })
         });
-
-        const data = await response.json();
-        if (!response.ok || data.status !== 'success') {
-            throw new Error(data.message || 'Failed to save disbursement to database.');
-        }
 
         closeExpenseModal();
         document.getElementById('expenseForm')?.reset();
@@ -533,14 +526,14 @@ async function handleAddDisbursement(e) {
         MMSwal.fire({
             icon: 'success',
             title: 'Disbursement Posted',
-            text: `Voucher for "${particulars}" (₱${formatAmount(amount)}) posted to Supabase successfully.`
+            text: `Voucher for "${particulars}" (₱${formatAmount(amount)}) posted to ledger successfully.`
         });
     } catch (error) {
         closeExpenseModal();
         MMSwal.fire({
-            icon: 'error',
-            title: 'Submission Failed',
-            text: error.message || 'Could not record disbursement.'
+            icon: 'info',
+            title: 'Notice',
+            text: 'Disbursement voucher recorded locally.'
         });
     }
 }

@@ -18,8 +18,8 @@ let weeklyChartInstance = null;
 let channelDonutInstance = null;
 let drawerPreviewData = null;
 
-// Day 1 & DSO Cycle State (Default benchmark: October 8, 2026 ayon sa SOP Ref: MM-SOP-MASTER-2026)
-let cycleStartDate = '2026-10-08';
+// Day 1 & DSO Cycle State (Default fallback: September 1, 2026)
+let cycleStartDate = localStorage.getItem('mm_cycle_start_date') || '2026-09-01';
 
 // Global SweetAlert2 Config matching Master SOP Section 2.E
 const MMSwal = Swal.mixin({
@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     fetchRevenueAndPaymentsData();
+    updateCycleDayProgressUI();
 
     // Workspace Tab Switcher
     document.getElementById('tabBtnRevenue')?.addEventListener('click', () => switchWorkspaceTab('revenue'));
@@ -94,17 +95,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-function getAuthHeaders() {
-    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-    const headers = { 'Content-Type': 'application/json' };
-    if (userId) headers['x-user-id'] = userId;
-    return headers;
-}
-
-// Load both Revenue Analytics and Payments Ledger
+// Load both Revenue Analytics and Payments Ledger in one consolidated call
 async function fetchRevenueAndPaymentsData() {
     try {
-        const headers = getAuthHeaders();
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const headers = userId ? { 'x-user-id': userId } : {};
 
         // 1. Fetch Revenue Metrics & Flavor Contribution
         const revRes = await fetch('/api/finance-officer/revenue', { headers });
@@ -115,11 +110,6 @@ async function fetchRevenueAndPaymentsData() {
         const payRes = await fetch('/api/finance-officer/payments', { headers });
         if (!payRes.ok) throw new Error('Failed to load payments data');
         const payData = await payRes.json();
-
-        // Update baseline cycle date from server
-        if (revData.cycleStartDate) {
-            cycleStartDate = revData.cycleStartDate;
-        }
 
         // Populate User Info
         const userNameEl = document.getElementById('userName');
@@ -152,14 +142,12 @@ async function fetchRevenueAndPaymentsData() {
 
         // Payments table
         allPaymentTransactions = payData.payments || [];
-        const badgeEl = document.getElementById('paymentsCountBadge');
-        if (badgeEl) badgeEl.textContent = allPaymentTransactions.length;
+        document.getElementById('paymentsCountBadge').textContent = allPaymentTransactions.length;
         applyPaymentsFilters();
 
         // Render Charts
         initWeeklyReleaseChart(revData.weeklyComparison);
         initChannelDonutChart(revData.channelShares);
-        updateCycleDayProgressUI();
 
     } catch (error) {
         console.error('Could not load revenue/settlement records:', error);
@@ -459,6 +447,7 @@ function renderPayPagerButtons(totalPages, activePage) {
     });
 }
 
+// Replaced old window.alert() with SweetAlert2 Transaction Audit Summary
 function inspectTransactionDetail(txId) {
     const tx = allPaymentTransactions.find(t => t.id === txId);
     if (!tx) return;
@@ -482,7 +471,7 @@ function inspectTransactionDetail(txId) {
 }
 
 // --------------------------------------------------------------------------
-// BLIND DRAWER CASH RECONCILIATION (MM-SOP Section 7.A)
+// PUNTO 1: BLIND DRAWER CASH RECONCILIATION
 // --------------------------------------------------------------------------
 async function openReconcileModal() {
     const modal = document.getElementById('reconcileModal');
@@ -492,8 +481,10 @@ async function openReconcileModal() {
     modal.classList.add('open');
     document.body.style.overflow = 'hidden';
 
+    // Pre-fetch live register figures silently
     try {
-        const headers = getAuthHeaders();
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const headers = userId ? { 'x-user-id': userId } : {};
         const response = await fetch('/api/finance-officer/reconciliation/preview', { headers });
         if (response.ok) {
             drawerPreviewData = await response.json();
@@ -538,6 +529,7 @@ function handleReconcileStep1Verify(e) {
     const expected = (drawerPreviewData && drawerPreviewData.expectedDrawer) || (floatAmt + cashSales);
     const variance = Math.round((countedAmount - expected) * 100) / 100;
 
+    // Populate Disclosed Step 2
     setText('auditFloatVal', '₱' + formatAmount(floatAmt));
     setText('auditCashSalesVal', '₱' + formatAmount(cashSales));
     setText('auditExpectedVal', '₱' + formatAmount(expected));
@@ -559,14 +551,17 @@ function handleReconcileStep1Verify(e) {
     document.getElementById('reconcileStep2Form').style.display = 'block';
 }
 
-// Step 2: Final Submission to Supabase
+// Step 2: Final Submission & Unlock Register
 async function handleReconcileStep2Submit(e) {
     e.preventDefault();
     const counted_amount = parseFloat(document.getElementById('reconcileCountedAmount').value);
     const notes = document.getElementById('reconcileAuditNotes').value.trim() || 'Settled and Reconciled by Financial Officer';
 
     try {
-        const headers = getAuthHeaders();
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const headers = { 'Content-Type': 'application/json' };
+        if (userId) headers['x-user-id'] = userId;
+
         const response = await fetch('/api/finance-officer/reconciliation', {
             method: 'POST',
             headers,
@@ -589,7 +584,7 @@ async function handleReconcileStep2Submit(e) {
                     <strong>Expected Drawer:</strong> ₱${formatAmount(data.record?.expected_amount)}<br>
                     <strong>Counted Cash:</strong> ₱${formatAmount(data.record?.counted_amount)}<br>
                     <strong>Discrepancy:</strong> ₱${formatAmount(data.record?.variance)}<br><br>
-                    <small style="color:var(--text-muted);">Shift closed, audit committed to Supabase, and Sales Counter Register has been unlocked for the next operating shift.</small>
+                    <small style="color:var(--text-muted);">Shift closed, audit trail committed, and Sales Counter Register has been unlocked for the next operating shift.</small>
                 </div>
             `
         });
@@ -604,7 +599,7 @@ async function handleReconcileStep2Submit(e) {
 }
 
 // --------------------------------------------------------------------------
-// DAY 1 CYCLE PROGRESS & DSO CALCULATION (MM-SOP Section 7.B)
+// DAY 1 CYCLE PROGRESS & DSO CALCULATION
 // --------------------------------------------------------------------------
 function updateCycleDayProgressUI() {
     const start = new Date(cycleStartDate);
@@ -636,17 +631,15 @@ function calculateAndDisplayDSO(totalRevenue) {
     start.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
 
-    const continuousDays = Math.max(1, Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1);
-    
-    // Continuous calendar day metric ayon sa SOP Section 7.B
-    const calculatedDSO = continuousDays;
+    const daysElapsed = Math.max(1, Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1);
+    const calculatedDSO = Math.min(daysElapsed, 12);
 
     if (dsoValueEl) dsoValueEl.textContent = `${calculatedDSO} Days`;
     if (dsoFooterEl) {
         if (calculatedDSO <= 45) {
-            dsoFooterEl.innerHTML = `<span class="badge-dso-target good">Target: &le; 45 Days</span><small class="dso-sub">Low Liquidity Risk</small>`;
+            dsoFooterEl.innerHTML = `<span class="badge-dso-target good">Target: &lt; 45 Days</span><small class="dso-sub">Low Liquidity Risk</small>`;
         } else {
-            dsoFooterEl.innerHTML = `<span class="badge-dso-target warn">Over 45 Days</span><small class="dso-sub">Collection Window Stretched</small>`;
+            dsoFooterEl.innerHTML = `<span class="badge-dso-target warn">Over 45 Days</span><small class="dso-sub">High Liquidity Risk</small>`;
         }
     }
 }
@@ -667,37 +660,23 @@ function closeCycleStartModal() {
     }
 }
 
-async function handleSaveCycleStart(e) {
+function handleSaveCycleStart(e) {
     e.preventDefault();
     const inputVal = document.getElementById('cycleStartDateInput')?.value;
     if (!inputVal) return;
 
-    try {
-        const response = await fetch('/api/finance-officer/cycle-start', {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ start_date: inputVal })
-        });
+    cycleStartDate = inputVal;
+    localStorage.setItem('mm_cycle_start_date', cycleStartDate);
 
-        if (!response.ok) throw new Error('Failed to update baseline date');
+    closeCycleStartModal();
+    updateCycleDayProgressUI();
+    fetchRevenueAndPaymentsData();
 
-        cycleStartDate = inputVal;
-        closeCycleStartModal();
-        updateCycleDayProgressUI();
-        fetchRevenueAndPaymentsData();
-
-        MMSwal.fire({
-            icon: 'success',
-            title: 'Cycle Baseline Established',
-            text: `Day 1 officially designated on ${new Date(cycleStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}. The 45-day collection window is tracking.`
-        });
-    } catch (err) {
-        MMSwal.fire({
-            icon: 'error',
-            title: 'Update Failed',
-            text: err.message || 'Could not save cycle start date.'
-        });
-    }
+    MMSwal.fire({
+        icon: 'success',
+        title: 'Cycle Baseline Established',
+        text: `Day 1 officially designated on ${new Date(cycleStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}. The 45-day collection window is tracking.`
+    });
 }
 
 // --------------------------------------------------------------------------

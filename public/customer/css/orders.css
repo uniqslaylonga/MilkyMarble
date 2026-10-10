@@ -354,6 +354,7 @@ body {
 }
 
 .order-status-badge.status-confirmed,
+.order-status-badge.status-verifying-payment,
 .order-status-badge.status-pending {
     color: var(--status-confirmed);
 }

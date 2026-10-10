@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../config/supabase');
-const { generateCashTransactionId } = require('../utils/transactionId');
+const { readToken, COOKIE_NAME: STAFF_COOKIE } = require('../middleware/staffAuth');
+const paymentRoutes = require('./paymentRoutes');
 const { dispatchOrderStatusEmail } = require('../services/mailServices');
+const { generateCashTransactionId } = require('../utils/transactionId');
 
 // Optional SDK load for Google Gemini AI
 let GoogleGenAI;
@@ -184,6 +186,13 @@ async function deductInventoryForOrder(orderId, employeeName = 'Production Kitch
       const hasExtraCondensed = toppingsStr.includes('extra condensed') || toppingsStr.includes('more condensed');
       const totalCondensedOz = (spec.condensedMilkOz + (hasExtraCondensed ? spec.extraCondensedMilkOz : 0)) * qty;
 
+      // How many of a topping? "Cheese x2" -> 2, plain "Cheese" -> 1
+      const toppingMult = (keyword) => {
+        const seg = toppingsStr.split(',').find(s => s.includes(keyword));
+        const m = seg && seg.match(/\bx\s*(\d+)\b/);
+        return m ? Math.max(1, parseInt(m[1], 10)) : 1;
+      };
+
       // Dynamic Detection para sa Flavored Gulaman Base
       const itemFlavorStr = (rawLabel + ' ' + (item.flavor || '') + ' ' + (item.custom_details || '')).toLowerCase();
       let cookedGulamanName = 'Cooked Strawberry Gulaman';
@@ -208,24 +217,29 @@ async function deductInventoryForOrder(orderId, employeeName = 'Production Kitch
       if (isPreset || toppingsStr.includes('pearl') || toppingsStr.includes('tapioca')) {
         deductions.push({ name: 'Tapioca Pearls', qty: spec.toppingsGrams['tapioca pearls'] * qty });
       }
+      // Extra pearls added at the counter (on top of the preset's base pearls)
+      if (toppingsStr.includes('extra pearl')) {
+        deductions.push({ name: 'Tapioca Pearls', qty: spec.toppingsGrams['tapioca pearls'] * qty * toppingMult('extra pearl') });
+      }
       if (toppingsStr.includes('cheese')) {
-        deductions.push({ name: 'Cheese', qty: spec.toppingsGrams['cheese'] * qty });
+        deductions.push({ name: 'Cheese', qty: spec.toppingsGrams['cheese'] * qty * toppingMult('cheese') });
       }
       if (toppingsStr.includes('chocolate chip') || toppingsStr.includes('choco chip')) {
-        deductions.push({ name: 'Chocolate Chip', qty: spec.toppingsGrams['chocolate chip'] * qty });
+        const kw = toppingsStr.includes('chocolate chip') ? 'chocolate chip' : 'choco chip';
+        deductions.push({ name: 'Chocolate Chip', qty: spec.toppingsGrams['chocolate chip'] * qty * toppingMult(kw) });
       }
       if (toppingsStr.includes('marshmallow')) {
-        deductions.push({ name: 'Marshmallow', qty: spec.toppingsGrams['marshmallow'] * qty });
+        deductions.push({ name: 'Marshmallow', qty: spec.toppingsGrams['marshmallow'] * qty * toppingMult('marshmallow') });
       }
       if (toppingsStr.includes('nuts') || toppingsStr.includes('nut')) {
-        deductions.push({ name: 'Nuts', qty: spec.toppingsGrams['nuts'] * qty });
+        deductions.push({ name: 'Nuts', qty: spec.toppingsGrams['nuts'] * qty * toppingMult('nut') });
       }
       if (toppingsStr.includes('sprinkles (chocolate)') || toppingsStr.includes('chocolate sprinkle')) {
         deductions.push({ name: 'Sprinkles (Chocolate)', qty: spec.toppingsGrams['sprinkles (chocolate)'] * qty });
       } else if (toppingsStr.includes('sprinkles (assorted)') || toppingsStr.includes('assorted sprinkle')) {
         deductions.push({ name: 'Sprinkles (Assorted)', qty: spec.toppingsGrams['sprinkles (assorted)'] * qty });
       } else if (toppingsStr.includes('sprinkles')) {
-        deductions.push({ name: 'Sprinkles', qty: spec.toppingsGrams['sprinkles'] * qty });
+        deductions.push({ name: 'Sprinkles', qty: spec.toppingsGrams['sprinkles'] * qty * toppingMult('sprinkles') });
       }
 
       for (const d of deductions) {
@@ -308,8 +322,40 @@ function cleanItemLabel(rawLabel, fallback) {
   return cleanTitle || fallback;
 }
 
+// Built-in toppings of each walk-in preset (same as the preset cards on the Order Monitoring page)
+const PRESET_DEFAULT_TOPPINGS = [
+  { match: 'chocolatey coffee', toppings: ['Nuts', 'Choco Chips'] },
+  { match: 'cheesy pandan',     toppings: ['Cheese', 'Pearls'] },
+  { match: 'bubbly coffee',     toppings: ['Marshmallows', 'Pearls'] },
+  { match: 'strawberry string', toppings: ['Marshmallows', 'Sprinkles'] }
+];
+
+// "Toppings: Nuts, Choco Chips • Add-ons: Extra Pearls x2"
+function buildOrderSpecs(item, cleanTitle) {
+  const extras = String(item.toppings || '').trim();
+  let defaults = [];
+  if (!item.is_custom) {
+    const hit = PRESET_DEFAULT_TOPPINGS.find(p => String(cleanTitle || '').toLowerCase().includes(p.match));
+    if (hit) defaults = hit.toppings;
+  }
+  if (defaults.length && extras) return `Toppings: ${defaults.join(', ')} • Add-ons: ${extras}`;
+  if (defaults.length) return `Toppings: ${defaults.join(', ')}`;
+  if (extras) return `Toppings: ${extras}`;
+  return '';
+}
+
 // Sales Officer Helpers & Timezone formatting
 const ORDER_REVIEW_STATUSES = ['PENDING', 'PAID_VERIFIED', 'CONFIRMED'];
+
+// The Sales Officer's review queue: the statuses above, PLUS E-Wallet orders
+// that are still PENDING_PAYMENT but whose customer has already submitted an
+// InstaPay reference + receipt (those need a Verify / Reject decision).
+// Unpaid E-Wallet orders with no reference yet stay out of the queue.
+function reviewQueueFilter(query) {
+  return query.or(
+    `status.in.(${ORDER_REVIEW_STATUSES.join(',')}),and(status.eq.PENDING_PAYMENT,payment_reference.not.is.null)`
+  );
+}
 
 function startOfDaysAgo(days) {
   const d = new Date();
@@ -558,7 +604,7 @@ router.get('/sales-officer/dashboard', async (req, res) => {
     const { count: pendingOrders } = await supabase
       .from('orders')
       .select('id', { count: 'exact', head: true })
-      .in('status', ORDER_REVIEW_STATUSES);
+      .or(`status.in.(${ORDER_REVIEW_STATUSES.join(',')}),and(status.eq.PENDING_PAYMENT,payment_reference.not.is.null)`);
 
     const { data: acqData } = await supabase.from('customers').select('created_at');
     const allCust = acqData || [];
@@ -903,24 +949,42 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
     const userProfile = await getEmployeeProfile(req);
     const todayStart = phDayStartISO(phDate(new Date()));
 
-    const { data: pendingRows, error: pendingErr } = await supabase
-      .from('orders')
-      .select(`
-        id, order_number, status, total_amount, payment_method, placed_at,
-        guest_name, customer_id,
-        customers(users(full_name)),
-        order_items(item_label, quantity)
-      `)
-      .in('status', ORDER_REVIEW_STATUSES)
-      .order('placed_at', { ascending: false });
+    const { data: pendingRows, error: pendingErr } = await reviewQueueFilter(
+      supabase
+        .from('orders')
+        .select(`
+          id, order_number, status, total_amount, payment_method, placed_at,
+          guest_name, customer_id,
+          payment_reference, payment_amount, payment_proof_path, payment_submitted_at,
+          customers(users(full_name)),
+          order_items(item_label, quantity)
+        `)
+    ).order('placed_at', { ascending: false });
 
     if (pendingErr) throw pendingErr;
 
-    const pendingOrders = (pendingRows || []).map(o => {
+    const pendingOrders = await Promise.all((pendingRows || []).map(async o => {
       const itemLines = (o.order_items || []).map(
         it => `${it.quantity || 1}x ${cleanItemLabel(it.item_label, 'Item')}`
       );
+
+      // Receipt screenshots live in a private bucket - hand the officer a
+      // short-lived signed link rather than a permanent public URL.
+      let proofUrl = null;
+      if (o.payment_proof_path) {
+        const { data: signed } = await supabase.storage
+          .from(paymentRoutes.PROOF_BUCKET)
+          .createSignedUrl(o.payment_proof_path, 60 * 30);
+        proofUrl = (signed && signed.signedUrl) || null;
+      }
+
       return {
+        status: o.status,
+        needs_payment_review: o.status === 'PENDING_PAYMENT' && Boolean(o.payment_reference),
+        payment_reference: o.payment_reference || null,
+        payment_amount: o.payment_amount != null ? parseFloat(o.payment_amount) : null,
+        payment_proof_url: proofUrl,
+        payment_submitted_at: o.payment_submitted_at || null,
         id: o.id,
         order_number: o.order_number,
         customer_id: o.customer_id,
@@ -931,7 +995,7 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
         total_amount: parseFloat(o.total_amount || 0),
         placed_at: o.placed_at
       };
-    });
+    }));
 
     const { count: confirmedToday } = await supabase
       .from('orders')
@@ -961,6 +1025,128 @@ router.get('/sales-officer/order-confirmation', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Manual InstaPay payments: Sales Officer Verify / Reject
+// Mounted under /api/sales-officer, so requireStaff() (server.js) already
+// guards both routes.
+// ---------------------------------------------------------------------------
+const PAYMENT_REVIEW_ORDER_SELECT = 'id, order_number, status, payment_method, total_amount, payment_reference';
+
+function staffUserId(req) {
+  const session = readToken(req.cookies && req.cookies[STAFF_COOKIE]);
+  return session && Number.isFinite(Number(session.id)) ? Number(session.id) : null;
+}
+
+// Verify = "I checked my InstaPay and the money is in". Marks the order paid
+// and sends it straight to the kitchen queue (the same step Confirm does for
+// cash orders), so there is no second click.
+router.post('/sales-officer/orders/:id/verify-payment', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+    const orderId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(orderId)) return res.status(400).json({ status: 'error', message: 'Invalid order id.' });
+
+    const now = new Date().toISOString();
+    // Conditional update: only an order that is still waiting on review can be
+    // verified, so a double-click or a customer cancel can't be overwritten.
+    const { data: order, error } = await supabase
+      .from('orders')
+      .update({
+        status: 'PREPARING',
+        payment_verified_by: staffUserId(req),
+        payment_verified_at: now,
+        payment_reject_reason: null,
+        updated_at: now
+      })
+      .eq('id', orderId)
+      .eq('status', 'PENDING_PAYMENT')
+      .not('payment_reference', 'is', null)
+      .select(PAYMENT_REVIEW_ORDER_SELECT)
+      .maybeSingle();
+    if (error) throw error;
+
+    if (!order) {
+      return res.status(409).json({
+        status: 'error',
+        message: 'This order is not waiting on payment verification (it may already be verified or cancelled).'
+      });
+    }
+
+    // Keep the existing transaction_id column meaningful for receipts/reports.
+    await supabase.from('orders').update({ transaction_id: order.payment_reference }).eq('id', order.id);
+
+    paymentRoutes.sendPaidConfirmationEmail(order.id);
+    return res.json({ status: 'success', message: `Payment verified for ${order.order_number}.`, order });
+  } catch (err) {
+    console.error('[sales-officer/verify-payment] error:', err.message);
+    return res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// Reject = the payment can't be confirmed. The order is cancelled and the
+// customer is emailed. The reference stays on the cancelled order on purpose,
+// so the same (possibly fake) receipt can't be reused on a new order.
+router.post('/sales-officer/orders/:id/reject-payment', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+    const orderId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(orderId)) return res.status(400).json({ status: 'error', message: 'Invalid order id.' });
+
+    const reason = String((req.body && req.body.reason) || '').trim().slice(0, 300) || 'Payment could not be verified';
+    const now = new Date().toISOString();
+
+    const { data: order, error } = await supabase
+      .from('orders')
+      .update({
+        status: 'CANCELLED',
+        cancel_reason: reason,
+        payment_reject_reason: reason,
+        payment_verified_by: staffUserId(req),
+        payment_verified_at: now,
+        updated_at: now
+      })
+      .eq('id', orderId)
+      .eq('status', 'PENDING_PAYMENT')
+      .not('payment_reference', 'is', null)
+      .select(`
+        id, order_number, status, total_amount, subtotal, discount_amount, payment_method, pickup_date, pickup_instructions,
+        guest_name, guest_email, customer_id,
+        order_items (item_label, quantity, unit_price),
+        customers ( user_id, users ( email, full_name, username ) )
+      `)
+      .maybeSingle();
+    if (error) throw error;
+
+    if (!order) {
+      return res.status(409).json({
+        status: 'error',
+        message: 'This order is not waiting on payment verification (it may already be verified or cancelled).'
+      });
+    }
+
+    const email = order.guest_email || (order.customers && order.customers.users && order.customers.users.email);
+    if (email) {
+      const name = order.guest_name
+        || (order.customers && order.customers.users && (order.customers.users.full_name || order.customers.users.username))
+        || 'Valued Customer';
+      dispatchOrderStatusEmail(email, name, order.order_number, 'CANCELLED', order.pickup_date || 'N/A', {
+        order_ref: order.order_number,
+        pickup_date: order.pickup_date || 'N/A',
+        payment_method: order.payment_method,
+        total_price: order.total_amount,
+        subtotal: order.subtotal,
+        discount: order.discount_amount,
+        items: (order.order_items || []).map(it => ({ title: it.item_label, quantity: it.quantity, unit_price: it.unit_price }))
+      }).catch(e => console.error('[sales-officer/reject-payment] email failed:', e.message));
+    }
+
+    return res.json({ status: 'success', message: `Payment rejected for ${order.order_number}.` });
+  } catch (err) {
+    console.error('[sales-officer/reject-payment] error:', err.message);
+    return res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
 router.patch('/orders/:id/status', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -984,6 +1170,19 @@ router.patch('/orders/:id/status', async (req, res) => {
   }
 });
 
+// One line of an order for the monitoring card:
+// "1x Bubbly Coffee Jelly (12oz) + Extra Pearls x3, Cheese"
+function monitoringItemLine(it) {
+  const qty = it.quantity || 1;
+  const name = cleanItemLabel(it.item_label, 'Item');
+  const size = it.size ? ` (${it.size})` : '';
+  const tops = String(it.toppings || '').trim();
+  return `${qty}x ${name}${size}${tops ? ' + ' + tops : ''}`;
+}
+
+const MONITORING_ORDER_SELECT =
+  'id, order_number, status, total_amount, placed_at, guest_name, customer_id, customers(users(full_name)), order_items(item_label, quantity, size, toppings)';
+
 router.get('/sales-officer/order-monitoring', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
@@ -1001,13 +1200,30 @@ router.get('/sales-officer/order-monitoring', async (req, res) => {
 
     const { data: activeOrders, error } = await supabase
       .from('orders')
-      .select('id, order_number, status, total_amount, placed_at, guest_name, customer_id, customers(users(full_name)), order_items(item_label, quantity)')
+      .select(MONITORING_ORDER_SELECT)
       .in('status', ['PREPARING', 'READY_FOR_PICKUP'])
       .order('placed_at', { ascending: false });
     if (error) throw error;
 
-    const formattedActive = (activeOrders || []).map(o => {
-      const lines = (o.order_items || []).map(it => `${it.quantity || 1}x ${cleanItemLabel(it.item_label, 'Item')}`);
+    // Today's counter (walk-in preset) sales are rung up as COMPLETED right
+    // away, so they never match the PREPARING / READY filter above. Pull
+    // them in separately so they still show up in the queue, tagged as
+    // completed walk-ins.
+    const { data: walkinOrders, error: walkinErr } = await supabase
+      .from('orders')
+      .select(MONITORING_ORDER_SELECT)
+      .eq('status', 'COMPLETED')
+      .is('customer_id', null)
+      .like('order_number', 'MM-POS-%')
+      .gte('placed_at', todayStart)
+      .order('placed_at', { ascending: false });
+    if (walkinErr) throw walkinErr;
+
+    const queueOrders = [...(activeOrders || []), ...(walkinOrders || [])]
+      .sort((a, b) => new Date(b.placed_at) - new Date(a.placed_at));
+
+    const formattedActive = queueOrders.map(o => {
+      const lines = (o.order_items || []).map(monitoringItemLine);
       return {
         id: o.id,
         order_number: o.order_number,
@@ -1018,7 +1234,8 @@ router.get('/sales-officer/order-monitoring', async (req, res) => {
         guest_name: o.guest_name,
         customer_name: (o.customers && o.customers.users && o.customers.users.full_name) || o.guest_name || 'Walk-in Counter',
         item_count: (o.order_items || []).length || 1,
-        items_summary: lines.length ? lines.join(', ') : 'Custom drink order'
+        items_summary: lines.length ? lines.join(', ') : 'Custom drink order',
+        is_walkin_pos: String(o.order_number || '').startsWith('MM-POS-')
       };
     });
 
@@ -1037,7 +1254,7 @@ router.get('/sales-officer/order-monitoring', async (req, res) => {
 router.post('/sales-officer/order-monitoring/update', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
-    const { order_id, action, item_label, size, total_amount, customer_name } = req.body;
+    const { order_id, action, item_label, size, total_amount, customer_name, toppings } = req.body;
     if (!action) {
       return res.status(400).json({ status: 'error', message: 'Action identifier is required.' });
     }
@@ -1046,6 +1263,17 @@ router.post('/sales-officer/order-monitoring/update', async (req, res) => {
       const amount = parseFloat(total_amount) || 15;
       const orderNum = `MM-POS-${Date.now().toString().slice(-6)}`;
       const nowISO = new Date().toISOString();
+
+      // Toppings arrive as ["Extra Pearls x3", "Cheese"]; store them as one
+      // readable string in order_items.toppings (same column pre-orders use).
+      const toppingsText = (Array.isArray(toppings)
+        ? toppings.map(t => String(t).trim()).filter(Boolean).join(', ')
+        : String(toppings || '').trim()
+      ).slice(0, 250);
+
+      // The label sent by the page may already end with " + toppings"; keep
+      // only the drink name/size here so reports group drinks correctly.
+      const baseLabel = String(item_label || 'Preset Cup').replace(/\s*\+\s.*$/, '').trim() || 'Preset Cup';
 
       const { data: newOrder, error: orderErr } = await supabase
         .from('orders')
@@ -1072,9 +1300,10 @@ router.post('/sales-officer/order-monitoring/update', async (req, res) => {
           .from('order_items')
           .insert([{
             order_id: newOrder.id,
-            item_label: item_label || 'Preset Cup',
+            item_label: baseLabel,
             quantity: 1,
             size: size || '8oz',
+            toppings: toppingsText || null,
             line_total: amount,
             unit_price: amount,
             is_custom: false
@@ -2705,7 +2934,8 @@ router.get('/production-supervisor/order-list', async (req, res) => {
       const firstItem = (ord.order_items && ord.order_items[0]) || {};
       const cleanTitle = cleanItemLabel(firstItem.item_label, 'Milky Marble Cup');
       const size = firstItem.size || (String(firstItem.item_label || '').toLowerCase().includes('8oz') ? '8oz' : '12oz');
-      const specs = firstItem.toppings ? `Toppings: ${firstItem.toppings}` : '';
+      // Preset built-in toppings + any add-ons the cashier tapped
+      const specs = buildOrderSpecs(firstItem, cleanTitle);
       const type = firstItem.is_custom ? 'preorder' : 'preset';
 
       const rawStatus = String(ord.status || '').toUpperCase();
@@ -2868,38 +3098,14 @@ router.post('/production-supervisor/complete-order', async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Order ID is required.' });
     }
 
-    const { data: readyOrder, error } = await supabase
+    const { error } = await supabase
       .from('orders')
       .update({ status: 'READY_FOR_PICKUP', completed_at: new Date().toISOString() })
-      .eq('id', order_id)
-      .select(`
-        id, order_number, pickup_date, pickup_instructions, guest_name, guest_email, customer_id,
-        customers ( user_id, notify_pickup, users ( email, full_name, username ) )
-      `)
-      .maybeSingle();
+      .eq('id', order_id);
     if (error) throw error;
 
     const empName = await getEmployeeProfile(req);
     await deductInventoryForOrder(order_id, empName.fullName || 'Production Kitchen');
-
-    // Tell the customer their order is ready to claim. Fire-and-forget so a
-    // mail hiccup never blocks the kitchen. Respects the customer's
-    // "pick-up notification" setting (guests have no setting, so they get it).
-    if (readyOrder) {
-      const recipientEmail = readyOrder.guest_email || readyOrder.customers?.users?.email;
-      const wantsPickupEmail = readyOrder.customers ? readyOrder.customers.notify_pickup !== false : true;
-
-      if (recipientEmail && wantsPickupEmail) {
-        const recipientName = readyOrder.guest_name || readyOrder.customers?.users?.full_name || readyOrder.customers?.users?.username || 'Valued Customer';
-        let schedule = readyOrder.pickup_date || '';
-        if (!schedule && readyOrder.pickup_instructions) {
-          const m = readyOrder.pickup_instructions.match(/Pick-up:\s*([^|]+)/i);
-          if (m) schedule = m[1].trim();
-        }
-        dispatchOrderStatusEmail(recipientEmail, recipientName, readyOrder.order_number, 'READY_FOR_PICKUP', schedule)
-          .catch(err => console.error('[production-supervisor] Ready-for-pickup email failed:', err.message));
-      }
-    }
 
     return res.json({ status: 'success', message: 'Order marked ready for pickup and ingredients deducted.' });
   } catch (error) {

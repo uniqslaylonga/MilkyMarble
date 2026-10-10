@@ -1,6 +1,7 @@
 // server.js - Milky Marble Express Backend
 require('dotenv').config();
 const express = require('express');
+const { checkPromoEligibility } = require('./src/utils/promoRules');
 const path = require('path');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
@@ -1291,14 +1292,19 @@ app.put(['/api/customer/profile', '/api/customers/profile'], async (req, res) =>
       }
     }
 
-    // I-update ang customers table. 'phone' lang ang column dito; ang avatar
-    // ay nasa users table (ina-update sa ibaba).
-    const { error: custErr } = await supabase
-      .from('customers')
-      .update({ phone: phone_number ? String(phone_number).trim() : null })
-      .eq('user_id', targetUserId);
+    // I-update ang customers table gamit ang 'avatar' column
+    const customerUpdates = {
+      phone: phone_number || '',
+      phone_number: phone_number || ''
+    };
+    if (finalAvatarUrl !== undefined && finalAvatarUrl) {
+      customerUpdates.avatar = finalAvatarUrl;
+    }
 
-    if (custErr) throw custErr;
+    await supabase
+      .from('customers')
+      .update(customerUpdates)
+      .eq('user_id', targetUserId);
 
     // I-update ang users table gamit ang 'avatar' column lamang
     const userUpdates = {};
@@ -1807,6 +1813,23 @@ app.get('/api/promotions/validate', async (req, res) => {
     const statusUpper = (promo.status || '').toUpperCase();
     if (statusUpper !== 'APPROVED' && statusUpper !== 'PROPOSED' && statusUpper !== 'ACTIVE') {
       return res.status(400).json({ status: 'error', message: 'This promo code is no longer active.' });
+    }
+
+    // Special rules (e.g. SWEETSIP10: min 2 items + one-time use)
+    const itemCount = parseInt(req.query.item_count || 0, 10) || 0;
+    let promoCustomerId = null;
+    const cookieUserId = parseInt(req.cookies?.user_id, 10);
+    if (!isNaN(cookieUserId)) {
+      const { data: cust } = await supabase.from('customers').select('id').eq('user_id', cookieUserId).maybeSingle();
+      if (cust) promoCustomerId = cust.id;
+    }
+    const promoError = await checkPromoEligibility(supabase, promo.code, {
+      itemCount,
+      customerId: promoCustomerId,
+      email: req.query.email || null
+    });
+    if (promoError) {
+      return res.status(400).json({ status: 'error', message: promoError });
     }
 
     return res.json({
@@ -2606,7 +2629,7 @@ function ceoFlavorKey(item) {
 async function ceoLoadSaleOrders() {
   return ceoFetchAll(() => supabase
     .from('orders')
-    .select('id, placed_at, total_amount, customer_id, guest_name, order_items(line_total, quantity, item_label, flavor_value_id)')
+    .select('id, placed_at, total_amount, guest_name, order_items(line_total, quantity, item_label, flavor_value_id)')
     .in('status', CEO_SALE_STATUSES)
     .order('id', { ascending: true }));
 }
@@ -2629,7 +2652,7 @@ function ceoAggregateSales(orders) {
 
   orders.forEach(o => {
     totalSales += parseFloat(o.total_amount) || 0;
-    if (!o.customer_id) guestOrders++;
+    if (o.guest_name) guestOrders++;
     const parts = ceoPhParts(o.placed_at);
 
     (o.order_items || []).forEach(it => {

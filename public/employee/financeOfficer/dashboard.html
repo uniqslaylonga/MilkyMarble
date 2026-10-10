@@ -102,7 +102,7 @@
                             <span class="shift-subtag">Tuesday &amp; Thursday Release Cycle Oversight</span>
                         </div>
                         <h1 class="welcome-title">Welcome back, <span id="userFirstName">Finance Officer</span></h1>
-                        <p class="welcome-sub">Clear the DOA disbursement queue, approve procurement requisitions, and track cash position in real time.</p>
+                        <p class="welcome-sub">Track cash position, clear the DOA disbursement queue, and monitor cost of goods sold at a glance.</p>
                     </div>
                     <div class="banner-action-col">
                         <button type="button" class="btn-primary" onclick="openDisbursementModal()">
@@ -129,7 +129,7 @@
                                 <path d="M12 18V6"></path>
                             </svg>
                         </div>
-                        <div class="stat-body"><span id="totalRevenue" class="stat-value">₱0.00</span></div>
+                        <div class="stat-body"><span id="totalRevenue" class="stat-value">0.00</span></div>
                         <div class="stat-footer">Reconciled release collections</div>
                     </div>
 
@@ -149,14 +149,14 @@
                     <!-- 3. Pending Pre-Approvals -->
                     <div class="stat-card">
                         <div class="stat-header">
-                            <span class="stat-title">Pending Approvals</span>
+                            <span class="stat-title">Pending Pre-Approvals</span>
                             <svg class="stat-svg" viewBox="0 0 24 24" fill="none" stroke="#B26A00" stroke-width="2">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                 <polyline points="14 2 14 8 20 8"></polyline>
                             </svg>
                         </div>
                         <div class="stat-body"><span id="pendingApprovalCount" class="stat-value">00</span></div>
-                        <div class="stat-footer">₱301–₱500 Procurement Authorization</div>
+                        <div class="stat-footer">₱301–₱500 Middle-Tier Clearance</div>
                     </div>
 
                     <!-- 4. Pending Liquidations -->
@@ -181,12 +181,12 @@
                     <section class="directory-card">
                         <div class="panel-header-bar">
                             <div>
-                                <h2 class="section-title">Disbursement &amp; Approval Desk</h2>
-                                <p class="section-sub-text">DOA requisitions awaiting finance sign-off for procurement</p>
+                                <h2 class="section-title">Disbursement Clearance Desk</h2>
+                                <p class="section-sub-text">DOA-routed requisitions awaiting finance action</p>
                             </div>
                             <div class="order-filter-tabs">
                                 <button type="button" class="tab-btn active" id="tabPreApproval" onclick="switchFinanceTab('preapproval')">
-                                    <span>₱301–₱500 Authorization</span>
+                                    <span>₱301–₱500 Pre-Approval</span>
                                     <span class="counter-badge" id="badgePreApp">0</span>
                                 </button>
                                 <button type="button" class="tab-btn" id="tabLiquidation" onclick="switchFinanceTab('liquidation')">
@@ -197,7 +197,7 @@
                         </div>
 
                         <div class="threshold-legend-row">
-                            <span class="badge-route route-finance"><span class="badge-dot dot-finance"></span> Awaiting Finance Approval</span>
+                            <span class="badge-route route-finance"><span class="badge-dot dot-finance"></span> Endorsed to Finance</span>
                             <span class="badge-route route-procure"><span class="badge-dot dot-procure"></span> Direct Buy Liquidation</span>
                         </div>
 
@@ -209,7 +209,7 @@
                                         <th>Requesting Dept</th>
                                         <th>Estimated Cost</th>
                                         <th>DOA Status</th>
-                                        <th style="text-align: right;">Action</th>
+                                        <th style="text-align: right;">Authorization</th>
                                     </tr>
                                 </thead>
                                 <tbody id="financeTableBody">

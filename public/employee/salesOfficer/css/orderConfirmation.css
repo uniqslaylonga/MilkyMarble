@@ -764,3 +764,11 @@ body {
     align-items: flex-start;
   }
 }
+/* Manual InstaPay review block (reference / amount / receipt) */
+.pay-review-box { margin-top: 8px; padding: 8px 10px; background: #FFF5F4; border: 1px solid #FCE1DD; border-radius: 10px; font-size: 12px; line-height: 1.5; color: #594A42; }
+.pay-review-line { white-space: nowrap; }
+.pay-review-ref { font-family: monospace; font-weight: 800; font-size: 13px; letter-spacing: .04em; color: #594A42; user-select: all; }
+.pay-review-ok { color: #2e7d32; font-weight: 700; margin-left: 4px; }
+.pay-review-warn { color: #d32f2f; font-weight: 800; margin-left: 4px; }
+.pay-review-muted { color: #8a7a72; font-weight: 600; }
+.pay-review-link { display: inline-block; margin-top: 2px; font-weight: 800; color: #F48A8E; text-decoration: underline; }

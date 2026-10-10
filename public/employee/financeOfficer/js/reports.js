@@ -1,7 +1,7 @@
 let currentFinancialData = null;
 
-// Day 1 & DSO Cycle State (Default benchmark: October 8, 2026 SOP Section 7.B)
-let cycleStartDate = '2026-10-08';
+// Day 1 & DSO Cycle State (October 8, 2026 Benchmark as per SOP Section 7.B)
+let cycleStartDate = localStorage.getItem('mm_cycle_start_date') || '2026-10-08';
 
 // Global SweetAlert2 Config matching Master SOP Section 2.E
 const MMSwal = Swal.mixin({
@@ -17,11 +17,13 @@ const MMSwal = Swal.mixin({
 document.addEventListener('DOMContentLoaded', () => {
     fetchFinancialReportsData();
 
+    // Cycle selector event listener
     document.getElementById('reportCycleSelector')?.addEventListener('change', () => {
         fetchFinancialReportsData();
     });
 });
 
+// Money display: null means "the system does not record this" and shows as an em dash, never as 0.
 const toNum = (v) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
 
 function money(v, parens) {
@@ -31,45 +33,86 @@ function money(v, parens) {
     return parens ? '(' + t + ')' : t;
 }
 
-function getAuthHeaders() {
-    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-    const headers = { 'Content-Type': 'application/json' };
-    if (userId) headers['x-user-id'] = userId;
-    return headers;
-}
+const EMPTY_FINANCIAL_DATA = {
+    grossRevenue: null, preorderSales: null, presetSales: null,
+    cogsRaw: null, ingredientsCost: null, packagingCost: null, grossProfit: null,
+    directBuysExp: null, overheadExp: null, marketingExp: null,
+    totalDisbursements: null, netIncome: null, netProfitMarginPct: null,
+    latestReconciliation: null
+};
 
 async function fetchFinancialReportsData() {
     try {
-        const headers = getAuthHeaders();
-        const response = await fetch('/api/finance-officer/reports', { headers });
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const headers = userId ? { 'x-user-id': userId } : {};
 
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.message || 'Could not load reports figures from server.');
+        // 1. Revenue + recorded expense totals. If this fails we stop: no substitute figures.
+        const revRes = await fetch('/api/finance-officer/revenue', { headers });
+        const revData = await revRes.json().catch(() => ({}));
+        if (!revRes.ok) {
+            throw new Error(`Revenue API error ${revRes.status}: ${revData.message || 'Could not load revenue figures'}`);
         }
 
-        const data = await response.json();
-
-        if (data.cycleStartDate) {
-            cycleStartDate = data.cycleStartDate;
+        // 2. Drawer reconciliation only feeds the audit card; if it fails that card shows "—".
+        let payData = null;
+        try {
+            const payRes = await fetch('/api/finance-officer/payments', { headers });
+            if (payRes.ok) payData = await payRes.json();
+        } catch (e) {
+            console.warn('Could not load drawer reconciliation:', e.message);
         }
 
-        const user = data.user || {};
+        const user = revData.user || (payData && payData.user) || {};
         const userNameEl = document.getElementById('userName');
         const userAvatarEl = document.getElementById('userAvatar');
         if (userNameEl) userNameEl.textContent = user.fullName || 'Financial Officer';
         if (userAvatarEl && user.avatarSrc) userAvatarEl.src = user.avatarSrc;
-        setText('pdfReportingOfficer', user.fullName || 'Financial Officer');
+        setText('pdfReportingOfficer', user.fullName || '—');
 
-        currentFinancialData = data.financialData || {};
+        // 3. Figures straight from the database. Anything not recorded stays null.
+        const m = revData.metrics || {};
+        const grossRevenue = toNum(m.totalRevenue);
+        const preorderSales = toNum(m.preordersInflow);
+        const presetSales = toNum(m.presetsInflow);
+        const totalExpenses = toNum(m.totalExpenses);              // approved + purchased requisitions
+        const cogsRecorded = toNum(m.totalCogs);
+        const cogsRaw = cogsRecorded !== null && cogsRecorded > 0 ? cogsRecorded : null;   // needs expenses.category = 'cogs'
+
+        const grossProfit = (grossRevenue !== null && cogsRaw !== null) ? grossRevenue - cogsRaw : null;
+        // Non-COGS outflows; the ingredient/packaging and direct/overhead/marketing splits are not tracked.
+        const totalDisbursements = totalExpenses !== null ? totalExpenses - (cogsRaw || 0) : null;
+        const netIncome = (grossRevenue !== null && totalExpenses !== null) ? grossRevenue - totalExpenses : null;
+        const netProfitMarginPct = (netIncome !== null && grossRevenue > 0)
+            ? ((netIncome / grossRevenue) * 100).toFixed(1)
+            : null;
+
+        currentFinancialData = {
+            grossRevenue,
+            preorderSales,
+            presetSales,
+            cogsRaw,
+            ingredientsCost: null,
+            packagingCost: null,
+            grossProfit,
+            directBuysExp: null,
+            overheadExp: null,
+            marketingExp: null,
+            totalDisbursements,
+            netIncome,
+            netProfitMarginPct,
+            latestReconciliation: payData ? (payData.latestReconciliation || null) : null
+        };
+
         renderReportsDashboard(currentFinancialData);
 
     } catch (error) {
         console.error('Could not load financial report figures:', error);
+        currentFinancialData = null;
+        renderReportsDashboard(EMPTY_FINANCIAL_DATA);
         MMSwal.fire({
             icon: 'warning',
             title: 'System Notice',
-            text: error.message || 'Could not load accounting ledger from Supabase.'
+            text: error.message || 'Could not load the accounting ledger.'
         });
     }
 }
@@ -82,9 +125,9 @@ function renderReportsDashboard(data) {
     setText('kpiCogsTotal', money(data.cogsRaw));
     setText('kpiOperatingExpenses', money(data.totalDisbursements));
     setText('kpiNetProfit', money(data.netIncome));
-    setText('kpiMarginFooter', `Net Profit Margin: ${data.netProfitMarginPct === null ? '0.0%' : data.netProfitMarginPct + '%'}`);
+    setText('kpiMarginFooter', `Net Profit Margin: ${data.netProfitMarginPct === null ? '—' : data.netProfitMarginPct + '%'}`);
 
-    // 2. P&L Table
+    // 2. P&L table
     setText('pnlPreorderSales', money(data.preorderSales));
     setText('pnlPresetSales', money(data.presetSales));
     setText('pnlGrossRevenue', money(data.grossRevenue));
@@ -102,13 +145,15 @@ function renderReportsDashboard(data) {
 
     setText('pnlNetOperatingIncome', money(data.netIncome));
 
-    // 3. 45-day Collection Window
+    // 3. 45-day collection window
     renderDsoSentinel();
 
-    // 4. Cash Drawer Status
+    // 4. Drawer Balancing Status
     renderDrawerStatus(data.latestReconciliation);
 }
 
+// 45-day cycle progress. This is a day counter from the configured cycle start,
+// not a measured collection result, so the text makes no claims about performance.
 function renderDsoSentinel() {
     const start = new Date(cycleStartDate);
     const today = new Date();
@@ -130,10 +175,10 @@ function renderDsoSentinel() {
     if (diffDays <= 45) {
         if (badge) {
             badge.className = 'badge-dso-target good';
-            badge.textContent = 'Term: ≤ 45 Days';
+            badge.textContent = 'Term: < 45 Days';
         }
         if (copy) {
-            copy.textContent = `Operating cycle is at day ${currentDay} of 45. Collections from Tuesday and Thursday releases are within the healthy working capital liquidity threshold.`;
+            copy.textContent = `Cycle day ${currentDay} of 45. The target is to collect receivables within 45 days of the cycle start.`;
         }
     } else {
         if (badge) {
@@ -141,19 +186,20 @@ function renderDsoSentinel() {
             badge.textContent = 'Term: Over 45 Days';
         }
         if (copy) {
-            copy.textContent = `Cycle day ${diffDays}: exceeded the standard 45-day cycle window. Review outstanding account collections.`;
+            copy.textContent = `Cycle day ${diffDays}: past the 45-day target window. Review outstanding receivables.`;
         }
     }
 }
 
+// Cash Drawer Audit Card
 function renderDrawerStatus(recon) {
     const varEl = document.getElementById('drawerAuditVariance');
     if (!recon) {
         setText('drawerCashSalesExpected', '—');
         setText('drawerPhysicalCounted', '—');
-        setText('drawerAuditVariance', '₱0.00');
-        if (varEl) varEl.style.color = '#2E7D32';
-        setText('lastReconciledTimestamp', 'Last Reconciled: Register open');
+        setText('drawerAuditVariance', '—');
+        if (varEl) varEl.style.color = '';
+        setText('lastReconciledTimestamp', 'Last Reconciled: none recorded');
         return;
     }
 
@@ -166,8 +212,7 @@ function renderDrawerStatus(recon) {
             varEl.textContent = '—';
             varEl.style.color = '';
         } else {
-            const prefix = variance > 0 ? '+' : '';
-            varEl.textContent = prefix + '₱' + formatAmount(variance);
+            varEl.textContent = (variance >= 0 ? '+' : '-') + '₱' + formatAmount(Math.abs(variance));
             varEl.style.color = variance === 0 ? '#2E7D32' : '#C9302C';
         }
     }
@@ -175,11 +220,14 @@ function renderDrawerStatus(recon) {
     const when = recon.period_end || recon.created_at;
     const d = when ? new Date(when) : null;
     setText('lastReconciledTimestamp', d && !isNaN(d.getTime())
-        ? `Reconciled: ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+        ? `Reconciled: ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' })}`
         : 'Reconciled');
 }
 
-// Corporate Executive PDF Export Standard (MM-SOP-MASTER-2026 Section 8)
+// ==========================================================================
+// CORPORATE EXECUTIVE PDF EXPORT ENGINE (html2pdf.js)
+// Adheres strictly to MM-SOP-MASTER-2026 Section 8 Standard
+// ==========================================================================
 async function exportFinancialReportToPDF() {
     if (!currentFinancialData) {
         MMSwal.fire({
@@ -190,6 +238,7 @@ async function exportFinancialReportToPDF() {
         return;
     }
 
+    // Populate Hidden PDF Template
     const todayStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     setText('pdfReportDate', `Date: ${todayStr}`);
     setText('pdfPreorderSales', money(currentFinancialData.preorderSales));
@@ -210,11 +259,12 @@ async function exportFinancialReportToPDF() {
     setText('pdfNetOperatingIncome', money(currentFinancialData.netIncome));
 
     const recon = currentFinancialData.latestReconciliation;
-    setText('pdfDrawerDiscrepancy', recon ? money(recon.variance) : '₱0.00');
+    setText('pdfDrawerDiscrepancy', recon ? money(recon.variance) : '—');
 
     const wrapper = document.getElementById('corporatePdfRenderWrapper');
     if (!wrapper) return;
 
+    // Show temporary loader
     MMSwal.fire({
         title: 'Compiling Financial Statement',
         html: 'Formatting official P&L and corporate audit sign-offs into PDF...',

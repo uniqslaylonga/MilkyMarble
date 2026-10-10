@@ -625,6 +625,11 @@ body {
   color: #2E7D32;
 }
 
+.status-badge-pill.completed {
+  background-color: rgba(90, 120, 200, 0.18);
+  color: #3F5BA9;
+}
+
 .status-dot {
   width: 6px;
   height: 6px;
@@ -838,4 +843,187 @@ body {
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+/* ===== Walk-in Toppings Popup (paste at the END of css/orderMonitoring.css) ===== */
+.mm-topping-wrap {
+  text-align: left;
+  font-family: var(--font-family-body);
+}
+
+.mm-topping-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--card-bg);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.mm-topping-item strong {
+  font-family: var(--font-family-heading);
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--brown-soft);
+}
+
+.mm-topping-item > span {
+  font-family: var(--font-family-heading);
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: var(--brown-soft);
+}
+
+.mm-topping-size {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--accent-pink);
+  color: #fff;
+  font-family: var(--font-family-body);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  vertical-align: middle;
+}
+
+.mm-topping-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--brown-soft);
+  margin-bottom: 8px;
+}
+
+.mm-topping-label em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.mm-topping-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 230px;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-bottom: 14px;
+}
+
+.mm-topping-grid::-webkit-scrollbar {
+  width: 4px;
+}
+.mm-topping-grid::-webkit-scrollbar-thumb {
+  background: rgba(246, 146, 153, 0.4);
+  border-radius: 4px;
+}
+
+.mm-topping-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--accent-pink);
+  border-radius: 12px;
+  background: var(--card-white);
+  transition: all 0.15s ease;
+}
+
+.mm-topping-chip.selected {
+  background: var(--card-bg);
+  box-shadow: 0 2px 6px rgba(246, 146, 153, 0.2);
+}
+
+.mm-chip-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mm-chip-name {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--brown-soft);
+}
+
+.mm-chip-price {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-pink);
+}
+
+.mm-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mm-step-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent-pink);
+  background: var(--card-white);
+  color: var(--accent-pink);
+  font-family: var(--font-family-body);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.mm-step-btn:hover {
+  background: var(--accent-pink);
+  color: #fff;
+}
+
+.mm-step-qty {
+  min-width: 18px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--brown-soft);
+}
+
+.mm-total-box {
+  background: var(--bg-main);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 10px 16px;
+}
+
+.mm-total-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.mm-total-grand {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1.5px dashed var(--border-soft);
+  font-family: var(--font-family-heading);
+  font-size: 17px;
+  letter-spacing: 1px;
+  color: var(--brown-soft);
+}
+
+.mm-topping-note {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
 }

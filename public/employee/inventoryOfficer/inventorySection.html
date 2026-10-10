@@ -73,10 +73,10 @@
     <main class="main-content">
         <!-- TOPBAR -->
         <header class="topbar">   
-            <div class="topbar-status-strip open" id="registerStatusBanner">
-                <span class="status-pulse-dot"></span>
-                <span id="registerStatusText">Warehouse Desk &bull; Stock Levels &amp; Reorder Buffers</span>
-            </div>
+                  <div class="topbar-status-strip open" id="registerStatusBanner">
+                    <span class="status-pulse-dot"></span>
+                    <span id="registerStatusText">Warehouse Desk &bull; Stock Levels &amp; Reorder Buffers</span>
+                </div>
             <div class="topbar-right">
                 <div class="user-profile">
                     <div class="user-avatar">
@@ -171,7 +171,7 @@
                 </div>
             </div>
 
-            <!-- TABLE CONTAINER -->
+            <!-- TABLE CONTAINER (Reserved Column Removed per Punto 2) -->
             <div class="table-container">
                 <table class="cust-table" id="inventoryTable">
                     <thead>
@@ -217,7 +217,7 @@
         <div class="modal-header">
             <div class="modal-header-left">
                 <h3 class="modal-title">Register Warehouse Stock</h3>
-                <p class="modal-subtitle">Add raw ingredients, packaging, or equipment into system inventory.</p>
+                <p class="modal-subtitle">Add raw ingredients, cups, or equipment into system inventory.</p>
             </div>
             <button type="button" class="modal-close" onclick="closeModal('addStockModal')">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -363,6 +363,6 @@
 <script src="../js/employeeAuth.js"></script>
 <script src="js/inventorySection.js"></script>
 <script src="/shared/js/avatarUpload.js"></script>
-<script src="/shared/js/staffLogout.js"></script>
+    <script src="/shared/js/staffLogout.js"></script>
 </body>
 </html>

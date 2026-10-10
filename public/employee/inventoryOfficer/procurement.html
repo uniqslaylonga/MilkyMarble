@@ -74,19 +74,9 @@
         <!-- TOPBAR -->
         <header class="topbar">        
             <div class="topbar-status-strip open" id="registerStatusBanner">
-                <span class="status-pulse-dot"></span>
-                <span id="registerStatusText">Procurement Desk &bull; Purchase Requests &amp; Vendor Sourcing</span>
-            </div> 
-
-            <!-- SEARCH BAR -->
-            <div class="search-box">
-                <input type="text" id="procurementSearchInput" placeholder="Search item, PR code, requester, or vendor...">
-                <svg class="search-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-            </div>
-
+                    <span class="status-pulse-dot"></span>
+                    <span id="registerStatusText">Procurement Desk &bull; Purchase Requests &amp; Vendor Sourcing</span>
+                </div>    
             <div class="topbar-right">
                 <div class="user-profile">
                     <div class="user-avatar">
@@ -154,8 +144,9 @@
                         </svg>
                         <select id="statusFilter">
                             <option value="">All Statuses</option>
-                            <option value="PENDING">Pending Clearance</option>
-                            <option value="APPROVED">Approved (Ready to Buy)</option>
+                            <option value="APPROVED">Approved (Direct Buy / Awaiting Receiving)</option>
+                            <option value="PENDING_FINANCE">Pending Finance (₱301–₱500)</option>
+                            <option value="PENDING_CEO">Pending CEO (> ₱500)</option>
                             <option value="PURCHASED">Purchased (Awaiting Inspection)</option>
                             <option value="RECEIVED">Received &amp; Stock Inflowed</option>
                         </select>
@@ -163,7 +154,7 @@
                 </div>
             </div>
 
-            <!-- THRESHOLD LEGEND PILLS -->
+            <!-- THRESHOLD LEGEND PILLS (CLEAN ZERO-EMOJI DOTS) -->
             <div class="threshold-legend-row" id="doaLegendRow">
                 <span class="badge-route route-procure"><span class="badge-dot dot-procure"></span> ≤ ₱300: Procurement Direct Buy Authorized</span>
                 <span class="badge-route route-finance"><span class="badge-dot dot-finance"></span> ₱301–₱500: Finance Officer Clearance</span>
@@ -247,7 +238,7 @@
     </main>
 </div>
 
-<!-- MODAL 1: ADD PURCHASE REQUEST (HYBRID SUPPLIER VIA DATALIST + UNIT OF MEASURE) -->
+<!-- MODAL 1: ADD PURCHASE REQUEST (HYBRID SUPPLIER VIA DATALIST) -->
 <div class="modal-overlay" id="addRequestModal">
     <div class="profile-modal" onclick="event.stopPropagation()">
         <div class="modal-header">
@@ -267,13 +258,16 @@
             <div class="form-grid">
                 <div class="form-group full">
                     <label for="reqItemName">Raw Ingredient / Supply Description *</label>
-                    <input type="text" id="reqItemName" placeholder="e.g. Raw Tapioca Pearls, Evaporated Milk" required>
+                    <input type="text" id="reqItemName" placeholder="e.g. Raw Tapioca Pearls (1kg), Evaporated Milk" required>
                 </div>
 
+                <!-- Punto 3: Hybrid Input with Datalist Suggestions -->
                 <div class="form-group full">
                     <label for="reqVendorName">Partner Vendor / Store (Pick or Type Custom Store) *</label>
                     <input type="text" id="reqVendorName" list="vendorDatalist" placeholder="Choose partner vendor or type local market/sari-sari..." required>
-                    <datalist id="vendorDatalist"></datalist>
+                    <datalist id="vendorDatalist">
+                        <!-- Populated dynamically via JS -->
+                    </datalist>
                 </div>
 
                 <div class="form-group">
@@ -282,20 +276,6 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="reqUnit">Unit of Measure *</label>
-                    <select id="reqUnit" required>
-                        <option value="packs" selected>packs</option>
-                        <option value="pcs">pcs</option>
-                        <option value="box">box</option>
-                        <option value="cans">cans</option>
-                        <option value="bags">bags</option>
-                        <option value="kg">kg</option>
-                        <option value="grams">grams</option>
-                        <option value="bottles">bottles</option>
-                    </select>
-                </div>
-
-                <div class="form-group full">
                     <label for="reqAmount">Estimated Total Amount (₱) *</label>
                     <input type="number" step="0.5" id="reqAmount" placeholder="0.00" min="1" required>
                 </div>
@@ -387,11 +367,9 @@
                         <option value="grams" selected>grams</option>
                         <option value="pcs">pcs</option>
                         <option value="packs">packs</option>
-                        <option value="box">box</option>
                         <option value="cans">cans</option>
                         <option value="bags">bags</option>
                         <option value="kg">kg</option>
-                        <option value="bottles">bottles</option>
                     </select>
                 </div>
 
@@ -532,6 +510,6 @@
 <script src="../js/employeeAuth.js"></script>
 <script src="js/procurement.js"></script>
 <script src="/shared/js/avatarUpload.js"></script>
-<script src="/shared/js/staffLogout.js"></script>
+    <script src="/shared/js/staffLogout.js"></script>
 </body>
 </html>

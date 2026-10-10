@@ -12,7 +12,7 @@
 <body>
 
 <div class="app-container">
-    <!-- STICKY / FIXED SIDEBAR (MM-SOP-MASTER-2026 Section 2.C) -->
+    <!-- STICKY / FIXED SIDEBAR (CONSOLIDATED 4-LINK ARCHITECTURE) -->
     <aside class="sidebar">
         <div class="brand-section">
             <div class="brand-logo-wrap">
@@ -133,7 +133,7 @@
         <!-- 4 EXECUTIVE FINANCIAL KPIS -->
         <section class="section">
             <div class="overview-grid four-col-grid">
-                <!-- 1. Gross Operating Revenue -->
+                <!-- 1. Gross Realized Inflow -->
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-title">Gross Operating Revenue</span>
@@ -147,7 +147,7 @@
                     <div class="stat-footer">Reconciled release collections</div>
                 </div>
 
-                <!-- 2. COGS (Raw Materials) -->
+                <!-- 2. Cost of Goods Sold (BOM Deductions + Bulk Stock) -->
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-title">COGS (Raw Materials)</span>
@@ -189,7 +189,7 @@
             </div>
         </section>
 
-        <!-- SPLIT REPORT LAYOUT -->
+        <!-- SPLIT REPORT LAYOUT: FORMAL INCOME STATEMENT & DSO AGING AUDIT -->
         <div class="split-reports-layout">
             <!-- LEFT PANEL: AUDITED INCOME STATEMENT (P&L) -->
             <section class="directory-card pnl-card">
@@ -274,7 +274,7 @@
                             <h2 class="section-title">45-Day DSO Health Sentinel</h2>
                             <p class="section-sub-text">Days Sales Outstanding benchmark tracking</p>
                         </div>
-                        <span class="badge-dso-target good" id="dsoBadgeIndicator">Term: &le; 45 Days</span>
+                        <span class="badge-dso-target good" id="dsoBadgeIndicator">Term: &lt; 45 Days</span>
                     </div>
 
                     <div class="dso-timeline-progress-wrap">
@@ -456,7 +456,7 @@
                         <tr>
                             <td><strong>Days Sales Outstanding (DSO)</strong></td>
                             <td id="pdfDsoDays">—</td>
-                            <td>Compliant (&le; 45 Days)</td>
+                            <td>Compliant (&lt; 45 Days)</td>
                         </tr>
                         <tr>
                             <td><strong>Sales Drawer Opening Float</strong></td>
@@ -504,6 +504,6 @@
 <script src="../js/employeeAuth.js"></script>
 <script src="js/reports.js"></script>
 <script src="/shared/js/avatarUpload.js"></script>
-<script src="/shared/js/staffLogout.js"></script>
+    <script src="/shared/js/staffLogout.js"></script>
 </body>
 </html>

@@ -27,6 +27,43 @@ function formatCleanStatus(status) {
         .replace(/\b\w/g, c => c.toUpperCase());
 }
 
+// Get the toppings of an order as a clean "Cheese, Tapioca Pearls" string.
+// Accepts an array, a JSON string, or a plain comma-separated string.
+function getToppingsText(ord) {
+    let t = ord.toppings ?? ord.topping_list ?? ord.addons ?? '';
+
+    if (typeof t === 'string') {
+        const trimmed = t.trim();
+        if (trimmed.startsWith('[')) {
+            try { t = JSON.parse(trimmed); } catch (e) { t = trimmed; }
+        } else {
+            t = trimmed;
+        }
+    }
+
+    if (Array.isArray(t)) {
+        t = t
+            .map(x => (typeof x === 'string' ? x : (x && (x.name || x.topping_name)) || ''))
+            .map(s => String(s).trim())
+            .filter(Boolean)
+            .join(', ');
+    }
+
+    return String(t || '').trim();
+}
+
+// Specs text for display: always shows the toppings, even for the Standard Recipe
+// e.g. "Standard Recipe • Toppings: Cheese, Tapioca Pearls"
+function buildSpecsText(ord) {
+    const base = String(ord.specs || '').trim();
+    const toppings = getToppingsText(ord);
+
+    if (!toppings) return base || 'Standard Recipe';
+    if (/topping/i.test(base)) return base; // specs already lists the toppings
+
+    return (base || 'Standard Recipe') + ' • Toppings: ' + toppings;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Search listener (synced between topbar search and orders-queue search)
     const searchInput = document.getElementById('orderSearchInput');
@@ -139,7 +176,7 @@ function applyOrderFilters() {
             const num = (ord.order_number || '').toLowerCase();
             const cust = (ord.customer_name || '').toLowerCase();
             const flavor = (ord.cleanTitle || '').toLowerCase();
-            const specs = (ord.specs || '').toLowerCase();
+            const specs = buildSpecsText(ord).toLowerCase();
             if (!num.includes(searchVal) && !cust.includes(searchVal) && !flavor.includes(searchVal) && !specs.includes(searchVal)) {
                 return false;
             }
@@ -223,7 +260,7 @@ function renderOrdersTable() {
                 </td>
                 <td>
                     <div class="specs-title">${escapeHtml(ord.cleanTitle)}</div>
-                    <div class="specs-detail-pill">${escapeHtml(ord.specs || 'Standard Recipe')}</div>
+                    <div class="specs-detail-pill">${escapeHtml(buildSpecsText(ord))}</div>
                 </td>
                 <td><strong>${ord.quantity || 1}</strong></td>
                 <td><span style="font-size: 11.5px; font-weight: 700; color: var(--text-muted);">${escapeHtml(ord.claim_slot || 'Counter Release')}</span></td>

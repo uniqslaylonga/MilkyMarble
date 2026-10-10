@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addVendorForm')?.addEventListener('submit', handleAddVendor);
     document.getElementById('editVendorForm')?.addEventListener('submit', handleEditVendor);
 
-    // Delivery Receiving Inspection & Variance calculation
+    // Delivery Receiving Inspection & Variance calculation (Punto 1)
     const usableInput = document.getElementById('usableReceivedUnits');
     if (usableInput) {
         usableInput.addEventListener('input', updateDeliveryVarianceCalculation);
@@ -181,16 +181,9 @@ function applyCurrentFilters() {
     const q = document.getElementById('procurementSearchInput')?.value.toLowerCase().trim() || '';
     const statusFilter = document.getElementById('statusFilter')?.value || '';
 
-    // Purchase requests filter
+    // Purchase requests
     filteredRequests = allRequests.filter(req => {
-        const statusUpper = String(req.status || '').toUpperCase();
-        if (statusFilter) {
-            if (statusFilter === 'PENDING') {
-                if (statusUpper !== 'PENDING' && statusUpper !== 'PENDING_FINANCE' && statusUpper !== 'PENDING_CEO') return false;
-            } else if (statusUpper !== statusFilter) {
-                return false;
-            }
-        }
+        if (statusFilter && req.status !== statusFilter) return false;
         if (q) {
             const name = (req.name || '').toLowerCase();
             const code = (req.pr_code || '').toLowerCase();
@@ -201,7 +194,7 @@ function applyCurrentFilters() {
         return true;
     });
 
-    // Vendors filter
+    // Vendors
     filteredVendors = allVendors.filter(v => {
         if (q) {
             const vName = (v.vendor_name || '').toLowerCase();
@@ -222,7 +215,7 @@ function applyCurrentFilters() {
     renderVendorsTable();
 }
 
-// Render Requests Table with Strict DOA Approver vs Buyer Flow
+// Render Requests Table with Permanent Pager & Punto 1 Receiving Audit Trigger
 function renderRequestsTable() {
     const tbody = document.getElementById('requestsTableBody');
     const pageInfo = document.getElementById('prPageInfo');
@@ -259,40 +252,26 @@ function renderRequestsTable() {
         const price = formatPeso(req.total_price);
         const statusUpper = String(req.status || '').toUpperCase();
 
-        // 1. Pwedeng bilhin ni Procurement:
-        //    - Kung <= 300 (Micro Tier) at Pending pa, O KAYA
-        //    - Na-approve na ni Finance/CEO ('APPROVED')
-        const canProcurementBuy = (req.route === 'procure' && (statusUpper === 'PENDING' || statusUpper === 'APPROVED')) || statusUpper === 'APPROVED';
-
-        // 2. Ready for Receiving & Audit kung nabili na ni Procurement
-        const isReadyToReceive = statusUpper === 'PURCHASED';
+        const canDirectBuy = req.route === 'procure' && statusUpper !== 'PURCHASED' && statusUpper !== 'RECEIVED';
+        const isReadyToReceive = statusUpper === 'PURCHASED' || statusUpper === 'APPROVED';
 
         let actionButtonHtml = '';
-        if (canProcurementBuy) {
-            const isEscalatedApproved = req.route !== 'procure' && statusUpper === 'APPROVED';
-            const label = isEscalatedApproved ? 'Buy Now (Approved)' : 'Buy Instant';
+        if (canDirectBuy) {
             actionButtonHtml = `
-                <button type="button" class="btn-buy-instant" onclick="executeBuyAction(${Number(req.id)}, '${escapeHtml(req.route)}')">
-                    ${label}
+                <button type="button" class="btn-buy-instant" onclick="executeDirectBuy(${Number(req.id)})">
+                    Buy Instant
                 </button>
             `;
-        } else if (isReadyToReceive) {
+        } else if (isReadyToReceive && statusUpper !== 'RECEIVED') {
             actionButtonHtml = `
                 <button type="button" class="btn-receive-audit" onclick="openReceiveDeliveryModal(${Number(req.id)})">
                     Receive &amp; Audit
                 </button>
             `;
-        } else if (statusUpper === 'RECEIVED') {
-            actionButtonHtml = `
-                <span style="display: inline-block; padding: 4px 8px; border-radius: 8px; background: rgba(46, 125, 50, 0.15); color: #2E7D32; font-weight: 700; font-size: 11px;">
-                    Completed
-                </span>
-            `;
         } else {
-            // Pending clearance mula sa Finance o CEO
             actionButtonHtml = `
                 <button type="button" class="btn-view-status" onclick="showRequestStatus(${Number(req.id)})">
-                    Pending Clearance
+                    View Status
                 </button>
             `;
         }
@@ -318,7 +297,7 @@ function renderRequestsTable() {
     }).join('');
 }
 
-// Punto 1: Open Delivery Inspection & Audit Modal with Unit Matching
+// Punto 1: Open Delivery Inspection & Audit Modal
 function openReceiveDeliveryModal(prId) {
     const pr = allRequests.find(r => r.id === prId);
     if (!pr) return;
@@ -326,26 +305,11 @@ function openReceiveDeliveryModal(prId) {
     document.getElementById('receivePrId').value = pr.id;
     document.getElementById('receiveItemRawName').value = pr.name;
 
-    // Parse expected quantity and unit from string if present (e.g., "(10 packs)" o "(5x)")
+    // Parse expected quantity from string if present (e.g., "Tapioca Pearls (5x)")
     let expectedQty = 1;
-    let matchedUnit = '';
-    const matchWithUnit = pr.name.match(/\(([0-9.]+)\s*([a-zA-Z]+)\)/i);
-    const matchX = pr.name.match(/\(([0-9.]+)x\)/i);
-
-    if (matchWithUnit) {
-        expectedQty = parseFloat(matchWithUnit[1]);
-        matchedUnit = matchWithUnit[2].toLowerCase();
-    } else if (matchX) {
-        expectedQty = parseFloat(matchX[1]);
-    }
-
-    // Auto-select unit in receiving modal if matched
-    const destUnitSelect = document.getElementById('destinationUnit');
-    if (destUnitSelect && matchedUnit) {
-        const optionExists = Array.from(destUnitSelect.options).some(opt => opt.value === matchedUnit);
-        if (optionExists) {
-            destUnitSelect.value = matchedUnit;
-        }
+    const match = pr.name.match(/\(([0-9.]+)x\)/i);
+    if (match) {
+        expectedQty = parseFloat(match[1]);
     }
 
     document.getElementById('expectedUnitsCount').value = expectedQty;
@@ -391,7 +355,7 @@ async function handleReceiveDeliverySubmit(e) {
     e.preventDefault();
 
     const prId = document.getElementById('receivePrId').value;
-    const itemName = document.getElementById('receiveItemRawName').value.replace(/\s*\([0-9.]+\s*[a-zA-Z]*x?\)/i, '').trim();
+    const itemName = document.getElementById('receiveItemRawName').value.replace(/\s*\([0-9.]+x\)/i, '').trim();
     const expectedQty = parseFloat(document.getElementById('expectedUnitsCount').value || 0);
     const usableQty = parseFloat(document.getElementById('usableReceivedUnits').value || 0);
     const department = document.getElementById('destinationCategory').value;
@@ -448,48 +412,6 @@ async function handleReceiveDeliverySubmit(e) {
         });
     } finally {
         if (submitBtn) submitBtn.disabled = false;
-    }
-}
-
-// Unified Buy Execution Handler (Direct Buy & Approved Clearances)
-async function executeBuyAction(reqId, route) {
-    const req = allRequests.find(r => r.id === reqId);
-    if (!req) return;
-
-    const isDirect = (route === 'procure');
-    const titleText = isDirect ? 'Authorize Direct Buy?' : 'Execute Approved Purchase?';
-    const subText = isDirect
-        ? 'Requisitions of ₱300 or less fall within your direct purchase authority.'
-        : 'This requisition has received official clearance and is authorized for procurement purchase.';
-
-    const res = await MMSwal.fire({
-        title: titleText,
-        html: `Mark <strong>"${escapeHtml(req.name)}"</strong> (₱${formatPeso(req.total_price)}) as purchased?<br><br><small style="color:var(--text-muted);">${subText}</small>`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Confirm Purchase',
-        cancelButtonText: 'Cancel'
-    });
-
-    if (!res.isConfirmed) return;
-
-    try {
-        await apiPost('/api/procurement-officer/mark-purchased', { 
-            expense_id: reqId,
-            status: 'PURCHASED'
-        });
-        await fetchProcurementData();
-        MMSwal.fire({
-            icon: 'success',
-            title: 'Purchase Recorded',
-            text: `"${req.name}" marked as purchased. You can now receive and audit items once delivered.`
-        });
-    } catch (error) {
-        MMSwal.fire({
-            icon: 'warning',
-            title: 'Purchase Failed',
-            text: error.message || 'Could not complete purchase action.'
-        });
     }
 }
 
@@ -597,6 +519,39 @@ function renderVenPagerButtons(totalPages, activePage) {
     });
 }
 
+// Direct Buy Action for ≤ ₱300 with SweetAlert2 confirmation
+async function executeDirectBuy(reqId) {
+    const req = allRequests.find(r => r.id === reqId);
+    if (!req) return;
+
+    const res = await MMSwal.fire({
+        title: 'Authorize Direct Buy?',
+        html: `Mark <strong>"${escapeHtml(req.name)}"</strong> (₱${formatPeso(req.total_price)}) as purchased?<br><br><small style="color:var(--text-muted);">Requisitions of ₱300 or less fall within your direct purchase authority.</small>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Confirm Purchase',
+        cancelButtonText: 'Cancel'
+    });
+
+    if (!res.isConfirmed) return;
+
+    try {
+        await apiPost('/api/procurement-officer/mark-purchased', { expense_id: reqId });
+        await fetchProcurementData();
+        MMSwal.fire({
+            icon: 'success',
+            title: 'Purchase Recorded',
+            text: `"${req.name}" marked as purchased. You can now receive and audit items once delivered.`
+        });
+    } catch (error) {
+        MMSwal.fire({
+            icon: 'warning',
+            title: 'Purchase Failed',
+            text: error.message || 'Could not complete purchase action.'
+        });
+    }
+}
+
 // Themed Route Inspector Dialog
 function showRequestStatus(reqId) {
     const req = allRequests.find(r => r.id === reqId);
@@ -674,7 +629,6 @@ async function handleAddRequest(e) {
     const amount = parseFloat(document.getElementById('reqAmount').value);
     const vendor_name = document.getElementById('reqVendorName').value.trim();
     const qty = parseInt(document.getElementById('reqQty').value || 1, 10);
-    const unit = document.getElementById('reqUnit')?.value || 'packs';
 
     if (!item_name || isNaN(amount) || amount <= 0) {
         MMSwal.fire({
@@ -689,13 +643,10 @@ async function handleAddRequest(e) {
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-        const formattedItemName = `${item_name} (${qty} ${unit})`;
         const result = await apiPost('/api/procurement-officer/add-request', {
-            item_name: formattedItemName,
+            item_name: qty > 1 ? `${item_name} (${qty}x)` : item_name,
             store_name: vendor_name,
-            amount: amount,
-            quantity: qty,
-            unit: unit
+            amount
         });
 
         closeModal('addRequestModal');

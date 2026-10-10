@@ -9,6 +9,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABAS
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 const { dispatchOrderStatusEmail } = require('../services/mailServices');
 const { generateCashTransactionId } = require('../utils/transactionId');
+const { getPromoRule, countItems, checkPromoEligibility } = require('../utils/promoRules');
 
 // Resolves the name/email to send order emails to, for either a
 // logged-in customer (via users table) or a guest checkout.
@@ -173,6 +174,7 @@ router.post('/', async (req, res) => {
       items,
       subtotal,
       discount_amount,
+      promo_code,
       points_used,
       payment_method,
       pickup_date,
@@ -189,7 +191,23 @@ router.post('/', async (req, res) => {
     const isGuestOrder = !targetCustomerId;
 
     const orderSubtotal = parseFloat(subtotal || 0);
-    const promoDiscount = parseFloat(discount_amount || 0);
+    let promoDiscount = parseFloat(discount_amount || 0);
+
+    // Server-side enforcement of special promo rules (SWEETSIP10: 2+ items, one-time use)
+    const cleanPromoCode = promo_code ? String(promo_code).trim().toUpperCase() : null;
+    let savedPromoCode = null;
+    if (cleanPromoCode && getPromoRule(cleanPromoCode)) {
+      const promoError = await checkPromoEligibility(supabase, cleanPromoCode, {
+        itemCount: countItems(items),
+        customerId: targetCustomerId,
+        email: guest_email || recipient_email || null
+      });
+      if (promoError) {
+        return res.status(400).json({ status: 'error', message: promoError });
+      }
+      promoDiscount = Number((orderSubtotal * 0.10).toFixed(2));
+      savedPromoCode = cleanPromoCode;
+    }
     const requestedPointsUsed = parseFloat(points_used || 0);
 
     const VALID_PAYMENT_METHODS = ['Cash on Pick-Up', 'E-Wallet'];
@@ -227,8 +245,9 @@ router.post('/', async (req, res) => {
     // person at pickup - so the order is CONFIRMED right away instead of
     // sitting in PENDING_PAYMENT (which the customer-facing UI shows as
     // "Awaiting Payment", which is misleading for a cash order).
-    // E-Wallet: stays PENDING_PAYMENT until the PayMongo checkout is
-    // verified, unless points/promo already covered the full amount.
+    // E-Wallet: stays PENDING_PAYMENT until the customer submits their InstaPay
+    // receipt and a Sales Officer verifies it, unless points/promo already
+    // covered the full amount.
     const validStatus = cleanPaymentMethod === 'Cash on Pick-Up'
       ? 'CONFIRMED'
       : (finalTotalAmount <= 0 ? 'PAID_VERIFIED' : 'PENDING_PAYMENT');
@@ -236,10 +255,9 @@ router.post('/', async (req, res) => {
     const cleanGuestName = guest_name || recipient_name || null;
     const cleanGuestEmail = guest_email || recipient_email || null;
 
-    // Cash has no payment gateway to source a transaction id from, so we
-    // generate an internal reference right away. E-Wallet orders get
-    // PayMongo's real transaction id once the checkout is verified as paid
-    // (see paymentRoutes.js) - left null here in the meantime.
+    // Cash gets an internal reference right away. E-Wallet orders get the
+    // customer's 13-digit InstaPay reference (orders.payment_reference) once
+    // they submit their receipt - see paymentRoutes.js.
     const transactionId = cleanPaymentMethod === 'Cash on Pick-Up'
       ? generateCashTransactionId()
       : null;
@@ -258,6 +276,7 @@ router.post('/', async (req, res) => {
       pickup_instructions: `${scheduleText} | Payment: ${cleanPaymentMethod}`,
       guest_name: cleanGuestName,
       guest_email: cleanGuestEmail,
+      promo_code: savedPromoCode,
       placed_at: new Date().toISOString()
     };
 
@@ -386,6 +405,7 @@ router.get('/', async (req, res) => {
       .select(`
         id, order_number, status, subtotal, discount_amount, total_amount, 
         pickup_instructions, pickup_date, placed_at, payment_method, transaction_id,
+        payment_reference, payment_reject_reason,
         order_items (id, item_label, quantity, unit_price, line_total, size, is_custom, toppings, addons, flavor_img, toppings_img, cup_img, accent_color)
       `)
       .eq('customer_id', customer.id)
@@ -412,6 +432,8 @@ router.get('/', async (req, res) => {
         pickup_date: schedule,
         payment_method: o.payment_method || null,
         transaction_id: o.transaction_id || null,
+        payment_reference: o.payment_reference || null,
+        payment_reject_reason: o.payment_reject_reason || null,
         items: (o.order_items || []).map(it => ({
           item_label: it.item_label,
           title: it.item_label,
@@ -596,11 +618,10 @@ router.patch('/:id/status', async (req, res) => {
     }
 
     // Guard against a stale/late cancel request clobbering an order that has
-    // already been paid or is already being fulfilled (e.g. the PayMongo
-    // webhook confirms payment around the same moment the customer's
-    // "cancelled" redirect fires). This is done as a single conditional
-    // UPDATE (not a separate SELECT-then-UPDATE) so a webhook that marks the
-    // order PAID_VERIFIED in between the two steps can't be overwritten by a
+    // already been paid or is already being fulfilled (e.g. a Sales Officer
+    // verifies the payment around the same moment the customer cancels). This is done as a single conditional
+    // UPDATE (not a separate SELECT-then-UPDATE) so a verification that marks the
+    // order paid in between the two steps can't be overwritten by a
     // cancel request that ran right after it - the DB, not app code, is the
     // single source of truth at the moment of the write.
     const NON_CANCELLABLE = ['PAID_VERIFIED', 'PREPARING', 'READY_FOR_PICKUP', 'COMPLETED'];

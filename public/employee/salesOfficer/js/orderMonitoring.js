@@ -4,6 +4,18 @@ let currentMonitoringPage = 1;
 const MONITORING_PAGE_SIZE = 6;
 let isRegisterLocked = localStorage.getItem('isRegisterLocked') === 'true';
 
+// Walk-in toppings (edit names/prices here)
+const MAX_TOPPING_QTY = 5; // max of the same topping per drink
+const WALKIN_TOPPINGS = [
+    { name: 'Extra Pearls',   price: 2 },
+    { name: 'Marshmallows',   price: 2 },
+    { name: 'Cheese',         price: 2 },
+    { name: 'Nuts',           price: 2 },
+    { name: 'Sprinkles',      price: 2 },
+    { name: 'Choco Chips',    price: 5 },
+    { name: 'Condensed Milk', price: 5 }
+];
+
 document.addEventListener('DOMContentLoaded', async () => {
     const statusFilter = document.getElementById('statusFilter');
     const dateFilter = document.getElementById('dateFilter');
@@ -118,6 +130,8 @@ function applyMonitoringFilters() {
             passStatus = (ord.status === 'PREPARING' || ord.status === 'CONFIRMED');
         } else if (statusVal === 'ready_pickup') {
             passStatus = (ord.status === 'READY_FOR_PICKUP' || ord.status === 'IN_TRANSIT');
+        } else if (statusVal === 'completed') {
+            passStatus = (ord.status === 'COMPLETED');
         }
 
         let passDate = true;
@@ -189,14 +203,15 @@ function renderPaginatedMonitoringCards() {
         });
 
         // Walk-in vs Member tag
-        const isWalkin = !ord.customer_id || String(ord.customer_name || '').toLowerCase().includes('walk');
+        const isWalkin = ord.is_walkin_pos || !ord.customer_id || String(ord.customer_name || '').toLowerCase().includes('walk');
         const badgeClass = isWalkin ? 'badge-walkin' : 'badge-member';
         const badgeText = isWalkin ? 'Walk-in' : 'Member';
         const displayName = escapeHtml(ord.customer_name || 'Walk-in Counter');
 
+        const isCompleted = ord.is_walkin_pos === true || String(ord.status || '').trim().toUpperCase() === 'COMPLETED';
         const isReady = (ord.status === 'READY_FOR_PICKUP' || ord.status === 'IN_TRANSIT');
-        const statusLabel = isReady ? 'Ready for Pickup' : 'In Kitchen (Prep)';
-        const statusClass = isReady ? 'ready' : 'kitchen';
+        const statusLabel = isCompleted ? 'Completed' : (isReady ? 'Ready for Pickup' : 'In Kitchen (Prep)');
+        const statusClass = isCompleted ? 'completed' : (isReady ? 'ready' : 'kitchen');
 
         return `
             <div class="order-card" id="monitoring-card-${ord.id}">
@@ -220,7 +235,9 @@ function renderPaginatedMonitoringCards() {
                         <span class="status-dot"></span>
                         ${statusLabel}
                     </span>
-                    ${isReady ? `
+                    ${isCompleted ? `
+                        <span class="in-kitchen-note">Paid in cash at counter</span>
+                    ` : isReady ? `
                         <button type="button" class="btn-handover" onclick="markOrderAsPickedUp(${ord.id})" title="Customer received order">
                             Hand Over / Claimed
                         </button>
@@ -305,20 +322,106 @@ async function markOrderAsPickedUp(orderId) {
     }
 }
 
-// Quick POS Walk-in Preset Puncher with themed alert & confirm
-async function punchWalkinPreset(presetName, size, price) {
+// Quick POS Walk-in Preset Puncher with themed toppings picker (multiple of each topping)
+async function punchWalkinPreset(presetName, size, basePrice) {
     if (localStorage.getItem('isRegisterLocked') === 'true') {
         SalesCommon.alert('Register Locked', 'The counter register is currently locked. Please open shift before punching walk-in sales.', 'warning');
         return;
     }
 
-    const confirmed = await SalesCommon.confirm(
-        'Record Walk-in Sale',
-        `Punching:\n${presetName} (${size})\nPrice: ₱${price}.00\n\nCollect physical cash payment at counter?`,
-        'Confirm Sale',
-        'Cancel'
-    );
-    if (!confirmed) return;
+    const fmt = (n) => '₱' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const qtys = WALKIN_TOPPINGS.map(() => 0);
+
+    const rowsHtml = WALKIN_TOPPINGS.map((t, i) => `
+        <div class="mm-topping-chip" data-idx="${i}">
+            <div class="mm-chip-info">
+                <span class="mm-chip-name">${escapeHtml(t.name)}</span>
+                <span class="mm-chip-price">+₱${t.price} each</span>
+            </div>
+            <div class="mm-stepper">
+                <button type="button" class="mm-step-btn" data-act="minus" aria-label="Remove one ${escapeHtml(t.name)}">−</button>
+                <span class="mm-step-qty">0</span>
+                <button type="button" class="mm-step-btn" data-act="plus" aria-label="Add one ${escapeHtml(t.name)}">+</button>
+            </div>
+        </div>
+    `).join('');
+
+    const result = await Swal.fire({
+        title: 'Record Walk-in Sale',
+        width: 460,
+        html: `
+            <div class="mm-topping-wrap">
+                <div class="mm-topping-item">
+                    <strong>${escapeHtml(presetName)} <span class="mm-topping-size">${escapeHtml(size)}</span></strong>
+                    <span>${fmt(basePrice)}</span>
+                </div>
+
+                <div class="mm-topping-label">Add toppings <em>(tap + for extra of the same topping)</em></div>
+                <div class="mm-topping-grid">${rowsHtml}</div>
+
+                <div class="mm-total-box">
+                    <div class="mm-total-line"><span>Base</span><span>${fmt(basePrice)}</span></div>
+                    <div class="mm-total-line"><span>Toppings</span><span id="mmToppingsTotal">${fmt(0)}</span></div>
+                    <div class="mm-total-line mm-total-grand"><span>Total</span><span id="mmGrandTotal">${fmt(basePrice)}</span></div>
+                </div>
+
+                <p class="mm-topping-note">Collect physical cash payment at counter.</p>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Confirm Sale',
+        cancelButtonText: 'Cancel',
+        customClass: {
+            popup: 'mm-swal-popup',
+            title: 'mm-swal-title',
+            confirmButton: 'mm-swal-confirm',
+            cancelButton: 'mm-swal-cancel'
+        },
+        buttonsStyling: false,
+        didOpen: () => {
+            const popup = Swal.getPopup();
+            const grid = popup.querySelector('.mm-topping-grid');
+            const toppingsEl = popup.querySelector('#mmToppingsTotal');
+            const grandEl = popup.querySelector('#mmGrandTotal');
+
+            const update = () => {
+                let extra = 0;
+                grid.querySelectorAll('.mm-topping-chip').forEach(row => {
+                    const i = Number(row.dataset.idx);
+                    row.querySelector('.mm-step-qty').textContent = qtys[i];
+                    row.classList.toggle('selected', qtys[i] > 0);
+                    extra += WALKIN_TOPPINGS[i].price * qtys[i];
+                });
+                toppingsEl.textContent = fmt(extra);
+                grandEl.textContent = fmt(basePrice + extra);
+            };
+
+            grid.addEventListener('click', (e) => {
+                const btn = e.target.closest('.mm-step-btn');
+                if (!btn) return;
+                const i = Number(btn.closest('.mm-topping-chip').dataset.idx);
+                if (btn.dataset.act === 'plus') qtys[i] = Math.min(qtys[i] + 1, MAX_TOPPING_QTY);
+                else qtys[i] = Math.max(qtys[i] - 1, 0);
+                update();
+            });
+        },
+        preConfirm: () => {
+            const picked = [];
+            let extra = 0;
+            WALKIN_TOPPINGS.forEach((t, i) => {
+                if (qtys[i] > 0) {
+                    picked.push(qtys[i] > 1 ? `${t.name} x${qtys[i]}` : t.name);
+                    extra += t.price * qtys[i];
+                }
+            });
+            return { toppings: picked, total: basePrice + extra };
+        }
+    });
+
+    if (!result.isConfirmed) return;
+
+    const { toppings, total } = result.value;
+    const itemLabel = `${presetName} (${size})` + (toppings.length ? ` + ${toppings.join(', ')}` : '');
 
     try {
         const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
@@ -329,15 +432,17 @@ async function punchWalkinPreset(presetName, size, price) {
             headers,
             body: JSON.stringify({
                 action: 'walkin_sale',
-                item_label: `${presetName} (${size})`,
+                item_label: itemLabel,
                 size: size,
-                total_amount: price,
+                total_amount: total,
+                toppings: toppings,
                 customer_name: 'Walk-in Counter'
             })
         });
+        if (!response.ok) throw new Error(await SalesCommon.errorMessage(response));
 
         await fetchOrderMonitoringData();
-        SalesCommon.alert('Walk-in Sale Recorded', `Successfully collected ₱${price}.00 cash in drawer.`, 'success');
+        SalesCommon.alert('Walk-in Sale Recorded', `Successfully collected ${fmt(total)} cash in drawer.`, 'success');
     } catch (err) {
         console.error('Walk-in sale error:', err);
         SalesCommon.alert('Transaction Recorded Locally', 'Please verify your physical drawer count against expected totals during Z-Reading.', 'info');

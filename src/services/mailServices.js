@@ -427,7 +427,8 @@ async function sendPromoWelcomeEmail(toEmail, recipientName) {
         <div style='background-color: #FFF5F4; border: 2px dashed #D9656B; border-radius: 14px; padding: 18px; text-align: center; margin: 20px 0;'>
             <div style='font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: #7C4F38; letter-spacing: 1px;'>Your Exclusive Welcome Perk:</div>
             <div style='font-size: 24px; font-weight: 800; color: #D9656B; letter-spacing: 3px; margin: 6px 0;'>SWEETSIP10</div>
-            <div style='font-size: 12.5px; color: #5C3B28; font-weight: 600;'>Get 10% discount on your next counter order!</div>
+            <div style='font-size: 12.5px; color: #5C3B28; font-weight: 600;'>Get 10% off your next order!</div>
+            <div style='font-size: 12px; color: #8C7A70; margin-top: 8px; line-height: 1.5;'>Valid only when you order <b>at least 2 items</b>. One-time use only.</div>
         </div>
 
         <p style='font-size: 13px; color: #8C7A70; text-align: center; margin: 0;'>
@@ -440,7 +441,7 @@ async function sendPromoWelcomeEmail(toEmail, recipientName) {
             replyTo: DEFAULT_REPLY_TO,
             subject: 'Welcome to the Milky Marble Sweet Club! Enjoy 10% Off',
             html: await renderEmailLayout('VIP Club · Welcome', 'Welcome to the Club', bodyContent),
-            text: `Hello ${recipientName},\n\nWelcome to Milky Marble! Use promo code SWEETSIP10 for 10% off at our UCC Congressional Campus counter (${sd.short} · 10 AM - 3 PM).\nFollow @Milky Marble on IG, TikTok & FB.`
+            text: `Hello ${recipientName},\n\nWelcome to Milky Marble! Use promo code SWEETSIP10 for 10% off. The code is valid only when you order at least 2 items, and it can be used one time only. Drop by our UCC Congressional Campus counter (${sd.short} · 10 AM - 3 PM).\nFollow @Milky Marble on IG, TikTok & FB.`
         });
 
         return true;
