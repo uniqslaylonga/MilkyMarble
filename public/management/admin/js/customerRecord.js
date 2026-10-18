@@ -60,7 +60,7 @@ async function fetchCustomerRecordData() {
         const userFullNameEl = document.getElementById('userFullName');
         const userAvatarEl = document.getElementById('userAvatarImg');
 
-        if (userFullNameEl) userFullNameEl.textContent = data.user?.fullName || 'Angeline J. Ang';
+        if (userFullNameEl) userFullNameEl.textContent = data.user?.fullName || 'Administrator';
         if (userAvatarEl && data.user?.avatar) {
             userAvatarEl.src = data.user.avatar;
             userAvatarEl.onerror = function() { this.src = '/customer/images/account.png'; };

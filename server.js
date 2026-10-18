@@ -2006,19 +2006,8 @@ app.get('/api/admin/dashboard', async (req, res) => {
       }
     }
 
-    // 2. Fallback: If no user ID matched, grab the first available admin account
-    if (!userRows) {
-      const { data: defaultAdmin } = await supabase
-        .from('users')
-        .select('id, full_name, avatar')
-        .eq('user_type', 'admin')
-        .limit(1)
-        .maybeSingle();
-      
-      if (defaultAdmin) {
-        userRows = defaultAdmin;
-      }
-    }
+    // (No fallback to "the first admin account": if the logged-in user can't be found we show the
+    //  default name 'Administrator' rather than another person's name.)
 
     // Apply user details if found
     if (userRows) {

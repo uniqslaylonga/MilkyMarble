@@ -41,7 +41,7 @@ async function fetchAdminDashboardData() {
         const greetingNameEl = document.getElementById('adminGreetingName');
         const userAvatarEl = document.getElementById('userAvatar');
 
-        const fullName = data.user?.fullName || 'Angeline J. Ang';
+        const fullName = data.user?.fullName || 'Administrator';
         if (userFullNameEl) userFullNameEl.textContent = fullName;
         if (greetingNameEl) greetingNameEl.textContent = fullName.split(' ')[0];
         if (userAvatarEl && data.user?.avatarSrc) userAvatarEl.src = data.user.avatarSrc;
