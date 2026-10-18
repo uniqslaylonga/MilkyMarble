@@ -241,7 +241,7 @@ function paymentReviewBlock(ord, totalFormatted) {
         : `<div class="pay-review-line">Expected amount: <strong>₱${totalFormatted}</strong> <span class="pay-review-muted">(not read from receipt)</span></div>`;
 
     const proofLink = ord.payment_proof_url
-        ? `<a class="pay-review-link" href="${escapeHtml(ord.payment_proof_url)}" target="_blank" rel="noopener noreferrer">View receipt</a>`
+        ? `<button type="button" class="pay-review-link" data-receipt="${escapeHtml(ord.payment_proof_url)}" data-ref="${escapeHtml(ord.payment_reference || '')}">View receipt</button>`
         : '';
 
     return `
@@ -251,6 +251,38 @@ function paymentReviewBlock(ord, totalFormatted) {
             ${proofLink}
         </div>`;
 }
+
+// "View receipt" opens the screenshot in a pop-up on this page instead of a new tab.
+function showReceiptModal(url, ref) {
+    const safeUrl = escapeHtml(url);
+    const html = `
+        <div class="receipt-modal-body">
+            ${ref ? `<div class="receipt-modal-ref">Ref: <span>${escapeHtml(ref)}</span></div>` : ''}
+            <div class="receipt-modal-imgwrap">
+                <img class="receipt-modal-img" src="${safeUrl}" alt="Payment receipt"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                <div class="receipt-modal-error" style="display:none;">The receipt image could not be loaded.</div>
+            </div>
+            <a class="receipt-modal-open" href="${safeUrl}" target="_blank" rel="noopener noreferrer">Open full size in new tab</a>
+        </div>`;
+
+    if (typeof Swal === 'undefined') { window.open(url, '_blank', 'noopener'); return; }   // safety net only
+    Swal.fire({
+        title: 'Payment Receipt',
+        html,
+        width: 480,
+        showConfirmButton: false,
+        showCloseButton: true,
+        customClass: { popup: 'mm-swal-popup receipt-modal-popup', title: 'mm-swal-title' }
+    });
+}
+
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pay-review-link[data-receipt]');
+    if (!btn) return;
+    e.preventDefault();
+    showReceiptModal(btn.getAttribute('data-receipt'), btn.getAttribute('data-ref'));
+});
 
 // Verify a manual InstaPay payment -> order goes to the kitchen queue.
 async function verifyPayment(orderId) {

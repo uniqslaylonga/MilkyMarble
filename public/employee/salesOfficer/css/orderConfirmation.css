@@ -771,4 +771,15 @@ body {
 .pay-review-ok { color: #2e7d32; font-weight: 700; margin-left: 4px; }
 .pay-review-warn { color: #d32f2f; font-weight: 800; margin-left: 4px; }
 .pay-review-muted { color: #8a7a72; font-weight: 600; }
-.pay-review-link { display: inline-block; margin-top: 2px; font-weight: 800; color: #F48A8E; text-decoration: underline; }
+.pay-review-link { display: inline-block; margin-top: 2px; padding: 0; border: 0; background: none; font: inherit; font-weight: 800; color: #F48A8E; text-decoration: underline; cursor: pointer; }
+.pay-review-link:hover { color: #e0686d; }
+
+/* "View receipt" pop-up */
+.receipt-modal-popup { padding-bottom: 18px; }
+.receipt-modal-body { text-align: center; }
+.receipt-modal-ref { margin-bottom: 10px; font-size: 13px; font-weight: 700; color: #594A42; }
+.receipt-modal-ref span { font-family: monospace; font-weight: 800; letter-spacing: .04em; user-select: all; }
+.receipt-modal-imgwrap { max-height: 65vh; overflow: auto; border: 1px solid #FCE1DD; border-radius: 12px; background: #FFF9F8; }
+.receipt-modal-img { display: block; width: 100%; height: auto; }
+.receipt-modal-error { padding: 40px 16px; font-size: 13px; font-weight: 600; color: #8a7a72; }
+.receipt-modal-open { display: inline-block; margin-top: 10px; font-size: 12px; font-weight: 700; color: #F48A8E; text-decoration: underline; }
