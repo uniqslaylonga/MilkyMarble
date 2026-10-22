@@ -406,7 +406,7 @@ async function handleReceiveDeliverySubmit(e) {
     e.preventDefault();
 
     const prId = document.getElementById('receivePrId').value;
-    const itemName = document.getElementById('receiveItemRawName').value.replace(/\s*\([0-9.]+\s*[a-zA-Z]*\)/i, '').trim();
+    const itemName = document.getElementById('receiveItemRawName').value.replace(/\s*\([0-9.]+\s*[a-zA-Z]*\)/i, '').replace(/^\s*Restock:\s*/i, '').trim();
     const expectedQty = parseFloat(document.getElementById('expectedUnitsCount').value || 0);
     const usableQty = parseFloat(document.getElementById('usableReceivedUnits').value || 0);
     const department = document.getElementById('destinationCategory').value;
@@ -419,7 +419,15 @@ async function handleReceiveDeliverySubmit(e) {
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-        // 1. Add ONLY usable units to inventory_items
+        // 1. Mark expense as received FIRST (validates status; a retry can't double-count stock) with inspection audit notes
+        const auditLogNote = `Physical Receiving Audit: Expected ${expectedQty}, Received Usable: ${usableQty}, Variance: ${variance}. Notes: ${notes || 'Standard acceptance.'}`;
+        await apiPost('/api/procurement-officer/mark-purchased', {
+            expense_id: prId,
+            status: 'RECEIVED',
+            audit_note: auditLogNote
+        });
+
+        // 2. Add ONLY usable units to inventory_items
         if (usableQty > 0) {
             await apiPost('/api/procurement-officer/add-stock', {
                 name: itemName,
@@ -429,14 +437,6 @@ async function handleReceiveDeliverySubmit(e) {
                 reorder_level: 10
             });
         }
-
-        // 2. Mark expense as received with inspection audit notes
-        const auditLogNote = `Physical Receiving Audit: Expected ${expectedQty}, Received Usable: ${usableQty}, Variance: ${variance}. Notes: ${notes || 'Standard acceptance.'}`;
-        await apiPost('/api/procurement-officer/mark-purchased', {
-            expense_id: prId,
-            status: 'RECEIVED',
-            audit_note: auditLogNote
-        });
 
         closeModal('receiveDeliveryModal');
         e.target.reset();

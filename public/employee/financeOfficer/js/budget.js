@@ -7,6 +7,7 @@ let currentBudgetPage = 1;
 const BUDGET_PAGE_SIZE = 5;
 
 // Expenses Records State
+let allRequisitions = [];
 let allExpenseRecords = [];
 let filteredExpenseRecords = [];
 let currentCategoryFilter = 'all';
@@ -27,6 +28,7 @@ const MMSwal = Swal.mixin({
 document.addEventListener('DOMContentLoaded', () => {
     fetchBudgetData();
     fetchExpenseData();
+    fetchRequisitions();
 
     // Search and Filter Listeners
     document.getElementById('budgetSearchInput')?.addEventListener('input', handleGlobalSearch);
@@ -70,27 +72,24 @@ document.addEventListener('DOMContentLoaded', () => {
 // Workspace Tab Switcher
 function switchBudgetTab(tab) {
     currentWorkspaceTab = tab;
-    const tabEnv = document.getElementById('tabBtnEnvelopes');
-    const tabExp = document.getElementById('tabBtnExpenses');
-    const envArea = document.getElementById('envelopesViewArea');
-    const expArea = document.getElementById('expensesViewArea');
-
-    if (tab === 'envelopes') {
-        tabEnv?.classList.add('active');
-        tabExp?.classList.remove('active');
-        if (envArea) envArea.style.display = 'block';
-        if (expArea) expArea.style.display = 'none';
-    } else {
-        tabExp?.classList.add('active');
-        tabEnv?.classList.remove('active');
-        if (envArea) envArea.style.display = 'none';
-        if (expArea) expArea.style.display = 'block';
-    }
+    const tabs = {
+        envelopes: { btn: 'tabBtnEnvelopes', area: 'envelopesViewArea' },
+        expenses: { btn: 'tabBtnExpenses', area: 'expensesViewArea' },
+        requisitions: { btn: 'tabBtnRequisitions', area: 'requisitionsViewArea' }
+    };
+    Object.keys(tabs).forEach(key => {
+        const isActive = key === tab;
+        document.getElementById(tabs[key].btn)?.classList.toggle('active', isActive);
+        const area = document.getElementById(tabs[key].area);
+        if (area) area.style.display = isActive ? 'block' : 'none';
+    });
 }
 
 function handleGlobalSearch() {
     if (currentWorkspaceTab === 'envelopes') {
         applyBudgetFilters();
+    } else if (currentWorkspaceTab === 'requisitions') {
+        renderRequisitions();
     } else {
         applyExpenseFilters();
     }
@@ -593,4 +592,116 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+
+// --------------------------------------------------------------------------
+// FINANCE REQUISITION APPROVALS (PHP 301-500 tier)
+// --------------------------------------------------------------------------
+async function fetchRequisitions() {
+    try {
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const headers = userId ? { 'x-user-id': userId } : {};
+        const response = await fetch('/api/finance-officer/requisitions', { headers });
+        if (!response.ok) throw new Error('Failed to retrieve pending requisitions');
+
+        const data = await response.json();
+        allRequisitions = data.requisitions || [];
+        setText('requisitionsCountBadge', allRequisitions.length);
+        renderRequisitions();
+    } catch (error) {
+        console.error('Could not load requisitions:', error);
+        const tbody = document.getElementById('requisitionsTableBody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="loading-state-text">Could not load pending requisitions.</td></tr>';
+    }
+}
+
+function renderRequisitions() {
+    const tbody = document.getElementById('requisitionsTableBody');
+    if (!tbody) return;
+
+    const term = (document.getElementById('budgetSearchInput')?.value || '').trim().toLowerCase();
+    const rows = allRequisitions.filter(r => {
+        if (!term) return true;
+        return [r.pr_code, r.item_name, r.store_name, r.requester_name].join(' ').toLowerCase().includes(term);
+    });
+
+    if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="loading-state-text">No requisitions awaiting Finance approval.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+        const dateFmt = r.created_at
+            ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            : (r.expense_date || '—');
+        return `
+            <tr>
+                <td>
+                    <strong>${escapeHtml(r.item_name)}</strong>
+                    <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(r.pr_code)}${r.notes ? ' &middot; ' + escapeHtml(r.notes) : ''}</div>
+                </td>
+                <td>${escapeHtml(r.requester_name) || '—'}</td>
+                <td>${escapeHtml(r.store_name) || '—'}</td>
+                <td><strong>₱${formatAmount(r.amount)}</strong></td>
+                <td>${escapeHtml(dateFmt)}</td>
+                <td style="text-align: right;">
+                    <button type="button" class="btn-req-approve" onclick="decideRequisition(${Number(r.id)}, 'approve')">Approve</button>
+                    <button type="button" class="btn-req-reject" onclick="decideRequisition(${Number(r.id)}, 'reject')">Reject</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function decideRequisition(id, action) {
+    const req = allRequisitions.find(r => r.id === id);
+    if (!req) return;
+
+    let reason = '';
+    if (action === 'approve') {
+        const confirm = await MMSwal.fire({
+            title: 'Approve Requisition?',
+            text: `${req.pr_code} — ${req.item_name} (₱${formatAmount(req.amount)}) will go back to Procurement for purchase.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Approve',
+            cancelButtonText: 'Cancel'
+        });
+        if (!confirm.isConfirmed) return;
+    } else {
+        const result = await MMSwal.fire({
+            title: 'Reject Requisition',
+            input: 'textarea',
+            inputLabel: 'Reason for rejection *',
+            inputPlaceholder: 'State why this request is being returned...',
+            showCancelButton: true,
+            confirmButtonText: 'Confirm Rejection',
+            cancelButtonText: 'Cancel',
+            inputValidator: (val) => (!val || !val.trim()) ? 'Please provide a reason.' : undefined
+        });
+        if (!result.isConfirmed) return;
+        reason = String(result.value || '').trim();
+    }
+
+    try {
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const response = await fetch('/api/finance-officer/requisitions/action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(userId ? { 'x-user-id': userId } : {}) },
+            body: JSON.stringify({ id, action, rejection_reason: reason })
+        });
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') throw new Error(data.message || 'Server rejected the update.');
+
+        await MMSwal.fire({
+            icon: 'success',
+            title: action === 'approve' ? 'Requisition Approved' : 'Requisition Rejected',
+            text: action === 'approve' ? 'Procurement can now buy and receive this item.' : 'The request has been declined.'
+        });
+        await fetchRequisitions();
+    } catch (error) {
+        await MMSwal.fire({ icon: 'warning', title: 'Update Failed', text: error.message || 'Could not update the requisition.' });
+        await fetchRequisitions();
+    }
 }

@@ -2704,7 +2704,7 @@ async function ceoComputeMargin(totalRevenue) {
     throw e;
   }
   const cogs = expenses
-    .filter(e => e.category === 'cogs' && ['APPROVED', 'PURCHASED'].includes(e.status))
+    .filter(e => e.category === 'cogs' && ['APPROVED', 'PURCHASED', 'RECEIVED'].includes(e.status))
     .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
   if (cogs > 0 && totalRevenue > 0) {
     return Math.round(((totalRevenue - cogs) / totalRevenue) * 1000) / 10;
@@ -2861,7 +2861,7 @@ app.get('/api/ceo/budget-approval', async (req, res) => {
     const allExpenses = await ceoFetchAll(() => supabase
       .from('expenses')
       .select('*')
-      .in('status', ['PENDING_CEO', 'APPROVED', 'PURCHASED', 'REJECTED'])
+      .in('status', ['PENDING_CEO', 'APPROVED', 'PURCHASED', 'RECEIVED', 'REJECTED'])
       .order('id', { ascending: false }));
     const majorExpenses = allExpenses.filter(e => (parseFloat(e.amount) || 0) > CEO_MAJOR_THRESHOLD);
 

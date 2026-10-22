@@ -5,6 +5,7 @@ const { readToken, COOKIE_NAME: STAFF_COOKIE } = require('../middleware/staffAut
 const paymentRoutes = require('./paymentRoutes');
 const { dispatchOrderStatusEmail } = require('../services/mailServices');
 const { generateCashTransactionId } = require('../utils/transactionId');
+const { logActivity } = require('../utils/activityLog');
 
 // Optional SDK load for Google Gemini AI
 let GoogleGenAI;
@@ -1844,7 +1845,7 @@ router.get('/finance-officer/dashboard', async (req, res) => {
 
     const { data: expenseRows } = await supabase.from('expenses').select('amount, status, expense_date');
     const totalExpenses = (expenseRows || [])
-      .filter(e => ['APPROVED', 'PURCHASED'].includes(e.status))
+      .filter(e => ['APPROVED', 'PURCHASED', 'RECEIVED'].includes(e.status))
       .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
     const totalBudget = (expenseRows || []).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
 
@@ -1856,7 +1857,7 @@ router.get('/finance-officer/dashboard', async (req, res) => {
 
     const monthlyOutflow = Array(12).fill(0);
     (expenseRows || []).forEach(e => {
-      if (!['APPROVED', 'PURCHASED'].includes(e.status)) return;
+      if (!['APPROVED', 'PURCHASED', 'RECEIVED'].includes(e.status)) return;
       const d = new Date(e.expense_date);
       if (d.getFullYear() === thisYear) monthlyOutflow[d.getMonth()] += parseFloat(e.amount) || 0;
     });
@@ -1933,7 +1934,7 @@ router.get('/finance-officer/revenue', async (req, res) => {
       ({ data: expenseRows } = await supabase.from('expenses').select('amount, status, expense_date'));
     }
     const totalExpenses = (expenseRows || [])
-      .filter(e => ['APPROVED', 'PURCHASED'].includes(e.status))
+      .filter(e => ['APPROVED', 'PURCHASED', 'RECEIVED'].includes(e.status))
       .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
     const totalBudget = (expenseRows || []).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
 
@@ -1944,7 +1945,7 @@ router.get('/finance-officer/revenue', async (req, res) => {
     const totalCupsSold = (cupItems || []).reduce((s, it) => s + (parseInt(it.quantity, 10) || 0), 0);
 
     const totalCogs = (expenseRows || [])
-      .filter(e => e.category === 'cogs' && ['APPROVED', 'PURCHASED'].includes(e.status))
+      .filter(e => e.category === 'cogs' && ['APPROVED', 'PURCHASED', 'RECEIVED'].includes(e.status))
       .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
 
     let avgCupMargin = null;
@@ -1972,7 +1973,7 @@ router.get('/finance-officer/revenue', async (req, res) => {
       const d = new Date(e.expense_date);
       if (d.getFullYear() !== thisYear) return;
       budgetMonthly[d.getMonth()] += parseFloat(e.amount) || 0;
-      if (['APPROVED', 'PURCHASED'].includes(e.status)) expensesMonthly[d.getMonth()] += parseFloat(e.amount) || 0;
+      if (['APPROVED', 'PURCHASED', 'RECEIVED'].includes(e.status)) expensesMonthly[d.getMonth()] += parseFloat(e.amount) || 0;
     });
 
     return res.json({
@@ -2070,6 +2071,102 @@ router.post('/finance-officer/budget', async (req, res) => {
     return res.json({ status: 'success', record });
   } catch (error) {
     console.error('[finance-officer/budget POST] error:', error.message);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// Finance approval queue for the PHP 301-500 tier (status PENDING_FINANCE)
+router.get('/finance-officer/requisitions', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+    const userProfile = await getEmployeeProfile(req);
+
+    const { data: rows, error } = await supabase
+      .from('expenses')
+      .select('id, item_name, store_name, amount, status, notes, requested_by, created_at, expense_date')
+      .eq('status', 'PENDING_FINANCE')
+      .order('id', { ascending: false });
+    if (error) throw error;
+
+    const pending = (rows || []).filter(e => routeForAmount(e.amount) === 'finance');
+    const requesterIds = [...new Set(pending.map(e => e.requested_by).filter(Boolean))];
+    const requesterMap = {};
+    if (requesterIds.length) {
+      const { data: users } = await supabase.from('users').select('id, full_name').in('id', requesterIds);
+      (users || []).forEach(u => { requesterMap[u.id] = u.full_name; });
+    }
+
+    return res.json({
+      status: 'success',
+      user: userProfile,
+      requisitions: pending.map(e => ({
+        id: e.id,
+        pr_code: `PR-${1000 + e.id}`,
+        item_name: e.item_name || '',
+        store_name: e.store_name || '',
+        requester_name: requesterMap[e.requested_by] || '',
+        amount: parseFloat(e.amount) || 0,
+        notes: e.notes || '',
+        created_at: e.created_at || null,
+        expense_date: e.expense_date || null
+      }))
+    });
+  } catch (error) {
+    console.error('[finance-officer/requisitions] error:', error.message);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+router.post('/finance-officer/requisitions/action', async (req, res) => {
+  try {
+    if (!supabase) return noDb(res);
+    const { id, action, rejection_reason } = req.body || {};
+    const act = String(action || '').toLowerCase();
+    const reason = String(rejection_reason || '').trim();
+
+    if (!id || !['approve', 'reject'].includes(act)) {
+      return res.status(400).json({ status: 'error', message: 'Missing id or a valid action (approve / reject).' });
+    }
+    if (act === 'reject' && !reason) {
+      return res.status(400).json({ status: 'error', message: 'A justification is required to reject a request.' });
+    }
+
+    const { data: exp, error: findErr } = await supabase
+      .from('expenses').select('id, item_name, amount, status, notes').eq('id', id).maybeSingle();
+    if (findErr) throw findErr;
+    if (!exp || exp.status !== 'PENDING_FINANCE' || routeForAmount(exp.amount) !== 'finance') {
+      return res.status(409).json({ status: 'error', message: 'This requisition is no longer awaiting Finance approval.' });
+    }
+
+    const patch = { status: act === 'approve' ? 'APPROVED' : 'REJECTED' };
+    if (act === 'reject') patch.notes = [exp.notes, `Finance rejected: ${reason}`].filter(Boolean).join(' | ');
+
+    const { data: updated, error } = await supabase
+      .from('expenses')
+      .update(patch)
+      .eq('id', exp.id)
+      .eq('status', 'PENDING_FINANCE')
+      .select('id')
+      .maybeSingle();
+    if (error) throw error;
+    if (!updated) {
+      return res.status(409).json({ status: 'error', message: 'This requisition is no longer awaiting Finance approval.' });
+    }
+
+    const label = `PR-${1000 + exp.id} ${exp.item_name || ''}`.trim();
+    logActivity(supabase, {
+      req,
+      action: `expense.${act === 'approve' ? 'approved' : 'rejected'}`,
+      category: 'approval',
+      description: `${act === 'approve' ? 'Approved' : 'Rejected'} purchase requisition "${label}" (Finance)${reason ? ` — ${reason}` : ''}`,
+      targetType: 'expense',
+      targetId: exp.id,
+      targetLabel: label
+    });
+
+    return res.json({ status: 'success', message: `Successfully ${act === 'approve' ? 'approved' : 'rejected'}.` });
+  } catch (error) {
+    console.error('[finance-officer/requisitions/action] error:', error.message);
     return res.status(500).json({ status: 'error', message: error.message });
   }
 });
@@ -2286,7 +2383,7 @@ router.get('/procurement-officer/dashboard', async (req, res) => {
     if (expErr) throw expErr;
     const expenses = expenseRows || [];
 
-    const directBuyCount = expenses.filter(e => routeForAmount(e.amount) === 'procure' && e.status !== 'PURCHASED').length;
+    const directBuyCount = expenses.filter(e => routeForAmount(e.amount) === 'procure' && !['PURCHASED', 'RECEIVED'].includes(e.status)).length;
     const escalatedCount = expenses.filter(e => routeForAmount(e.amount) !== 'procure' && ['PENDING_FINANCE', 'PENDING_CEO'].includes(e.status)).length;
 
     const latest = expenses.slice(0, 20);
@@ -2389,28 +2486,21 @@ router.post('/procurement-officer/add-request', async (req, res) => {
 router.post('/procurement-officer/mark-purchased', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
-    const { expense_id } = req.body;
+    const { expense_id, status: targetStatus, audit_note } = req.body;
     if (!expense_id) {
       return res.status(400).json({ status: 'error', message: 'Expense ID is required.' });
     }
 
     const { data: exp, error: findErr } = await supabase
-      .from('expenses').select('id, item_name, store_name, amount, status').eq('id', expense_id).maybeSingle();
+      .from('expenses').select('id, item_name, store_name, amount, status, notes').eq('id', expense_id).maybeSingle();
     if (findErr) throw findErr;
     if (!exp) return res.status(404).json({ status: 'error', message: 'Purchase request not found.' });
 
     const amount = parseFloat(exp.amount) || 0;
-    if (routeForAmount(amount) !== 'procure') {
-      return res.status(403).json({ status: 'error', message: 'Only requests of PHP 300 or less can be bought directly. This one needs Finance / CEO approval.' });
-    }
-    if (exp.status === 'PURCHASED') {
-      return res.status(400).json({ status: 'error', message: 'This request is already marked as purchased.' });
-    }
+    const wantsReceive = String(targetStatus || '').toUpperCase() === 'RECEIVED';
 
-    const { error } = await supabase.from('expenses').update({ status: 'PURCHASED' }).eq('id', exp.id);
-    if (error) throw error;
-
-    if (exp.store_name) {
+    const creditVendor = async () => {
+      if (!exp.store_name) return;
       try {
         const { data: vendor } = await supabase.from('vendors').select('id, total_spent').eq('vendor_name', exp.store_name).limit(1).maybeSingle();
         if (vendor) {
@@ -2422,7 +2512,40 @@ router.post('/procurement-officer/mark-purchased', async (req, res) => {
       } catch (e) {
         console.warn('[procurement-officer/mark-purchased] could not update vendor total:', e.message);
       }
+    };
+
+    // ---- Receive & Audit: request was approved (CEO / Finance) or bought directly, goods are now in hand ----
+    if (wantsReceive) {
+      if (exp.status === 'RECEIVED') {
+        return res.status(400).json({ status: 'error', message: 'This request has already been received.' });
+      }
+      if (!['APPROVED', 'PURCHASED'].includes(exp.status)) {
+        return res.status(400).json({ status: 'error', message: 'This request must be approved before it can be received.' });
+      }
+      const note = String(audit_note || '').trim();
+      const mergedNotes = [exp.notes, note].filter(Boolean).join(' | ');
+      const { error: recvErr } = await supabase
+        .from('expenses')
+        .update({ status: 'RECEIVED', notes: mergedNotes || null })
+        .eq('id', exp.id)
+        .eq('status', exp.status);
+      if (recvErr) throw recvErr;
+      // Direct-buys were credited to the vendor when marked purchased; approved ones are credited now.
+      if (exp.status === 'APPROVED') await creditVendor();
+      return res.json({ status: 'success', message: 'Marked as received.' });
     }
+
+    // ---- Direct buy (petty cash): only for requests of PHP 300 or less ----
+    if (routeForAmount(amount) !== 'procure') {
+      return res.status(403).json({ status: 'error', message: 'Only requests of PHP 300 or less can be bought directly. This one needs Finance / CEO approval.' });
+    }
+    if (['PURCHASED', 'RECEIVED'].includes(exp.status)) {
+      return res.status(400).json({ status: 'error', message: 'This request is already marked as purchased.' });
+    }
+
+    const { error } = await supabase.from('expenses').update({ status: 'PURCHASED' }).eq('id', exp.id);
+    if (error) throw error;
+    await creditVendor();
 
     return res.json({ status: 'success', message: 'Marked as purchased.' });
   } catch (error) {
@@ -2675,7 +2798,7 @@ router.get('/procurement-officer/stock-control', async (req, res) => {
 
     const { data: expenseRows } = await supabase.from('expenses').select('amount, status');
     const expenses = expenseRows || [];
-    const directBuyCount = expenses.filter(e => routeForAmount(e.amount) === 'procure' && e.status !== 'PURCHASED').length;
+    const directBuyCount = expenses.filter(e => routeForAmount(e.amount) === 'procure' && !['PURCHASED', 'RECEIVED'].includes(e.status)).length;
     const escalatedCount = expenses.filter(e => routeForAmount(e.amount) !== 'procure' && ['PENDING_FINANCE', 'PENDING_CEO'].includes(e.status)).length;
 
     const { data: itemRows } = await supabase.from('inventory_items').select('*');
@@ -2784,7 +2907,7 @@ router.get('/production-supervisor/dashboard', async (req, res) => {
         route, route_text: routeText
       };
     });
-    const pendingRestocks = restockPitches.filter(p => !['PURCHASED', 'REJECTED'].includes(p.status)).length;
+    const pendingRestocks = restockPitches.filter(p => !['PURCHASED', 'RECEIVED', 'REJECTED'].includes(p.status)).length;
 
     let qualityPulse = {
       averageCsat: 5.0,

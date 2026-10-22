@@ -199,6 +199,14 @@
                     <span>Disbursement Vouchers &amp; Receipts Audit</span>
                     <span id="expensesCountBadge" class="counter-badge">0</span>
                 </button>
+                <button type="button" class="work-tab-btn" id="tabBtnRequisitions" onclick="switchBudgetTab('requisitions')">
+                    <svg viewBox="0 0 24 24" class="tab-svg" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 11l3 3L22 4"></path>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                    </svg>
+                    <span>Requisition Approvals (&#8369;301&ndash;&#8369;500)</span>
+                    <span id="requisitionsCountBadge" class="counter-badge">0</span>
+                </button>
             </div>
 
             <!-- VIEW 1: BUDGET ENVELOPES LEDGER (ACTIVE) -->
@@ -325,6 +333,38 @@
                                 <svg viewBox="0 0 24 24" class="pager-svg"><polyline points="9 18 15 12 9 6"/></svg>
                             </button>
                         </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- VIEW 3: FINANCE REQUISITION APPROVALS (PHP 301-500 TIER) -->
+            <div class="workspace-view" id="requisitionsViewArea" style="display: none;">
+                <section class="directory-card">
+                    <div class="panel-header-bar">
+                        <div>
+                            <h2 class="section-title">Requisition Approvals</h2>
+                            <p class="section-sub-text">Purchase requisitions between &#8369;301 and &#8369;500 waiting for Finance sign-off. Approved items go back to Procurement for buying and receiving.</p>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="cust-table" id="requisitionsTable">
+                            <thead>
+                                <tr>
+                                    <th>PR # &amp; Item</th>
+                                    <th>Requested By</th>
+                                    <th>Vendor / Store</th>
+                                    <th>Amount</th>
+                                    <th>Date</th>
+                                    <th style="text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requisitionsTableBody">
+                                <tr>
+                                    <td colspan="6" class="loading-state-text">Loading pending requisitions...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </section>
             </div>

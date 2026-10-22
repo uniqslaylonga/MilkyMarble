@@ -1053,3 +1053,19 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Finance requisition approvals */
+.btn-req-approve, .btn-req-reject {
+    padding: 7px 14px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: 6px;
+    font-family: inherit;
+}
+.btn-req-approve { background: #2E7D32; color: #fff; }
+.btn-req-approve:hover { background: #256628; }
+.btn-req-reject { background: #fff; color: #C9302C; border-color: #C9302C; }
+.btn-req-reject:hover { background: #FDECEC; }
