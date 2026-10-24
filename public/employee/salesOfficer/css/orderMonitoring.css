@@ -267,9 +267,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 16px;
 }
 
 .title-with-subtitle {
@@ -508,13 +508,14 @@ body {
   background-color: transparent;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 28px;
 }
 
 .orders-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
+  gap: 28px 24px;
+  padding: 4px 4px 8px;
   min-height: 280px;
 }
 
@@ -522,10 +523,10 @@ body {
   background-color: var(--card-bg);
   border: none;
   border-radius: 16px;
-  padding: 16px 18px;
+  padding: 22px 24px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
   box-shadow: 0 2px 6px rgba(246, 146, 153, 0.08);
   transition: transform 0.15s ease;
 }
@@ -538,12 +539,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
 }
 
 .name-badge-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  margin-bottom: 4px;
 }
 
 .person-name {
@@ -576,7 +579,8 @@ body {
   font-family: var(--font-family-body);
   font-size: 11.5px;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 4px;
+  line-height: 1.5;
 }
 
 .price-col {
@@ -589,20 +593,21 @@ body {
 
 .card-details-box {
   background: rgba(255, 255, 255, 0.45);
-  padding: 8px 12px;
+  padding: 12px 16px;
   border-radius: 10px;
   font-size: 12px;
   color: var(--brown-soft);
-  line-height: 1.35;
+  line-height: 1.5;
 }
 
 .card-bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 8px;
+  padding-top: 14px;
+  margin-top: 2px;
   border-top: 1px solid var(--border-soft);
-  gap: 8px;
+  gap: 12px;
 }
 
 .status-badge-pill {
@@ -676,8 +681,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 14px;
-  margin-top: 10px;
+  padding-top: 20px;
+  margin-top: 16px;
   border-top: 1.5px solid var(--border-soft);
 }
 
@@ -838,6 +843,7 @@ body {
   .overview-grid,
   .orders-grid {
     grid-template-columns: 1fr;
+    gap: 20px;
   }
   .section-head-bar {
     flex-direction: column;
