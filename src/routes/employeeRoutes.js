@@ -1216,8 +1216,8 @@ router.get('/sales-officer/order-monitoring', async (req, res) => {
       .eq('status', 'COMPLETED')
       .is('customer_id', null)
       .like('order_number', 'MM-POS-%')
-      .gte('placed_at', todayStart)
-      .order('placed_at', { ascending: false });
+      .order('placed_at', { ascending: false })
+      .limit(1000);
     if (walkinErr) throw walkinErr;
 
     const queueOrders = [...(activeOrders || []), ...(walkinOrders || [])]
