@@ -1,7 +1,7 @@
 let allActiveOrders = [];
 let filteredActiveOrders = [];
 let currentMonitoringPage = 1;
-const MONITORING_PAGE_SIZE = 6;
+const MONITORING_PAGE_SIZE = 16; // 4 columns x 4 rows
 let isRegisterLocked = localStorage.getItem('isRegisterLocked') === 'true';
 
 // Walk-in toppings (edit names/prices here)

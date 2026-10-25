@@ -173,7 +173,7 @@ body {
 }
 
 .main-content {
-  padding: 24px 40px 40px 24px;
+  padding: 24px 48px 56px 32px;
 }
 
 .topbar {
@@ -186,7 +186,7 @@ body {
   z-index: 40;
   background-color: var(--bg-main);
   border-left: 2px solid var(--border-soft);
-  margin: -24px -40px 24px -24px;
+  margin: -24px -48px 36px -32px;
   padding: 15px 36px 15px 20px;
 }
 
@@ -260,14 +260,14 @@ body {
 }
 
 .section {
-  margin-bottom: 28px;
+  margin-bottom: 52px;
 }
 
 .section-head-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
   flex-wrap: wrap;
   gap: 16px;
 }
@@ -297,16 +297,17 @@ body {
 .overview-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
+  gap: 28px;
 }
 
 .stat-card {
   background-color: var(--card-bg);
   border: none;
   border-radius: 14px;
-  padding: 16px 20px 14px;
+  padding: 24px 28px 22px;
   display: flex;
   flex-direction: column;
+  gap: 8px;
 }
 
 .stat-title {
@@ -345,24 +346,24 @@ body {
 .preset-pos-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 14px;
+  gap: 28px 24px;
 }
 
 .preset-pos-card {
   background: var(--card-bg);
   border-radius: 14px;
-  padding: 14px 16px;
+  padding: 22px 24px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 10px;
+  gap: 18px;
   box-shadow: 0 2px 6px rgba(246, 146, 153, 0.08);
 }
 
 .preset-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
 }
 
 .preset-title {
@@ -380,7 +381,7 @@ body {
 
 .preset-actions {
   display: flex;
-  gap: 8px;
+  gap: 14px;
 }
 
 .btn-pos-punch {
@@ -388,7 +389,7 @@ body {
   background: var(--card-white);
   border: 1.5px solid var(--accent-pink);
   border-radius: 10px;
-  padding: 6px 8px;
+  padding: 9px 12px;
   font-family: var(--font-family-body);
   font-size: 12px;
   font-weight: 800;
@@ -508,14 +509,16 @@ body {
   background-color: transparent;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 36px;
 }
 
 .orders-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 28px 24px;
-  padding: 4px 4px 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 28px;
+  padding: 0 0 12px;
+  width: 100%;
+  box-sizing: border-box;
   min-height: 280px;
 }
 
@@ -523,10 +526,10 @@ body {
   background-color: var(--card-bg);
   border: none;
   border-radius: 16px;
-  padding: 22px 24px;
+  padding: 26px 28px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
   box-shadow: 0 2px 6px rgba(246, 146, 153, 0.08);
   transition: transform 0.15s ease;
 }
@@ -681,8 +684,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 20px;
-  margin-top: 16px;
+  padding-top: 24px;
+  margin-top: 20px;
   border-top: 1.5px solid var(--border-soft);
 }
 
@@ -1032,4 +1035,15 @@ body {
   font-size: 11.5px;
   font-weight: 600;
   color: var(--text-muted);
+}
+
+/* Order queue: 4 x 4 grid on desktop, fewer columns on smaller screens */
+@media (max-width: 1400px) {
+  .orders-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 1100px) {
+  .orders-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .orders-grid { grid-template-columns: 1fr; }
 }
