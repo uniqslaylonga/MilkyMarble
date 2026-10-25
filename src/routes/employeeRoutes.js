@@ -1625,6 +1625,8 @@ router.post('/sales-officer/promotions/pitch', async (req, res) => {
         pitch_note: pitch_note || '',
         valid_from: windowCheck.from.toISOString(),
         valid_until: windowCheck.until.toISOString(),
+        // The table requires a proposer. req.staff comes from the signed login cookie, so it can't be faked.
+        proposed_by: req.staff.id,
         status: 'PENDING_APPROVAL'
       }])
       .select()
