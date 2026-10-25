@@ -233,6 +233,14 @@
                                 <label for="inputUsageCap">Usage Cap / Redemptions (Optional)</label>
                                 <input type="number" step="1" min="1" name="usage_cap" id="inputUsageCap" placeholder="e.g. 100 (Leave blank for unlimited)">
                             </div>
+                            <div class="form-group">
+                                <label for="inputValidFrom">Valid From (Optional)</label>
+                                <input type="date" name="valid_from" id="inputValidFrom">
+                            </div>
+                            <div class="form-group">
+                                <label for="inputValidUntil">Valid Until *</label>
+                                <input type="date" name="valid_until" id="inputValidUntil" required>
+                            </div>
                             <div class="form-group full">
                                 <label for="inputPitchNote">Pitch Rationale / Note to CEO</label>
                                 <textarea name="pitch_note" id="inputPitchNote" rows="2" placeholder="Explain the commercial goal (e.g., Recovers low revenue week, boosts pre-orders)..."></textarea>

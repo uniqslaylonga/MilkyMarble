@@ -9,7 +9,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABAS
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 const { dispatchOrderStatusEmail } = require('../services/mailServices');
 const { generateCashTransactionId } = require('../utils/transactionId');
-const { getPromoRule, countItems, checkPromoEligibility } = require('../utils/promoRules');
+const { getPromoRule, countItems, checkPromoEligibility, getRedeemablePromo, computePromoDiscount } = require('../utils/promoRules');
 
 // Resolves the name/email to send order emails to, for either a
 // logged-in customer (via users table) or a guest checkout.
@@ -207,6 +207,18 @@ router.post('/', async (req, res) => {
       }
       promoDiscount = Number((orderSubtotal * 0.10).toFixed(2));
       savedPromoCode = cleanPromoCode;
+    } else if (cleanPromoCode) {
+      // Any other code: re-check it against the promotions table (approved,
+      // inside its dates) and work out the discount here. The browser's
+      // discount_amount is ignored, so it can't be edited or reused after expiry.
+      const found = await getRedeemablePromo(supabase, cleanPromoCode);
+      if (found.error) {
+        return res.status(400).json({ status: 'error', message: found.error });
+      }
+      promoDiscount = computePromoDiscount(found.promo, orderSubtotal);
+      savedPromoCode = String(found.promo.code).trim().toUpperCase();
+    } else {
+      promoDiscount = 0; // no code, no promo discount
     }
     const requestedPointsUsed = parseFloat(points_used || 0);
 

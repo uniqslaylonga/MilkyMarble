@@ -232,6 +232,8 @@ function renderCampaignGrid() {
 
                 <div class="promo-meta-details">
                     <div><strong>Usage:</strong> ${usageText}</div>
+                    <div><strong>Valid:</strong> ${c.valid_until ? `${c.valid_from ? fmtPromoDay(c.valid_from) : 'Now'} – ${fmtPromoDay(c.valid_until)}` : 'No end date'}</div>
+                    ${c.decided_at ? `<div><strong>${c.status === 'REJECTED' ? 'Rejected' : 'Approved'} by:</strong> ${escapeHtml(c.decided_by_name || 'CEO')} · ${fmtPromoDay(c.decided_at)}</div>` : ''}
                     ${c.pitch_note ? `<div><strong>Rationale:</strong> ${escapeHtml(c.pitch_note)}</div>` : ''}
                     ${c.rejection_reason ? `<div style="color: #c9302c;"><strong>CEO Feedback:</strong> ${escapeHtml(c.rejection_reason)}</div>` : ''}
                 </div>
@@ -394,6 +396,8 @@ async function handlePitchFormSubmit(e) {
     const minSpend = form.min_spend.value ? parseFloat(form.min_spend.value) : null;
     const usageCap = form.usage_cap.value ? parseInt(form.usage_cap.value, 10) : null;
     const pitchNote = form.pitch_note.value.trim();
+    const validFrom = form.valid_from.value || null;
+    const validUntil = form.valid_until.value;
 
     const payload = {
         code,
@@ -402,6 +406,8 @@ async function handlePitchFormSubmit(e) {
         discount_value: discountValue,
         min_spend: minSpend,
         usage_cap: usageCap,
+        valid_from: validFrom,
+        valid_until: validUntil,
         pitch_note: pitchNote
     };
 
@@ -432,7 +438,18 @@ async function handlePitchFormSubmit(e) {
     }
 }
 
+// Dates on promos are Philippine calendar days.
+function fmtPromoDay(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', year: 'numeric', month: 'short', day: 'numeric' });
+}
+
 function openPromoModal() {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }); // YYYY-MM-DD
+    ['inputValidFrom', 'inputValidUntil'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.min = today;
+    });
     const modal = document.getElementById('promoModalOverlay');
     if (modal) {
         modal.classList.add('open');

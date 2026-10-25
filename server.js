@@ -13,7 +13,7 @@ const authRoutes = require('./src/routes/authRoutes');
 const orderRoutes = require('./src/routes/orderRoutes');
 const paymentRoutes = require('./src/routes/paymentRoutes');
 const employeeRoutes = require('./src/routes/employeeRoutes');
-const { requireStaff, setStaffCookie, clearStaffCookie, readToken, COOKIE_NAME } = require('./src/middleware/staffAuth');
+const { requireStaff, requireRole, setStaffCookie, clearStaffCookie, readToken, COOKIE_NAME } = require('./src/middleware/staffAuth');
 const { logActivity } = require('./src/utils/activityLog');
 
 let customerRoutes = null;
@@ -155,12 +155,18 @@ app.post('/api/staff/logout', (req, res) => {
   clearStaffCookie(res);
   return res.json({ status: 'success' });
 });
-app.use('/api/admin', requireStaff('admin', 'ceo'));
+// Role-based access (who may call what):
+//   /api/admin/*              -> admin only (the CEO is read-only on operations)
+//   /api/ceo/*                -> CEO only (budget approvals, audit, analytics)
+//   /api/<officer>/*          -> employees holding THAT officer role only.
+//                                Admin and CEO are deliberately not let in, so
+//                                an admin can't approve payments/promotions/budgets.
+app.use('/api/admin', requireStaff('admin'));
 app.use('/api/ceo', requireStaff('ceo'));
-app.use(
-  ['/api/sales-officer', '/api/finance-officer', '/api/procurement-officer', '/api/production-supervisor'],
-  requireStaff('employee', 'admin', 'ceo')
-);
+app.use('/api/sales-officer', requireRole('Sales Officer'));
+app.use('/api/finance-officer', requireRole('Finance Officer'));
+app.use('/api/procurement-officer', requireRole('Procurement & Inventory'));
+app.use('/api/production-supervisor', requireRole('Production Supervisor'));
 
 // ==========================================
 // EMPLOYEE PASSWORD TICKETS
@@ -242,7 +248,7 @@ app.post('/api/staff/password-ticket', async (req, res) => {
   }
 });
 
-// ADMIN / CEO: list open tickets (already behind requireStaff('admin','ceo') via /api/admin).
+// ADMIN / CEO: list open tickets (already behind requireStaff('admin') via /api/admin).
 app.get('/api/admin/password-tickets', async (req, res) => {
   try {
     if (!supabase) return res.status(503).json({ status: 'error', message: 'Database disconnected.' });
@@ -945,7 +951,7 @@ app.get('/api/settings/pickup-days', async (req, res) => {
 });
 
 // Admin-only — reuses the same '/api/admin' auth middleware already
-// applied above (requireStaff('admin', 'ceo')).
+// applied above (requireStaff('admin')).
 app.get('/api/admin/settings/pickup-days', async (req, res) => {
   const days = await getAllowedPickupDays();
   return res.json({ status: 'success', days });

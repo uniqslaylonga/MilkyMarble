@@ -56,4 +56,90 @@ async function checkPromoEligibility(supabase, code, { itemCount, customerId, em
   return null;
 }
 
-module.exports = { getPromoRule, countItems, hasUsedPromo, checkPromoEligibility };
+// ---------------------------------------------------------------------------
+// Promotions table rules (shared by /api/promotions/validate and order creation
+// so the checkout screen and the real order can never disagree).
+// ---------------------------------------------------------------------------
+
+// Only these statuses can be redeemed. PENDING_APPROVAL / REJECTED / EXPIRED /
+// PROPOSED never are - a promo is live only after the CEO approves it.
+const REDEEMABLE_STATUSES = ['ACTIVE', 'APPROVED'];
+
+// Validity dates are calendar days in Philippine time (UTC+8): a promo that
+// "ends 2026-11-30" works until 11:59 PM that day, wherever the server runs.
+const PH_OFFSET = '+08:00';
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Turns the pitch form's two dates into timestamps. validUntil is required,
+// validFrom is optional (blank = starts immediately).
+function parsePromoWindow(validFrom, validUntil, now = new Date()) {
+  if (!validUntil || !DAY_RE.test(String(validUntil))) {
+    return { error: 'Please choose the last day this promo is valid.' };
+  }
+  const until = new Date(`${validUntil}T23:59:59.999${PH_OFFSET}`);
+  if (isNaN(until.getTime())) return { error: 'The end date is not a valid date.' };
+
+  let from = now;
+  if (validFrom) {
+    if (!DAY_RE.test(String(validFrom))) return { error: 'The start date is not a valid date.' };
+    from = new Date(`${validFrom}T00:00:00.000${PH_OFFSET}`);
+    if (isNaN(from.getTime())) return { error: 'The start date is not a valid date.' };
+  }
+  if (until < now) return { error: 'The end date cannot be in the past.' };
+  if (until < from) return { error: 'The end date must be on or after the start date.' };
+  return { from, until };
+}
+
+// Rows from before validity dates existed have both columns empty; they stay
+// open-ended instead of suddenly expiring.
+function isWithinWindow(promo, now = new Date()) {
+  const from = promo.valid_from ? new Date(promo.valid_from) : null;
+  const until = promo.valid_until ? new Date(promo.valid_until) : null;
+  if (from && from > now) return false;
+  if (until && until < now) return false;
+  return true;
+}
+
+function computePromoDiscount(promo, subtotal) {
+  const sub = Math.max(0, parseFloat(subtotal) || 0);
+  const val = parseFloat(promo.discount_value) || 0;
+  const type = String(promo.discount_type || '').toLowerCase();
+  const raw = (type === 'percent' || type === 'percentage') ? sub * (val / 100) : Math.min(val, sub);
+  return Math.round(Math.min(raw, sub) * 100) / 100;
+}
+
+// Looks a code up and answers: is it redeemable RIGHT NOW?
+// -> { promo } or { error, httpStatus }
+async function getRedeemablePromo(supabase, code, now = new Date()) {
+  const clean = String(code || '').trim();
+  if (!clean) return { error: 'Promo code is required.', httpStatus: 400 };
+  // Letters/digits/_/- only, so the code can't smuggle wildcard characters into the lookup.
+  if (!/^[A-Za-z0-9_-]{1,40}$/.test(clean)) return { error: 'Invalid promo code.', httpStatus: 404 };
+
+  const { data, error } = await supabase
+    .from('promotions')
+    .select('*')
+    .ilike('code', clean)
+    .limit(10);
+  if (error) {
+    console.error('[promo] lookup failed:', error.message);
+    return { error: 'Could not verify the promo code right now.', httpStatus: 503 };
+  }
+
+  // ilike treats "_" as a wildcard, so keep exact matches only.
+  const rows = (data || []).filter(r => String(r.code || '').toUpperCase() === clean.toUpperCase());
+  if (!rows.length) return { error: 'Invalid promo code.', httpStatus: 404 };
+
+  const live = rows.filter(r => REDEEMABLE_STATUSES.includes(String(r.status || '').toUpperCase()));
+  if (!live.length) return { error: 'This promo code is no longer active.', httpStatus: 400 };
+
+  const valid = live.find(r => isWithinWindow(r, now));
+  if (!valid) return { error: 'This promo code is not valid today.', httpStatus: 400 };
+
+  return { promo: valid };
+}
+
+module.exports = {
+  getPromoRule, countItems, hasUsedPromo, checkPromoEligibility,
+  REDEEMABLE_STATUSES, parsePromoWindow, isWithinWindow, computePromoDiscount, getRedeemablePromo
+};

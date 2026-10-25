@@ -1,4 +1,5 @@
 const express = require('express');
+const { parsePromoWindow } = require('../utils/promoRules');
 const router = express.Router();
 const supabase = require('../config/supabase');
 const { readToken, COOKIE_NAME: STAFF_COOKIE } = require('../middleware/staffAuth');
@@ -1456,7 +1457,7 @@ router.get('/sales-officer/promotions', async (req, res) => {
 
     if (error) throw error;
 
-    campaigns = (promotions || []).map(p => ({
+    const campaigns = (promotions || []).map(p => ({
       id: p.id,
       code: p.code,
       discount_type: p.discount_type,
@@ -1468,6 +1469,10 @@ router.get('/sales-officer/promotions', async (req, res) => {
       status: p.status,
       pitch_note: p.pitch_note || p.title || '',
       rejection_reason: p.rejection_reason || null,
+      valid_from: p.valid_from || null,
+      valid_until: p.valid_until || null,
+      decided_by_name: p.decided_by_name || null,
+      decided_at: p.decided_at || null,
       created_at: p.created_at
     }));
 
@@ -1589,10 +1594,21 @@ Respond ONLY with this exact JSON format. No conversational text or markdown cod
 router.post('/sales-officer/promotions/pitch', async (req, res) => {
   try {
     if (!supabase) return noDb(res);
-    const { code, target_segment, discount_type, discount_value, min_spend, usage_cap, pitch_note } = req.body;
+    const { code, target_segment, discount_type, discount_value, min_spend, usage_cap, pitch_note, valid_from, valid_until } = req.body;
 
     if (!code || discount_value === undefined || discount_value === null) {
       return res.status(400).json({ status: 'error', message: 'Code and discount value are required.' });
+    }
+
+    // Sanity-check the offer itself, then the validity window (required).
+    const cleanType = discount_type === 'fixed' ? 'fixed' : 'percent';
+    const cleanValue = parseFloat(discount_value);
+    if (!Number.isFinite(cleanValue) || cleanValue <= 0 || (cleanType === 'percent' && cleanValue > 100)) {
+      return res.status(400).json({ status: 'error', message: cleanType === 'percent' ? 'A percent discount must be between 0 and 100.' : 'The discount value must be greater than 0.' });
+    }
+    const windowCheck = parsePromoWindow(valid_from, valid_until);
+    if (windowCheck.error) {
+      return res.status(400).json({ status: 'error', message: windowCheck.error });
     }
 
     const { data, error } = await supabase
@@ -1600,13 +1616,15 @@ router.post('/sales-officer/promotions/pitch', async (req, res) => {
       .insert([{
         code: String(code).toUpperCase().trim(),
         title: pitch_note || `${code} promo`,
-        discount_type: discount_type || 'percent',
-        discount_value: parseFloat(discount_value) || 0,
+        discount_type: cleanType,
+        discount_value: cleanValue,
         target_segment: target_segment || 'all',
         min_spend: min_spend !== undefined && min_spend !== null && min_spend !== '' ? parseFloat(min_spend) : null,
         usage_cap: usage_cap !== undefined && usage_cap !== null && usage_cap !== '' ? parseInt(usage_cap, 10) : null,
         usage_count: 0,
         pitch_note: pitch_note || '',
+        valid_from: windowCheck.from.toISOString(),
+        valid_until: windowCheck.until.toISOString(),
         status: 'PENDING_APPROVAL'
       }])
       .select()
@@ -1620,42 +1638,10 @@ router.post('/sales-officer/promotions/pitch', async (req, res) => {
   }
 });
 
-router.post('/sales-officer/promotions/create', async (req, res) => {
-  try {
-    if (!supabase) return noDb(res);
-    const { code, discount_type, discount_value } = req.body;
-    if (!code || !discount_value) {
-      return res.status(400).json({ status: 'error', message: 'Code and discount value required.' });
-    }
-    const { data, error } = await supabase
-      .from('promotions')
-      .insert([{
-        code: String(code).toUpperCase().trim(),
-        discount_type: discount_type || 'percent',
-        discount_value: parseFloat(discount_value),
-        status: 'ACTIVE'
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return res.json({ status: 'success', promotion: data });
-  } catch (error) {
-    return res.status(500).json({ status: 'error', message: error.message });
-  }
-});
-
-router.post('/sales-officer/promotions/toggle', async (req, res) => {
-  try {
-    if (!supabase) return noDb(res);
-    const { toggle_id, new_status } = req.body;
-    const { error } = await supabase.from('promotions').update({ status: new_status }).eq('id', toggle_id);
-    if (error) throw error;
-    return res.json({ status: 'success', message: 'Status updated.' });
-  } catch (error) {
-    return res.status(500).json({ status: 'error', message: error.message });
-  }
-});
+// REMOVED: POST /sales-officer/promotions/create and /promotions/toggle.
+// Both let a Sales Officer set a promo ACTIVE directly, skipping CEO approval
+// (toggle could even re-activate a rejected promo). The only way a promo goes
+// live now is /promotions/pitch -> CEO approve (POST /api/ceo/budget-approval/action).
 
 router.get('/sales-officer/sales-reports', async (req, res) => {
   try {

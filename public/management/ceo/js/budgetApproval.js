@@ -247,6 +247,10 @@ function renderPromosTable() {
             : `₱${Number(item.discount_value || 0).toFixed(2)} Flat`;
         const capText = item.usage_cap ? `Cap: ${item.usage_cap} claims` : 'No Limit';
         const minSpendText = item.min_spend ? `Min. ₱${Number(item.min_spend).toFixed(2)}` : 'No Min.';
+        const dayFmt = iso => new Date(iso).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', year: 'numeric', month: 'short', day: 'numeric' });
+        const validText = item.valid_until
+            ? `Valid ${item.valid_from ? dayFmt(item.valid_from) : 'now'} – ${dayFmt(item.valid_until)}`
+            : 'No end date';
 
         return `
             <tr>
@@ -257,7 +261,7 @@ function renderPromosTable() {
                 </td>
                 <td><span style="font-size: 12px;">${escapeHtml(!item.target_segment || String(item.target_segment).toLowerCase() === 'all' ? 'All Customers' : item.target_segment)}</span></td>
                 <td><strong style="color: var(--brown-soft);">${discountText}</strong></td>
-                <td><span style="font-size: 11.5px; color: var(--text-muted);">${minSpendText} • ${capText}</span></td>
+                <td><span style="font-size: 11.5px; color: var(--text-muted);">${minSpendText} • ${capText}<br>${validText}</span></td>
                 <td><span style="font-size: 12px; color: var(--text-muted);">${escapeHtml(item.pitched_by || 'Sales Officer')}</span></td>
                 <td style="text-align: right;">
                     <div class="btn-action-group">

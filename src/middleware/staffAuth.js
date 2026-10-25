@@ -61,15 +61,16 @@ function clearStaffCookie(res) {
   res.clearCookie(COOKIE_NAME, { path: '/' });
 }
 
-// requireStaff('admin', 'ceo') -> only those user types get through.
-function requireStaff(...allowedTypes) {
+// One guard, two public flavours below. Order of checks: signed cookie (401),
+// then "is this person allowed here" (403), then the temporary-password lock (403).
+function guard(isAllowed) {
   return (req, res, next) => {
     if (req.method === 'OPTIONS') return next();
     const session = readToken(req.cookies && req.cookies[COOKIE_NAME]);
     if (!session) {
       return res.status(401).json({ status: 'error', message: 'Authentication required. Please log in.' });
     }
-    if (allowedTypes.length && !allowedTypes.includes(session.type)) {
+    if (!isAllowed(session)) {
       return res.status(403).json({ status: 'error', message: 'You do not have access to this section.' });
     }
     // Temporary-password accounts can't use any staff API until they choose
@@ -89,4 +90,23 @@ function requireStaff(...allowedTypes) {
   };
 }
 
-module.exports = { requireStaff, setStaffCookie, clearStaffCookie, readToken, COOKIE_NAME };
+// requireStaff('admin') -> only that user TYPE (admin / ceo / employee) gets through.
+function requireStaff(...allowedTypes) {
+  return guard((s) => !allowedTypes.length || allowedTypes.includes(s.type));
+}
+
+// requireRole('Sales Officer') -> an EMPLOYEE whose assigned role (user_roles)
+// matches. Admin and CEO do NOT pass: being senior doesn't grant the officer's
+// powers (e.g. an admin can't approve payments or promotions). Matching ignores
+// case/extra spaces; an employee with several roles passes if any one matches.
+const normRole = (r) => String(r || '').trim().toLowerCase();
+function requireRole(...roleNames) {
+  const wanted = roleNames.map(normRole);
+  return guard((s) =>
+    s.type === 'employee' &&
+    Array.isArray(s.roles) &&
+    s.roles.some((r) => wanted.includes(normRole(r)))
+  );
+}
+
+module.exports = { requireStaff, requireRole, setStaffCookie, clearStaffCookie, readToken, COOKIE_NAME };

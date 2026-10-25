@@ -611,9 +611,22 @@ router.post('/employee-login', async (req, res) => {
       .update({ last_login_at: new Date().toISOString() })
       .eq('id', account.id);
 
-    // Signed httpOnly cookie - the staff API routes check this (401 without it).
+    // Signed httpOnly cookie - the staff API routes check this (401 without it,
+    // 403 when the role doesn't match - see requireRole in staffAuth.js).
+    // Old seeded accounts with no user_roles row still land on their dashboard
+    // by username (see targetUrl below), so they get the matching role in the
+    // cookie too; otherwise the role guard would lock them out of their own API.
+    const LEGACY_ROLE_BY_USERNAME = {
+      salesofficer1: 'Sales Officer',
+      financeofficer1: 'Finance Officer',
+      productionofficer1: 'Production Supervisor',
+      inventoryofficer1: 'Procurement & Inventory'
+    };
+    const sessionRoles = roleNames.length
+      ? roleNames
+      : (LEGACY_ROLE_BY_USERNAME[cleanUsername] ? [LEGACY_ROLE_BY_USERNAME[cleanUsername]] : []);
     const mustChangePassword = account.must_change_password === true;
-    setStaffCookie(res, { id: account.id, type: account.user_type, roles: roleNames, mustChangePassword });
+    setStaffCookie(res, { id: account.id, type: account.user_type, roles: sessionRoles, mustChangePassword });
 
     logActivity(supabase, {
       req,
