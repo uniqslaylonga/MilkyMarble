@@ -329,12 +329,12 @@ async function loadCustomerNotifications() {
   const customerId = user.customer_id || user.id;
 
   try {
-    const res = await fetch(`/api/orders?customer_id=${customerId}`);
-    const data = await res.json();
-    const orders = data.orders || [];
+    // Order status updates + live promos, merged newest first (see mmLoadNotifFeed in navbar.js).
+    const { orders, items } = await mmLoadNotifFeed(customerId, { promoLimit: 10 });
     notificationsOrdersCache = orders;
+    window.mmNotifFeedItems = items;
 
-    if (orders.length === 0) {
+    if (items.length === 0) {
       container.innerHTML = `
         <div class="notifications-empty-box">
           <i class="fa-regular fa-bell empty-bell-icon"></i>
@@ -346,9 +346,35 @@ async function loadCustomerNotifications() {
       return;
     }
 
-    const readNotifs = JSON.parse(localStorage.getItem('mm_read_notifs') || '[]');
+    const readNotifs = mmReadNotifKeys();
 
-    const notifsHTML = orders.map(order => {
+    container.innerHTML = items.map(item => {
+      const dateObj = item.time;
+      const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+        ' · ' + dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      const isRead = readNotifs.has(item.key);
+
+      // ---------- NEW PROMO ----------
+      if (item.type === 'promo') {
+        return `
+          <article class="notification-item-card ${isRead ? 'is-read' : ''}" onclick="markSingleNotifRead('${item.key}')">
+            <div class="notif-thumb-wrapper notif-promo-thumb">
+              <i class="fa-solid fa-tags"></i>
+            </div>
+            <div class="notif-details-col">
+              <h2 class="notif-title">${escapeHtml(item.title)}</h2>
+              <p class="notif-desc">${escapeHtml(item.desc)}</p>
+              <span class="notif-timestamp">${formattedDate}</span>
+            </div>
+            <div class="notif-action-col">
+              <button type="button" class="btn-notif-action" data-code="${escapeHtml(item.promo.code)}" onclick="event.stopPropagation(); copyPromoCode(this)">Copy Code</button>
+            </div>
+          </article>
+        `;
+      }
+
+      // ---------- ORDER STATUS ----------
+      const order = item.order;
       const rawItems = order.items || [];
       const firstRaw = rawItems[0] || {};
       const rawLabel = firstRaw.item_label || firstRaw.title || order.title || 'Custom Marble Cup';
@@ -362,12 +388,11 @@ async function loadCustomerNotifications() {
       const cleanTitle = cleanItemTitle(rawLabel);
       const assets = resolveItemAssets(cleanTitle, size, toppingsStr);
 
-      let rawStatus = (order.status || 'CONFIRMED').toUpperCase().replace(/_/g, ' ');
-      let notifTitle = 'Order Confirmed!';
-      let notifDesc = "We've received your order! Hang tight, your jelly cups will be prepared soon.";
-      let actionBtnHTML = `<button type="button" class="btn-notif-action" onclick="event.stopPropagation(); openOrderDetailsModal('${order.id}')">View Details</button>`;
+      let notifTitle = item.title;
+      let notifDesc = item.desc;
+      let actionBtnHTML = `<button type="button" class="btn-notif-action" onclick="event.stopPropagation(); markSingleNotifRead('${item.key}'); openOrderDetailsModal('${order.id}')">View Details</button>`;
 
-      if (rawStatus.includes('COMPLET')) {
+      if (item.status === 'COMPLETED') {
         if (assets.is_custom) {
           notifTitle = 'Order Complete! Loved your build?';
           notifDesc = 'Save your custom drink so you can reorder it anytime from Saved Builds.';
@@ -377,24 +402,12 @@ async function loadCustomerNotifications() {
           notifDesc = 'Tell us what you think of your sips! Rate your drink and share the love.';
           actionBtnHTML = `<button type="button" class="btn-notif-action" onclick="event.stopPropagation(); openRateModal('${order.id}')">Rate your Sips</button>`;
         }
-      } else if (rawStatus.includes('READY')) {
-        notifTitle = 'Ready for Pick-up!';
-        notifDesc = 'Your sweet cups are chilled and waiting for you at the counter!';
-        actionBtnHTML = `<button type="button" class="btn-notif-action" onclick="event.stopPropagation(); openOrderDetailsModal('${order.id}')">View Details</button>`;
-      } else if (rawStatus.includes('PREP')) {
-        notifTitle = 'Prepping Your Sips!';
-        notifDesc = "The Marble Bar is layering your sweet treats now. We'll let you know once ready!";
-        actionBtnHTML = `<button type="button" class="btn-notif-action" onclick="event.stopPropagation(); openOrderDetailsModal('${order.id}')">View Details</button>`;
       }
 
-      const dateObj = new Date(order.placed_at || Date.now());
-      const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + 
-        ' · ' + dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-
-      const isRead = readNotifs.includes(String(order.id));
+      const orderRef = order.order_number ? ` <span class="notif-order-ref">${escapeHtml(order.order_number)}</span>` : '';
 
       return `
-        <article class="notification-item-card ${isRead ? 'is-read' : ''}" onclick="markSingleNotifRead('${order.id}')">
+        <article class="notification-item-card ${isRead ? 'is-read' : ''}" onclick="markSingleNotifRead('${item.key}')">
           <div class="notif-thumb-wrapper" style="--thumb-accent: ${assets.accent_color};">
             ${assets.is_custom ? `
               <div class="orders-composite-thumb" style="width: 74px; height: 86px;">
@@ -403,13 +416,13 @@ async function loadCustomerNotifications() {
                 <img src="${assets.cup_img}" class="cart-layer-cup" alt="Cup">
               </div>
             ` : `
-              <img src="${assets.image}" class="notif-thumb-img" alt="${cleanTitle}">
+              <img src="${assets.image}" class="notif-thumb-img" alt="${escapeHtml(cleanTitle)}">
             `}
           </div>
 
           <div class="notif-details-col">
-            <h2 class="notif-title">${notifTitle}</h2>
-            <p class="notif-desc">${notifDesc}</p>
+            <h2 class="notif-title">${escapeHtml(notifTitle)}${orderRef}</h2>
+            <p class="notif-desc">${escapeHtml(notifDesc)}</p>
             <span class="notif-timestamp">${formattedDate}</span>
           </div>
 
@@ -420,7 +433,7 @@ async function loadCustomerNotifications() {
       `;
     }).join('');
 
-    container.innerHTML = notifsHTML;
+    mmUpdateNotifBadge(items);
 
   } catch (err) {
     container.innerHTML = `
@@ -431,28 +444,24 @@ async function loadCustomerNotifications() {
   }
 }
 
-window.markAllNotificationsAsRead = function() {
-  const cards = document.querySelectorAll('.notification-item-card');
-  cards.forEach(card => card.classList.add('is-read'));
+window.copyPromoCode = function(btn) {
+  const code = btn && btn.dataset ? btn.dataset.code : '';
+  if (!code) return;
 
-  const user = JSON.parse(localStorage.getItem('mm_user') || '{}');
-  const custId = user.customer_id || user.id;
-  if (!custId) return;
+  const done = () => {
+    const original = btn.innerText;
+    btn.innerText = 'Copied!';
+    setTimeout(() => { btn.innerText = original; }, 1500);
+  };
 
-  fetch(`/api/orders?customer_id=${custId}`)
-    .then(res => res.json())
-    .then(data => {
-      const ids = (data.orders || []).map(o => String(o.id));
-      localStorage.setItem('mm_read_notifs', JSON.stringify(ids));
-      const badge = document.getElementById('navNotifBadge');
-      if (badge) badge.style.display = 'none';
-    });
-};
-
-window.markSingleNotifRead = function(id) {
-  let readNotifs = JSON.parse(localStorage.getItem('mm_read_notifs') || '[]');
-  if (!readNotifs.includes(String(id))) {
-    readNotifs.push(String(id));
-    localStorage.setItem('mm_read_notifs', JSON.stringify(readNotifs));
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(done).catch(() => {});
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = code;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { /* ignore */ }
+    ta.remove();
   }
 };

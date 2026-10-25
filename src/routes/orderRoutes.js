@@ -441,7 +441,7 @@ router.get('/', async (req, res) => {
       .from('orders')
       .select(`
         id, order_number, status, subtotal, discount_amount, total_amount, 
-        pickup_instructions, pickup_date, placed_at, payment_method, transaction_id,
+        pickup_instructions, pickup_date, placed_at, updated_at, payment_method, transaction_id,
         payment_reference, payment_reject_reason,
         order_items (id, item_label, quantity, unit_price, line_total, size, is_custom, toppings, addons, flavor_img, toppings_img, cup_img, accent_color)
       `)
@@ -467,6 +467,10 @@ router.get('/', async (req, res) => {
         status: o.status || 'PENDING_PAYMENT',
         total_amount: o.total_amount || 0,
         pickup_date: schedule,
+        placed_at: o.placed_at || null,
+        // updated_at moves every time staff change the status, so it is the
+        // time the notification for the CURRENT status was produced.
+        updated_at: o.updated_at || o.placed_at || null,
         payment_method: o.payment_method || null,
         transaction_id: o.transaction_id || null,
         payment_reference: o.payment_reference || null,

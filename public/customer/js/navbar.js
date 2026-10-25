@@ -195,6 +195,17 @@ function injectNavbarDropdownStyles() {
       z-index: 2;
       margin-bottom: 2px;
     }
+    .dropdown-promo-thumb {
+      align-items: center;
+      width: 48px;
+      height: 48px;
+      background: #FDEFEE;
+      border-radius: 14px;
+      color: #F48A8E;
+      font-size: 20px;
+    }
+    .dropdown-promo-thumb::after { display: none; }
+    .dropdown-notif-item.is-read { opacity: 0.7; }
     .dropdown-item-text {
       flex: 1;
       display: flex;
@@ -623,20 +634,139 @@ async function handleGlobalAvatarFileSelect(event) {
   }
 }
 
+// ==========================================
+// NOTIFICATION FEED (order status + new promos)
+// Shared by the bell dropdown below and by notifications.js (Sweet Updates page).
+// Nothing is stored server-side: every item is derived from the customer's
+// orders (current status) and the live promotions list. Read state lives in
+// localStorage under mm_read_notifs.
+//   order item key : order-<id>-<STATUS>  (a status change makes it unread again)
+//   promo item key : promo-<id>
+// ==========================================
+function mmOrderNotifContent(order) {
+  const raw = String(order.status || 'CONFIRMED').toUpperCase();
+  const reason = order.payment_reject_reason ? String(order.payment_reject_reason).trim() : '';
+
+  if (raw.includes('COMPLET')) {
+    return { status: 'COMPLETED', icon: 'fa-circle-check', title: 'Order Complete!', desc: 'Thanks for sipping with us! Tell us how your drink was.' };
+  }
+  if (raw.includes('READY')) {
+    return { status: 'READY', icon: 'fa-bell-concierge', title: 'Ready for Pick-up!', desc: 'Your sweet cups are chilled and waiting for you at the counter!' };
+  }
+  if (raw.includes('PREP')) {
+    return { status: 'PREPARING', icon: 'fa-blender', title: 'Prepping Your Sips!', desc: "The Marble Bar is layering your sweet treats now. We'll let you know once ready!" };
+  }
+  if (raw.includes('CANCEL')) {
+    return {
+      status: 'CANCELLED', icon: 'fa-circle-xmark',
+      title: reason ? 'Payment Not Verified' : 'Order Cancelled',
+      desc: reason ? `We couldn't confirm your payment: ${reason}` : 'This order was cancelled.'
+    };
+  }
+  if (raw.includes('PENDING')) {
+    return { status: 'PENDING_PAYMENT', icon: 'fa-hourglass-half', title: 'Awaiting Payment', desc: "We're waiting to verify your payment. Hang tight, or open the order to finish paying." };
+  }
+  if (raw.includes('PAID')) {
+    return { status: 'PAID_VERIFIED', icon: 'fa-receipt', title: 'Payment Verified!', desc: 'Your payment went through. Your jelly cups will be prepared soon.' };
+  }
+  return { status: 'CONFIRMED', icon: 'fa-circle-check', title: 'Order Confirmed!', desc: "We've received your order! Hang tight, your jelly cups will be prepared soon." };
+}
+
+function mmPromoNotifContent(promo) {
+  const val = Number(promo.discount_value) || 0;
+  const off = String(promo.discount_type || '').toLowerCase().startsWith('percent')
+    ? `${val}% off`
+    : `₱${val.toLocaleString('en-PH', { maximumFractionDigits: 2 })} off`;
+
+  const bits = [];
+  if (promo.min_spend) bits.push(`min. spend ₱${Number(promo.min_spend).toLocaleString('en-PH')}`);
+  if (promo.valid_until) {
+    const d = new Date(promo.valid_until);
+    if (!isNaN(d)) bits.push(`until ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })}`);
+  }
+  return {
+    title: `New Promo: ${off}!`,
+    desc: `Use code ${promo.code} at checkout${bits.length ? ' · ' + bits.join(' · ') : ''}.`
+  };
+}
+
+function mmReadNotifKeys() {
+  try { return new Set(JSON.parse(localStorage.getItem('mm_read_notifs') || '[]').map(String)); }
+  catch (e) { return new Set(); }
+}
+
+function mmSaveReadNotifKeys(set) {
+  try {
+    // Keep the list bounded; keys for old statuses are never needed again.
+    localStorage.setItem('mm_read_notifs', JSON.stringify(Array.from(set).slice(-300)));
+  } catch (e) { /* storage full / blocked: read state just won't persist */ }
+}
+
+// -> [{ key, type: 'order' | 'promo', time: Date, order?, promo?, ...title/desc/icon }] newest first
+async function mmLoadNotifFeed(customerId, { orderLimit = null, promoLimit = 5 } = {}) {
+  const orderUrl = `/api/orders?customer_id=${encodeURIComponent(customerId)}${orderLimit ? `&limit=${orderLimit}` : ''}`;
+
+  // Promos are public and optional: if that request fails, order updates still show.
+  const [orderData, promoData] = await Promise.all([
+    fetch(orderUrl).then(r => r.json()),
+    fetch(`/api/promotions/active?limit=${promoLimit}`).then(r => r.json()).catch(() => ({ promos: [] }))
+  ]);
+
+  const orderItems = (orderData.orders || []).map(order => {
+    const c = mmOrderNotifContent(order);
+    return {
+      type: 'order',
+      key: `order-${order.id}-${c.status}`,
+      time: new Date(order.updated_at || order.placed_at || Date.now()),
+      order, ...c
+    };
+  });
+
+  const promoItems = (promoData.promos || []).map(promo => {
+    const c = mmPromoNotifContent(promo);
+    return {
+      type: 'promo',
+      key: `promo-${promo.id}`,
+      time: new Date(promo.announced_at || Date.now()),
+      icon: 'fa-tags',
+      promo, ...c
+    };
+  });
+
+  return {
+    orders: orderData.orders || [],
+    items: [...orderItems, ...promoItems].sort((a, b) => b.time - a.time)
+  };
+}
+
+function mmUpdateNotifBadge(items) {
+  const bell = document.getElementById('navNotifBell');
+  if (!bell) return;
+  const read = mmReadNotifKeys();
+  const unread = items.filter(i => !read.has(i.key)).length;
+
+  let badge = document.getElementById('navNotifBadge');
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.id = 'navNotifBadge';
+    badge.className = 'nav-cart-badge';
+    bell.appendChild(badge);
+  }
+  badge.innerText = unread > 9 ? '9+' : String(unread);
+  badge.style.display = unread > 0 ? 'inline-block' : 'none';
+}
+
 function loadNavbarDropdownNotifs(customerId) {
   const listEl = document.getElementById('notifDropdownList');
   if (!listEl) return;
 
-  // Only the 3 most recent orders are ever shown here, so ask the server for
-  // just those instead of this customer's entire order history (which grows
-  // -- with full item + image data -- every time they order, and this runs
-  // on every page load for every logged-in customer).
-  fetch(`/api/orders?customer_id=${encodeURIComponent(customerId)}&limit=3`)
-    .then(res => res.json())
-    .then(data => {
-      const orders = data.orders || [];
+  // The badge only needs the latest few orders, so don't pull the whole history on every page load.
+  mmLoadNotifFeed(customerId, { orderLimit: 5, promoLimit: 5 })
+    .then(({ items }) => {
+      window.mmNotifFeedItems = items;
+      mmUpdateNotifBadge(items);
 
-      if (orders.length === 0) {
+      if (items.length === 0) {
         listEl.innerHTML = `
           <div style="padding: 16px; text-align: center; color: #7C4F38; font-size: 13px; font-weight: 600;">
             No updates yet. Place an order to see updates here!
@@ -645,46 +775,33 @@ function loadNavbarDropdownNotifs(customerId) {
         return;
       }
 
-      const recentOrders = orders.slice(0, 3);
+      const read = mmReadNotifKeys();
 
-      listEl.innerHTML = recentOrders.map(order => {
-        const rawItems = order.items || [];
-        const rawLabel = (rawItems[0] && (rawItems[0].item_label || rawItems[0].title)) || order.title || 'Custom Cup';
-        
-        let accent = '#8bb35c';
-        let img = 'images/Cheesy Pandan Cubes.png';
-
-        if (rawLabel.toLowerCase().includes('coffee')) {
-          accent = '#664638';
-          img = 'images/Chocolatey Coffee Noodly Jelly.png';
-        } else if (rawLabel.toLowerCase().includes('strawberry')) {
-          accent = '#f48a8e';
-          img = 'images/Strawberry String Party.png';
-        }
-
-        let rawStatus = (order.status || 'CONFIRMED').toUpperCase().replace(/_/g, ' ');
-        let title = 'Order Confirmed!';
-        let sub = 'Your order has been recorded and will be prepared soon.';
-
-        if (rawStatus.includes('COMPLET')) {
-          title = 'Order Complete!';
-          sub = 'How was your sip? Tell us what you think of your drink.';
-        } else if (rawStatus.includes('PREP')) {
-          title = 'Prepping Your Sips!';
-          sub = 'The Marble Bar is preparing your cup right now.';
-        } else if (rawStatus.includes('READY')) {
-          title = 'Ready for Pick-up!';
-          sub = 'Your sweet cup is chilled and ready for pick-up!';
+      listEl.innerHTML = items.slice(0, 4).map(item => {
+        let thumb;
+        if (item.type === 'promo') {
+          thumb = `<div class="dropdown-item-thumb dropdown-promo-thumb"><i class="fa-solid fa-tags"></i></div>`;
+        } else {
+          const rawItems = item.order.items || [];
+          const rawLabel = (rawItems[0] && (rawItems[0].item_label || rawItems[0].title)) || item.order.title || 'Custom Cup';
+          let accent = '#8bb35c';
+          let img = 'images/Cheesy Pandan Cubes.png';
+          if (rawLabel.toLowerCase().includes('coffee')) {
+            accent = '#664638';
+            img = 'images/Chocolatey Coffee Noodly Jelly.png';
+          } else if (rawLabel.toLowerCase().includes('strawberry')) {
+            accent = '#f48a8e';
+            img = 'images/Strawberry String Party.png';
+          }
+          thumb = `<div class="dropdown-item-thumb" style="--thumb-accent: ${accent};"><img src="${img}" alt="Drink"></div>`;
         }
 
         return `
-          <div class="dropdown-notif-item" onclick="window.location.href='notifications.html'">
-            <div class="dropdown-item-thumb" style="--thumb-accent: ${accent};">
-              <img src="${img}" alt="Drink">
-            </div>
+          <div class="dropdown-notif-item ${read.has(item.key) ? 'is-read' : ''}" onclick="window.location.href='notifications.html'">
+            ${thumb}
             <div class="dropdown-item-text">
-              <h4 class="dropdown-item-title">${title}</h4>
-              <p class="dropdown-item-sub">${sub}</p>
+              <h4 class="dropdown-item-title">${escapeHtml(item.title)}</h4>
+              <p class="dropdown-item-sub">${escapeHtml(item.desc)}</p>
             </div>
           </div>
         `;
@@ -699,22 +816,25 @@ function loadNavbarDropdownNotifs(customerId) {
     });
 }
 
+window.markSingleNotifRead = function(key) {
+  const read = mmReadNotifKeys();
+  if (read.has(String(key))) return;
+  read.add(String(key));
+  mmSaveReadNotifKeys(read);
+  if (window.mmNotifFeedItems) mmUpdateNotifBadge(window.mmNotifFeedItems);
+};
+
 window.markAllNotificationsAsRead = function(event) {
   if (event) event.stopPropagation();
 
-  const user = JSON.parse(localStorage.getItem('mm_user') || 'null');
-  if (!user || !user.customer_id) return;
+  const items = window.mmNotifFeedItems || [];
+  const read = mmReadNotifKeys();
+  items.forEach(i => read.add(i.key));
+  mmSaveReadNotifKeys(read);
 
-  fetch(`/api/orders?customer_id=${encodeURIComponent(user.customer_id)}`)
-    .then(res => res.json())
-    .then(data => {
-      const allIds = (data.orders || []).map(o => String(o.id));
-      localStorage.setItem('mm_read_notifs', JSON.stringify(allIds));
-
-      document.querySelectorAll('.notification-item-card, .notif-row-card').forEach(card => {
-        card.classList.add('is-read');
-      });
-    });
+  document.querySelectorAll('.notification-item-card, .notif-row-card, .dropdown-notif-item')
+    .forEach(card => card.classList.add('is-read'));
+  mmUpdateNotifBadge(items);
 };
 
 // ==========================================

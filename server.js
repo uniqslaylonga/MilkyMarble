@@ -1,7 +1,7 @@
 // server.js - Milky Marble Express Backend
 require('dotenv').config();
 const express = require('express');
-const { checkPromoEligibility } = require('./src/utils/promoRules');
+const { checkPromoEligibility, REDEEMABLE_STATUSES, isWithinWindow } = require('./src/utils/promoRules');
 const path = require('path');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
@@ -1797,6 +1797,57 @@ app.post('/api/customer/deactivate', async (req, res) => {
 });
 
 // ==========================================
+// 6b. LIVE PROMOS FEED (customer notifications)
+// Only CEO-approved promos that can be redeemed right now. Internal fields
+// (pitch notes, usage caps, who proposed it) are deliberately not exposed.
+// ==========================================
+app.get('/api/promotions/active', async (req, res) => {
+  try {
+    if (!supabase) return res.json({ status: 'success', promos: [] });
+
+    const { data, error } = await supabase
+      .from('promotions')
+      .select('*')
+      .in('status', REDEEMABLE_STATUSES)
+      .order('id', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+
+    const now = new Date();
+    const parsedLimit = parseInt(req.query.limit, 10);
+    const cap = (Number.isFinite(parsedLimit) && parsedLimit > 0) ? Math.min(parsedLimit, 50) : 10;
+
+    const promos = (data || [])
+      .filter(p => isWithinWindow(p, now))
+      .filter(p => !p.usage_cap || (p.usage_count || 0) < p.usage_cap)
+      .map(p => {
+        // Approval time isn't stored on the row, so a promo "appears" when it
+        // was pitched or when its start date arrived, whichever is later.
+        const created = p.created_at ? new Date(p.created_at) : now;
+        const from = p.valid_from ? new Date(p.valid_from) : created;
+        const announced = new Date(Math.min(Math.max(created, from), now));
+        return {
+          id: p.id,
+          code: p.code,
+          title: p.title || p.code,
+          discount_type: p.discount_type,
+          discount_value: parseFloat(p.discount_value) || 0,
+          min_spend: p.min_spend !== null && p.min_spend !== undefined ? parseFloat(p.min_spend) : null,
+          valid_until: p.valid_until || null,
+          announced_at: announced.toISOString()
+        };
+      })
+      .sort((a, b) => new Date(b.announced_at) - new Date(a.announced_at))
+      .slice(0, cap);
+
+    return res.json({ status: 'success', promos });
+  } catch (err) {
+    console.error('[promotions/active] error:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Could not load promotions.', promos: [] });
+  }
+});
+
+// ==========================================
 // 7. VALIDATE PROMO CODE API
 // ==========================================
 app.get('/api/promotions/validate', async (req, res) => {
@@ -2945,7 +2996,8 @@ app.get('/api/ceo/budget-approval', async (req, res) => {
           value_display: promoValue(p),
           requester: 'Sales Officer',
           status: p.status === 'REJECTED' ? 'REJECTED' : 'APPROVED',
-          decided_at: p.updated_at || p.created_at || null
+          decided_by_name: p.decided_by_name || null,
+          decided_at: p.decided_at || p.updated_at || p.created_at || null
         });
       });
     history.sort((a, b) => new Date(b.decided_at || 0) - new Date(a.decided_at || 0));
@@ -3000,14 +3052,30 @@ app.post('/api/ceo/budget-approval/action', async (req, res) => {
       if (!row) return res.status(409).json({ status: 'error', message: 'This requisition is no longer awaiting CEO approval.' });
       label = `PR-${1000 + row.id} ${row.item_name || ''}`.trim();
     } else if (type === 'promotion') {
-      const patch = act === 'approve' ? { status: 'ACTIVE' } : { status: 'REJECTED', rejection_reason: reason };
-      const { data: row, error } = await supabase
+      // Stamp the decision on the promotion itself: who (name from the signed
+      // login, not the request body) and when. Needs supabase/promotion_decision_audit.sql.
+      const ceo = await getCeoProfile(req);
+      const decision = { decided_by_name: ceo.fullName || 'CEO', decided_at: new Date().toISOString() };
+      const patch = act === 'approve'
+        ? { status: 'ACTIVE', ...decision }
+        : { status: 'REJECTED', rejection_reason: reason, ...decision };
+
+      const applyPromoDecision = (p) => supabase
         .from('promotions')
-        .update(patch)
+        .update(p)
         .eq('id', id)
         .eq('status', 'PENDING_APPROVAL')
         .select('id, code')
         .maybeSingle();
+
+      let { data: row, error } = await applyPromoDecision(patch);
+      // Columns not created yet (42703 = Postgres, PGRST204 = PostgREST schema cache):
+      // don't block the CEO's decision, apply it without the audit fields and say so in the log.
+      if (error && (error.code === '42703' || error.code === 'PGRST204')) {
+        console.warn('[budget-approval] promotions.decided_by_name/decided_at missing - run supabase/promotion_decision_audit.sql. Applying decision without them.');
+        const { decided_by_name, decided_at, ...basePatch } = patch;
+        ({ data: row, error } = await applyPromoDecision(basePatch));
+      }
       if (error) throw error;
       if (!row) return res.status(409).json({ status: 'error', message: 'This promotion is no longer awaiting CEO approval.' });
       label = row.code;

@@ -730,3 +730,31 @@ body {
         padding: 24px 18px;
     }
 }
+
+/* --- PROMO NOTIFICATIONS --- */
+.notif-promo-thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 74px;
+    height: 74px;
+    border-radius: 20px;
+    background: #FFFFFF;
+    border: 1.5px solid var(--border-card);
+    color: var(--btn-primary-pink);
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.notif-promo-thumb::after {
+    display: none;
+}
+
+.notif-order-ref {
+    margin-left: 8px;
+    font-family: var(--font-body);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-time);
+    white-space: nowrap;
+}
