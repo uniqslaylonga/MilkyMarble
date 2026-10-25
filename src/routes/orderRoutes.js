@@ -10,6 +10,8 @@ const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supaba
 const { dispatchOrderStatusEmail } = require('../services/mailServices');
 const { generateCashTransactionId } = require('../utils/transactionId');
 const { getPromoRule, countItems, checkPromoEligibility, getRedeemablePromo, computePromoDiscount } = require('../utils/promoRules');
+const { priceOrderItems, OrderPricingError } = require('../utils/orderPricing');
+const { insertOrderWithUniqueNumber } = require('../utils/orderNumber');
 
 // Resolves the name/email to send order emails to, for either a
 // logged-in customer (via users table) or a guest checkout.
@@ -190,15 +192,37 @@ router.post('/', async (req, res) => {
     const targetCustomerId = customer ? customer.id : null;
     const isGuestOrder = !targetCustomerId;
 
-    const orderSubtotal = parseFloat(subtotal || 0);
-    let promoDiscount = parseFloat(discount_amount || 0);
+    // The server works out the prices. The browser's subtotal / unit_price /
+    // price are never trusted, so editing the request can't make an order
+    // cheaper. Every figure below (promo, points, total) builds on this subtotal.
+    let pricedItems;
+    let orderSubtotal;
+    try {
+      const priced = priceOrderItems(items);
+      pricedItems = priced.items;
+      orderSubtotal = priced.subtotal;
+    } catch (priceErr) {
+      if (priceErr instanceof OrderPricingError) {
+        return res.status(400).json({ status: 'error', message: priceErr.message });
+      }
+      throw priceErr;
+    }
+
+    // If the browser's number disagrees, the server's number still wins. Log it
+    // so a real pricing bug (or someone tampering) shows up in the server logs.
+    const clientSubtotal = parseFloat(subtotal || 0);
+    if (Math.abs(clientSubtotal - orderSubtotal) > 0.009) {
+      console.warn(`[orders] Subtotal mismatch: browser sent ${clientSubtotal}, server calculated ${orderSubtotal}. Using the server's figure.`);
+    }
+
+    let promoDiscount = 0;
 
     // Server-side enforcement of special promo rules (SWEETSIP10: 2+ items, one-time use)
     const cleanPromoCode = promo_code ? String(promo_code).trim().toUpperCase() : null;
     let savedPromoCode = null;
     if (cleanPromoCode && getPromoRule(cleanPromoCode)) {
       const promoError = await checkPromoEligibility(supabase, cleanPromoCode, {
-        itemCount: countItems(items),
+        itemCount: countItems(pricedItems),
         customerId: targetCustomerId,
         email: guest_email || recipient_email || null
       });
@@ -233,9 +257,12 @@ router.post('/', async (req, res) => {
 
     // Decimal Points Math (Sinusuportahan ang 2 decimal places)
     const currentPoints = customer ? parseFloat(customer.loyalty_points || 0) : 0.0;
+    // Never below 0 (a negative value would raise the total and mint points) and
+    // never more than what is left to pay after the promo.
+    const safeRequestedPoints = Number.isFinite(requestedPointsUsed) ? Math.max(0, requestedPointsUsed) : 0;
     const actualPointsDiscount = isGuestOrder 
       ? 0.0 
-      : Number(Math.min(currentPoints, requestedPointsUsed, orderSubtotal).toFixed(2));
+      : Number(Math.min(currentPoints, safeRequestedPoints, Math.max(0, orderSubtotal - promoDiscount)).toFixed(2));
 
     const finalTotalAmount = Math.max(0, Number((orderSubtotal - promoDiscount - actualPointsDiscount).toFixed(2)));
 
@@ -246,7 +273,6 @@ router.post('/', async (req, res) => {
 
     const newPointsBalance = Math.max(0, Number((currentPoints - actualPointsDiscount + pointsEarned).toFixed(2)));
 
-    const orderNumber = `MM-${Date.now().toString().slice(-6)}`;
     const scheduleDate = pickup_date || null;
     const scheduleText = pickup_instructions || (scheduleDate ? `Pick-up: ${scheduleDate}` : 'Pick-up: N/A');
 
@@ -276,7 +302,6 @@ router.post('/', async (req, res) => {
 
     const orderPayload = {
       customer_id: targetCustomerId,
-      order_number: orderNumber,
       order_type: validOrderType,
       status: validStatus,
       subtotal: orderSubtotal,
@@ -292,19 +317,18 @@ router.post('/', async (req, res) => {
       placed_at: new Date().toISOString()
     };
 
-    const { data: newOrder, error: orderErr } = await supabase
-      .from('orders')
-      .insert([orderPayload])
-      .select()
-      .single();
+    // order_number is generated inside this helper; if the database rejects a
+    // number because it is already taken, a new one is picked and retried.
+    const { data: newOrder, error: orderErr } = await insertOrderWithUniqueNumber(supabase, orderPayload);
 
     if (orderErr || !newOrder) {
       console.error('Order insertion error:', orderErr);
       return res.status(400).json({ status: 'error', message: orderErr ? orderErr.message : 'Failed to create order.' });
     }
+    const orderNumber = newOrder.order_number;
 
-    if (Array.isArray(items) && items.length > 0) {
-      const orderItemsToInsert = items.map(item => {
+    if (pricedItems.length > 0) {
+      const orderItemsToInsert = pricedItems.map(item => {
         // The cart only ever saves one flat `image`, so flavor_img/toppings_img/
         // cup_img/is_custom are normally missing here — rebuild them from the
         // item's own title/flavor/variation/size/toppings so the composite
@@ -315,9 +339,9 @@ router.post('/', async (req, res) => {
         return {
           order_id: newOrder.id,
           item_label: item.title || item.item_label || 'Special Blend Cup',
-          quantity: parseInt(item.quantity || 1, 10),
-          unit_price: parseFloat(item.unit_price || item.price || orderSubtotal),
-          line_total: parseFloat((parseInt(item.quantity || 1, 10)) * (parseFloat(item.unit_price || item.price || orderSubtotal))),
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          line_total: item.line_total,
           size: item.size || null,
           is_custom: (item.is_custom !== undefined) ? !!(item.is_custom || item.custom_build) : (resolved ? resolved.is_custom : false),
           toppings: Array.isArray(item.toppings) ? item.toppings.join(', ') : (item.toppings || null),
@@ -329,7 +353,8 @@ router.post('/', async (req, res) => {
         };
       });
 
-      await supabase.from('order_items').insert(orderItemsToInsert);
+      const { error: itemsErr } = await supabase.from('order_items').insert(orderItemsToInsert);
+      if (itemsErr) console.error(`[orders] Failed to save items for order ${orderNumber}:`, itemsErr.message);
     }
 
     // I-update ang decimal loyalty_points sa Supabase customers table
@@ -369,7 +394,7 @@ router.post('/', async (req, res) => {
           total_price: finalTotalAmount,
           subtotal: orderSubtotal,
           discount: Number((promoDiscount + actualPointsDiscount).toFixed(2)),
-          items: (items || []).map(item => ({
+          items: pricedItems.map(item => ({
             title: item.title || item.item_label,
             size: item.size,
             quantity: item.quantity,

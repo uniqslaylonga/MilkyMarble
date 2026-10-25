@@ -252,6 +252,46 @@ body {
     background: #fcd4d0;
 }
 
+/* --- PAYMENT METHOD FILTER --- */
+.orders-payment-filter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.orders-payment-filter-label {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-dark);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.orders-payment-filter-select {
+    border: none;
+    background: var(--stage-pill-inactive);
+    color: var(--text-dark);
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.orders-payment-filter-select:hover {
+    background: #fcd4d0;
+}
+
+.orders-payment-filter-select:focus-visible {
+    box-shadow: 0 0 0 2px var(--stage-pill-active);
+}
+
 /* --- ORDERS LIST CONTAINER --- */
 .orders-list-container {
     display: flex;

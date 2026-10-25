@@ -158,6 +158,18 @@
         <button type="button" class="order-filter-pill" onclick="filterOrders('cancelled', this)">Cancelled</button>
       </nav>
 
+      <!-- PAYMENT METHOD FILTER -->
+      <div class="orders-payment-filter">
+        <label for="paymentMethodFilter" class="orders-payment-filter-label">
+          <i class="fa-solid fa-wallet"></i> Payment
+        </label>
+        <select id="paymentMethodFilter" class="orders-payment-filter-select" onchange="filterByPaymentMethod(this.value)">
+          <option value="all">All payment methods</option>
+          <option value="cash">Cash on Pick-Up</option>
+          <option value="ewallet">E-Wallet</option>
+        </select>
+      </div>
+
       <!-- ORDERS LIST CONTAINER -->
       <section class="orders-list-container" id="ordersList">
         <div class="orders-loading-state" style="text-align: center; padding: 40px; color: #7C4F38;">

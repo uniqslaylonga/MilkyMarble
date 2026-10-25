@@ -1178,6 +1178,10 @@ window.confirmPlaceOrder = async function() {
     submitBtn.innerText = 'Placing Order...';
   }
 
+  // The server works out the real prices; once the order is saved we show what
+  // the server charged instead of this page's own arithmetic.
+  let chargedTotal = finalPayableTotal;
+
   try {
     const res = await fetch('/api/orders', {
       method: 'POST',
@@ -1193,6 +1197,8 @@ window.confirmPlaceOrder = async function() {
 
     if (res.ok && data.status === 'success') {
       const orderObj = data.order || data.data || {};
+      const serverTotal = parseFloat(orderObj.total_amount);
+      if (Number.isFinite(serverTotal)) chargedTotal = serverTotal;
       if (!isGuest && customerId) {
         try { localStorage.setItem(lastPaymentStorageKey(customerId), paymentMethodForOrder); } catch (e) {}
       }
@@ -1253,7 +1259,7 @@ window.confirmPlaceOrder = async function() {
         window.openManualPayment({
           order: orderObj,
           email: cleanEmail,
-          amount: finalPayableTotal,
+          amount: chargedTotal,
           onClose: function (submitted) {
             // Take the customer to their orders either way; the order shows
             // "Verifying Payment" (submitted) or "Awaiting Payment" (not yet).
@@ -1303,7 +1309,7 @@ window.confirmPlaceOrder = async function() {
         items: currentOrderSummaryItems,
         points_used: used,
         points_earned: isGuest ? 0 : earned,
-        total_amount: finalPayableTotal,
+        total_amount: chargedTotal,
         pickup_date: pickupInput.value,
         guest_name: cleanName,
         guest_email: cleanEmail,

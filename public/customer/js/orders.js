@@ -13,6 +13,7 @@ window.addEventListener('pageshow', (event) => {
 
 let allOrdersList = [];
 let activeStatusFilter = 'all';
+let activePaymentFilter = 'all'; // 'all' | 'cash' | 'ewallet'
 let currentSearchQuery = '';
 
 // Rating State Variables
@@ -367,11 +368,23 @@ window.filterOrdersList = function(query) {
   renderOrders(allOrdersList);
 };
 
+// Which payment group an order belongs to. A missing method counts as Cash on
+// Pick-Up, the same default the rest of this page uses.
+function getPaymentGroup(order) {
+  const method = String(order.payment_method || 'Cash on Pick-Up');
+  // Starts-with check, so "GCash" is not mistaken for "Cash on Pick-Up".
+  const isCash = /^\s*cash/i.test(method);
+  const isEwallet = !isCash && /wallet|gcash|maya|online|instapay/i.test(method);
+  return isEwallet ? 'ewallet' : 'cash';
+}
+
 function renderOrders(orders) {
   const container = getOrdersContainer();
   if (!container) return;
 
   const filtered = orders.filter(order => {
+    if (activePaymentFilter !== 'all' && getPaymentGroup(order) !== activePaymentFilter) return false;
+
     let rawStatus = (order.status || 'CONFIRMED').toUpperCase().replace(/_/g, ' ');
     let uiStatus = 'Confirmed';
     if (rawStatus.includes('PENDING PAYMENT')) uiStatus = order.payment_reference ? 'Verifying Payment' : 'Awaiting Payment';
@@ -410,7 +423,7 @@ function renderOrders(orders) {
       <div style="text-align: center; padding: 50px 20px; color: #777; width: 100%;">
         <i class="fa-solid fa-mug-saucer" style="font-size: 2.5rem; color: #b8a69d; margin-bottom: 12px; display: block;"></i>
         <div style="font-size: 1.15rem; font-weight: 700; color: #4a3427; margin-bottom: 4px;">No matching orders found</div>
-        <p style="font-size: 0.9rem; color: #7C4F38; margin: 0;">Try searching for another order ID, drink flavor, or topping!</p>
+        <p style="font-size: 0.9rem; color: #7C4F38; margin: 0;">Try another order ID, drink flavor, or topping, or change the status or payment filter.</p>
       </div>
     `;
     return;
@@ -877,6 +890,11 @@ window.filterOrders = function(status, btn) {
 };
 
 window.filterByStatus = window.filterOrders;
+
+window.filterByPaymentMethod = function(method) {
+  activePaymentFilter = ['cash', 'ewallet'].includes(method) ? method : 'all';
+  renderOrders(allOrdersList);
+};
 
 window.reorderCup = function(encodedOrder) {
   const order = JSON.parse(decodeURIComponent(encodedOrder));

@@ -6,6 +6,7 @@ const { readToken, COOKIE_NAME: STAFF_COOKIE } = require('../middleware/staffAut
 const paymentRoutes = require('./paymentRoutes');
 const { dispatchOrderStatusEmail } = require('../services/mailServices');
 const { generateCashTransactionId } = require('../utils/transactionId');
+const { insertOrderWithUniqueNumber } = require('../utils/orderNumber');
 const { logActivity } = require('../utils/activityLog');
 
 // Optional SDK load for Google Gemini AI
@@ -1263,7 +1264,6 @@ router.post('/sales-officer/order-monitoring/update', async (req, res) => {
 
     if (action === 'walkin_sale') {
       const amount = parseFloat(total_amount) || 15;
-      const orderNum = `MM-POS-${Date.now().toString().slice(-6)}`;
       const nowISO = new Date().toISOString();
 
       // Toppings arrive as ["Extra Pearls x3", "Cheese"]; store them as one
@@ -1277,10 +1277,8 @@ router.post('/sales-officer/order-monitoring/update', async (req, res) => {
       // only the drink name/size here so reports group drinks correctly.
       const baseLabel = String(item_label || 'Preset Cup').replace(/\s*\+\s.*$/, '').trim() || 'Preset Cup';
 
-      const { data: newOrder, error: orderErr } = await supabase
-        .from('orders')
-        .insert([{
-          order_number: orderNum,
+      // order_number is assigned (and retried on a clash) by the helper.
+      const { data: newOrder, error: orderErr } = await insertOrderWithUniqueNumber(supabase, {
           order_type: 'preset',
           status: 'COMPLETED',
           payment_method: 'Cash on Counter',
@@ -1291,9 +1289,7 @@ router.post('/sales-officer/order-monitoring/update', async (req, res) => {
           completed_at: nowISO,
           guest_name: customer_name || 'Walk-in Counter',
           customer_id: null
-        }])
-        .select()
-        .single();
+        }, { prefix: 'MM-POS' });
 
       if (orderErr) throw orderErr;
 
