@@ -637,11 +637,13 @@ async function handleGlobalAvatarFileSelect(event) {
 // ==========================================
 // NOTIFICATION FEED (order status + new promos)
 // Shared by the bell dropdown below and by notifications.js (Sweet Updates page).
-// Nothing is stored server-side: every item is derived from the customer's
-// orders (current status) and the live promotions list. Read state lives in
-// localStorage under mm_read_notifs.
-//   order item key : order-<id>-<STATUS>  (a status change makes it unread again)
-//   promo item key : promo-<id>
+// Items come from the `notifications` table via GET /api/notifications (rows are
+// written by DB triggers, see supabase/notifications.sql). Read state is stored
+// server-side (notification_reads) and mirrored in localStorage (mm_read_notifs)
+// so the badge updates instantly.
+//   stored item key : n-<notification id>
+// If the table isn't set up yet, mmLoadNotifFeed falls back to the old derived
+// feed (mmLoadNotifFeedDerived: order-<id>-<STATUS> / promo-<id> keys).
 // ==========================================
 function mmOrderNotifContent(order) {
   const raw = String(order.status || 'CONFIRMED').toUpperCase();
@@ -704,6 +706,43 @@ function mmSaveReadNotifKeys(set) {
 
 // -> [{ key, type: 'order' | 'promo', time: Date, order?, promo?, ...title/desc/icon }] newest first
 async function mmLoadNotifFeed(customerId, { orderLimit = null, promoLimit = 5 } = {}) {
+  try {
+    const limit = orderLimit ? Math.max(orderLimit, promoLimit) + 5 : 50;
+    const orderUrl = `/api/orders?customer_id=${encodeURIComponent(customerId)}${orderLimit ? `&limit=${orderLimit}` : ''}`;
+    const [notifData, orderData] = await Promise.all([
+      fetch(`/api/notifications?customer_id=${encodeURIComponent(customerId)}&limit=${limit}`).then(r => r.json()),
+      fetch(orderUrl).then(r => r.json())
+    ]);
+    if (notifData.status !== 'success') throw new Error('notifications unavailable');
+
+    const orders = orderData.orders || [];
+    const byId = new Map(orders.map(o => [String(o.id), o]));
+    const read = mmReadNotifKeys();
+
+    const items = (notifData.notifications || []).map(n => {
+      const key = `n-${n.id}`;
+      if (n.is_read) read.add(key);
+      const base = {
+        key, notifId: n.id, type: n.type === 'promo' ? 'promo' : 'order',
+        time: new Date(n.created_at), status: n.status, title: n.title, desc: n.message
+      };
+      if (base.type === 'promo') {
+        return { ...base, icon: 'fa-tags', promo: n.promo || { code: (n.data && n.data.code) || '' } };
+      }
+      // Older orders may be outside the limited orders fetch; keep a stub so the card still renders.
+      const order = byId.get(String(n.order_id)) || { id: n.order_id, order_number: n.data && n.data.order_number, items: [] };
+      return { ...base, icon: mmOrderNotifContent({ status: n.status }).icon, order };
+    });
+    mmSaveReadNotifKeys(read);
+
+    return { orders, items };
+  } catch (e) {
+    return mmLoadNotifFeedDerived(customerId, { orderLimit, promoLimit });
+  }
+}
+
+// Fallback: derives the feed from current order statuses + live promos (no table needed).
+async function mmLoadNotifFeedDerived(customerId, { orderLimit = null, promoLimit = 5 } = {}) {
   const orderUrl = `/api/orders?customer_id=${encodeURIComponent(customerId)}${orderLimit ? `&limit=${orderLimit}` : ''}`;
 
   // Promos are public and optional: if that request fails, order updates still show.
@@ -816,11 +855,18 @@ function loadNavbarDropdownNotifs(customerId) {
     });
 }
 
+function mmPostNotifRead(body) {
+  fetch('/api/notifications/read', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  }).catch(() => {});
+}
+
 window.markSingleNotifRead = function(key) {
   const read = mmReadNotifKeys();
   if (read.has(String(key))) return;
   read.add(String(key));
   mmSaveReadNotifKeys(read);
+  if (/^n-\d+$/.test(String(key))) mmPostNotifRead({ ids: [parseInt(String(key).slice(2), 10)] });
   if (window.mmNotifFeedItems) mmUpdateNotifBadge(window.mmNotifFeedItems);
 };
 
@@ -831,6 +877,7 @@ window.markAllNotificationsAsRead = function(event) {
   const read = mmReadNotifKeys();
   items.forEach(i => read.add(i.key));
   mmSaveReadNotifKeys(read);
+  if (items.some(i => i.notifId)) mmPostNotifRead({ all: true });
 
   document.querySelectorAll('.notification-item-card, .notif-row-card, .dropdown-notif-item')
     .forEach(card => card.classList.add('is-read'));

@@ -11,6 +11,7 @@ const compression = require('compression');
 // Import Routes
 const authRoutes = require('./src/routes/authRoutes');
 const orderRoutes = require('./src/routes/orderRoutes');
+const notificationRoutes = require('./src/routes/notificationRoutes');
 const paymentRoutes = require('./src/routes/paymentRoutes');
 const employeeRoutes = require('./src/routes/employeeRoutes');
 const { requireStaff, requireRole, setStaffCookie, clearStaffCookie, readToken, COOKIE_NAME } = require('./src/middleware/staffAuth');
@@ -1928,6 +1929,7 @@ app.use('/api/auth', (req, res, next) => {
 }, authRoutes);
 
 app.use('/api/orders', orderRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/payments', paymentRoutes);
 if (customerRoutes) {
   app.use(['/api/customers', '/api/customer'], customerRoutes);
